@@ -59,14 +59,15 @@ export default class Level1 extends PlayScene {
     this.sign(1610, 118, 'THE MISSION');
 
     const d = this.spawns.find((s) => s.ch === 'D');
-    this.door = this.physics.add.staticImage(d.x, d.y - 8, 'door');
+    // Exit triggers on crossing the door's x at any height, so hopping over it still counts.
+    this.door = this.add.image(d.x, d.y - 8, 'door');
     worldText(this, d.x, d.y - 32, 'SOMA: Anthropic HQ →', { color: '#3fb950', bg: '#0d0d0d', size: 6, depth: 2 });
-    this.physics.add.overlap(this.player, this.door, () => this.exit());
     this.playMusic('music_level', 0.28);
   }
 
   update(time, delta) {
     super.update(time, delta);
+    if (!this.leaving && !this.player.dead && this.player.x >= this.door.x - 4) this.exit();
     const x = this.cameras.main.worldView.x;
     for (const l of this.parallax) l.ts.tilePositionX = x * l.f + (l.drift ? time * l.drift : 0);
     const span = 320 + 140; // wrap just outside the view on both sides
