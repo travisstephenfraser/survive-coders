@@ -155,27 +155,6 @@ const DEFS = {
     rows: ['.GGGGGG.', 'GWWWWWWG', 'GWWKWWWG', 'GWKWKWWG', 'GWWWWWWG', 'GGGGGGGG', '.gggggg.', '........'],
   },
 
-  skullops: {
-    rows: [
-      '................',
-      '....WWWWWWWW....',
-      '...WWWWWWWWWW...',
-      '..WWWWWWWWWWWW..',
-      '..WWWWKKKKWWWW..',
-      '..WWWKKHHKKWWW..',
-      '..WWWKKHHKKWWW..',
-      '..WWWWKKKKWWWW..',
-      '..WWWWWWWWWWWW..',
-      '...WWWWKKWWWW...',
-      '....WWWWWWWW....',
-      '....WKWKWKWW....',
-      '....WWWWWWWW....',
-      '.....G....G.....',
-      '....GG....GG....',
-      '................',
-    ],
-  },
-
   imgtile: {
     w: 8,
     h: 8,
@@ -203,6 +182,11 @@ const DEFS = {
     w: 8,
     h: 8,
     rows: ['...HH...', '..HHHH..', '.HHHHHH.', '.HHHHHH.', '.HHHHHH.', 'HHHHHHHH', '...WW...', '........'],
+  },
+  heat: {
+    w: 6,
+    h: 6,
+    rows: ['.RRRR.', 'RHYYHR', 'RYWWYR', 'RYWWYR', 'RHYYHR', '.RRRR.'],
   },
 
   px_orange: { w: 2, h: 2, rows: ['HH', 'HH'] },
@@ -398,7 +382,50 @@ function waymo(ctx, open) {
   }
 }
 
+// H100: a big data-center GPU card, side view, walking on its gold PCIe fingers. 40x18.
+function h100(ctx, frame) {
+  const r = (x, y, w, h, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(x, y, w, h);
+  };
+  r(0, 1, 2, 16, '#c9ccd1'); // IO bracket
+  r(2, 2, 36, 13, '#23262c'); // shroud
+  r(2, 2, 36, 1, '#d7dbe0'); // silver top trim
+  r(2, 3, 36, 1, '#3fb950'); // compute-green light strip
+  r(2, 14, 36, 1, '#8b8f96');
+  // Fan: ring, dark well, spinning blades, hub.
+  const cx = 10;
+  const cy = 8;
+  for (let y = -6; y <= 6; y++) {
+    for (let x = -6; x <= 6; x++) {
+      const d = Math.sqrt(x * x + y * y);
+      if (d <= 5.9 && d > 4.9) r(cx + x, cy + y, 1, 1, '#8b8f96');
+      else if (d <= 4.9) r(cx + x, cy + y, 1, 1, '#111317');
+    }
+  }
+  const blades = frame ? [[1, 1], [-1, 1], [1, -1], [-1, -1]] : [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (const [dx, dy] of blades) for (let i = 1; i <= 4; i++) r(cx + dx * i, cy + dy * i, 1, 1, '#5a5f66');
+  r(cx - 1, cy - 1, 2, 2, '#d7dbe0');
+  // Label plate with "H100" in a 3x5 pixel font.
+  r(19, 5, 18, 8, '#0d0d0d');
+  ctx.strokeStyle = '#3fb950';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(19.5, 5.5, 17, 7);
+  const GLYPHS = {
+    H: ['#.#', '#.#', '###', '#.#', '#.#'],
+    1: ['.#.', '##.', '.#.', '.#.', '###'],
+    0: ['###', '#.#', '#.#', '#.#', '###'],
+  };
+  [...'H100'].forEach((ch, i) =>
+    GLYPHS[ch].forEach((row, y) => [...row].forEach((c, x) => c === '#' && r(21 + i * 4 + x, 7 + y, 1, 1, '#f5f5f5'))),
+  );
+  r(35, 13, 1, 1, frame ? '#e5534b' : '#ff8f80'); // status LED
+  for (let x = 8; x <= 32; x += 2) r(x, 15, 1, 3, '#e3b341'); // PCIe gold fingers (the feet)
+}
+
 const DRAWN = {
+  gpu0: { w: 40, h: 18, draw: (ctx) => h100(ctx, 0) },
+  gpu1: { w: 40, h: 18, draw: (ctx) => h100(ctx, 1) },
   waymo: { w: 56, h: 30, draw: (ctx) => waymo(ctx, false) },
   waymo_open: { w: 56, h: 30, draw: (ctx) => waymo(ctx, true) },
   tiles: {
@@ -529,7 +556,7 @@ function paintRows(ctx, rows, w, swap) {
   });
 }
 
-const OUTLINED = /^(player_|laptop|goblin|keycap|blob|skullops|head_)/;
+const OUTLINED = /^(player_|laptop|goblin|keycap|blob|head_)/;
 
 export function buildTextures(scene) {
   for (const [key, def] of Object.entries(DEFS)) {
@@ -556,6 +583,7 @@ export function buildTextures(scene) {
   mk('run', ['player_run0', 'player_idle', 'player_run1', 'player_idle'], 10);
   mk('blob', ['blob0', 'blob1'], 3);
   mk('goblin', ['goblin0', 'goblin1'], 6);
+  mk('gpu_fans', ['gpu0', 'gpu1'], 12);
   // Ninja Adventure sheets: 4 columns = facing down/up/left/right, rows = animation frames.
   const sheet = (key, tex, frames, rate) => {
     if (scene.textures.exists(tex) && !anims.exists(key)) {

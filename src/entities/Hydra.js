@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Enemy, Skullops } from './enemies.js';
+import { Enemy, FlamingSkull } from './enemies.js';
 import { worldText, floatText } from '../util.js';
 
 const LIES = [
@@ -13,6 +13,7 @@ const LIES = [
   'This is production-ready',
   'Your laptop is the bug',
   'Let me rewrite everything',
+  'I just need more GPUs',
 ];
 
 const TURN_MS = 8000;
@@ -232,7 +233,7 @@ export default class Hydra {
     } else if (head.role === 'spawn') {
       this.minions = this.minions.filter((m) => m.active);
       if (this.minions.length >= 3) return;
-      const m = new Skullops(scene, head.x - 8, head.y);
+      const m = new FlamingSkull(scene, head.x - 8, head.y);
       m.dir = -1;
       this.minions.push(m);
     }

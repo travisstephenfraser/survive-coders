@@ -64,7 +64,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     else if (!this.groundAhead()) this.dir *= -1;
     else if (Math.abs(this.x + this.dir * 2 - this.homeX) > this.leash) this.dir = this.x < this.homeX ? 1 : -1;
     this.setVelocityX(this.dir * speed);
-    this.setFlipX(this.dir < 0);
+    if (!this.noFlip) this.setFlipX(this.dir < 0);
   }
 
   groundAhead() {
@@ -170,15 +170,59 @@ export class KeyboardGoblin extends Enemy {
   }
 }
 
-// Flaming skull (Ninja Adventure pack, CC0): patrol filler, and the Hydra's spawn.
-export class Skullops extends Enemy {
+// H100: a big, tanky data-center GPU. Slow patrol, fans spinning, heat shimmer rising; when
+// you get close it vents arcing heat blobs. Also what the Hydra provisions for more compute.
+export class H100 extends Enemy {
+  constructor(scene, x, y) {
+    super(scene, x, y, 'gpu0', 6, 6);
+    this.noFlip = true; // "H100" label must never read backwards
+    this.body.setSize(36, 15).setOffset(2, 3);
+    this.play('gpu_fans');
+    this.nextVent = scene.time.now + Phaser.Math.Between(900, 1800);
+    this.heatFx = scene.add
+      .particles(0, 0, 'px_orange', {
+        follow: this,
+        followOffset: { x: 0, y: -9 },
+        speedX: { min: -6, max: 6 },
+        speedY: { min: -26, max: -10 },
+        lifespan: 650,
+        frequency: 160,
+        alpha: { start: 0.7, end: 0 },
+        scale: { start: 1, end: 0.4 },
+      })
+      .setDepth(3);
+    this.once('destroy', () => this.heatFx.destroy());
+  }
+
+  update(time) {
+    if (this.dying || this.stunned) return;
+    this.patrol(18);
+    const p = this.scene.player;
+    const dx = p.x - this.x;
+    if (time > this.nextVent && Math.abs(dx) < 140 && Math.abs(p.y - this.y) < 48 && !p.dead) {
+      this.nextVent = time + 2800;
+      const dir = Math.sign(dx) || 1;
+      this.scene.spawnHazard(this.x + dir * 12, this.y - 8, 'heat', dir * 70, -170, true);
+      this.scene.spawnHazard(this.x + dir * 12, this.y - 8, 'heat', dir * 40, -210, true);
+      this.scene.sfx?.('flood', 0.2);
+    }
+  }
+
+  onDie() {
+    floatText(this.scene, this.x, this.y - 16, 'CUDA OOM', '#3fb950');
+    this.scene.burst(this.x, this.y, 'px_green', 14);
+  }
+}
+
+// Flaming skull (Ninja Adventure pack, CC0): the Hydra's spawn only.
+export class FlamingSkull extends Enemy {
   constructor(scene, x, y) {
     const pack = scene.textures.exists('pack_skull');
-    super(scene, x, y, pack ? 'pack_skull' : 'skullops', 2, 2);
+    super(scene, x, y, pack ? 'pack_skull' : 'blob_small', 2, 2);
     if (pack) {
       this.play('skull_walk');
       this.body.setSize(12, 12).setOffset(2, 4);
-    } else this.body.setSize(12, 14).setOffset(2, 2);
+    }
   }
 
   update() {
@@ -187,4 +231,4 @@ export class Skullops extends Enemy {
   }
 }
 
-export const SPAWNERS = { B: BadPromptBlob, G: KeyboardGoblin, S: Skullops };
+export const SPAWNERS = { B: BadPromptBlob, G: KeyboardGoblin, H: H100 };
