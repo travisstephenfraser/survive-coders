@@ -46,12 +46,12 @@ Live URL checked 2026-09-26: HTTP 200, deployed from `master` at `1d9b806`.
 ## Product walkthrough
 
 **1. Title screen.** A terminal window with the controls, `V` to set up the microphone, and `G`
-to toggle god mode for live demos. *(screenshot pending)*
+to toggle god mode for live demos (shown on).
 
 ![Title screen](docs/screenshots/01-title.png)
 
 **2. The hook.** The robotaxi pulls up and `#demo-day` asks for one small change, then dark
-mode, then reminds you the demo is at 5.
+mode, then reminds you the demo is at 5 (the last ping is shown).
 
 ![Slack ping during the intro](docs/screenshots/02-intro-slack-ping.png)
 
@@ -82,8 +82,10 @@ heads answer, and the boss card lands.
 ![Context Rot Hydra title card](docs/screenshots/07-boss-title-card.png)
 
 **8. Readable boss attacks.** Every attack has a 600 ms wind-up. The image-flood head marks its
-drop lanes before the tiles fall, and always leaves three adjacent lanes clear. The HUD
-separates boss health from context growth and counts down to the next growth.
+drop lanes (the image icons along the top) before the tiles fall, and always leaves three
+adjacent lanes clear. The HUD separates boss health from context growth; here the context
+meter reads FULL, the cue to say *refactor*, while a head insists your laptop is the bug and
+the spawner has dropped two flaming skulls.
 
 ![Flood lanes marked before they drop](docs/screenshots/08-boss-telegraphed-flood.png)
 
