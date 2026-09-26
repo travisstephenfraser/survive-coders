@@ -2,68 +2,109 @@ import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
 import { MAX_HP, uiText } from '../util.js';
 
-// Screen-space overlay at 1x zoom so text stays crisp.
+// Screen-space overlay. Everything sits on a 3px grid (one world pixel at 3x zoom) so the
+// bars and frames read as the same pixel art as the game.
+const P = 3;
+
+// Segmented pixel bar with 3-tone shading, drawn in world-pixel units.
+function segBar(g, x, y, cells, filled, colors, cellW = 7) {
+  const [hi, mid, lo, empty] = colors;
+  const w = cells * cellW + (cells - 1) + 4;
+  const h = 8;
+  g.fillStyle(0xd97757).fillRect(x, y, w * P, h * P);
+  g.fillStyle(0x140f12).fillRect(x + P, y + P, (w - 2) * P, (h - 2) * P);
+  for (let i = 0; i < cells; i++) {
+    const cx = x + (2 + i * (cellW + 1)) * P;
+    const cy = y + 2 * P;
+    if (i < filled) {
+      g.fillStyle(mid).fillRect(cx, cy, cellW * P, 4 * P);
+      g.fillStyle(hi).fillRect(cx, cy, cellW * P, P);
+      g.fillStyle(lo).fillRect(cx, cy + 3 * P, cellW * P, P);
+    } else g.fillStyle(empty).fillRect(cx, cy, cellW * P, 4 * P);
+  }
+  return w * P;
+}
+
+function frame(g, x, y, w, h, border, fill) {
+  g.fillStyle(border).fillRect(x, y, w, h);
+  g.fillStyle(fill).fillRect(x + P, y + P, w - 2 * P, h - 2 * P);
+}
+
 export default class HUD extends Phaser.Scene {
   constructor() {
     super('HUD');
   }
 
   create() {
-    this.hearts = [];
-    for (let i = 0; i < MAX_HP; i++) this.hearts.push(this.add.image(20 + i * 28, 20, 'heart').setOrigin(0).setScale(3));
-    // GitHub-style "★ Star | 42" badge.
-    this.add.rectangle(944, 14, 190, 38, 0x21262d).setOrigin(1, 0).setStrokeStyle(2, 0x444c56);
-    this.add.rectangle(944, 14, 76, 38, 0x0d1117).setOrigin(1, 0).setStrokeStyle(2, 0x444c56);
-    uiText(this, 764, 33, '★ Star', { size: 20, color: '#e3b341', oy: 0.5 });
-    this.stars = uiText(this, 906, 33, '', { size: 22, color: '#f5f5f5', ox: 0.5, oy: 0.5 });
-    this.level = uiText(this, 480, 16, '', { size: 20, color: '#d97757', ox: 0.5 });
-    this.reversed = uiText(this, 480, 80, '⇄ CONTROLS REVERSED', { size: 22, color: '#bc8cff', ox: 0.5 }).setVisible(false);
+    this.g = this.add.graphics();
 
-    this.bossBarBg = this.add.rectangle(330, 50, 300, 10, 0x2d2d2d).setOrigin(0);
-    this.bossBar = this.add.rectangle(330, 50, 300, 10, 0xe5534b).setOrigin(0);
-    this.bossText = uiText(this, 480, 64, '', { size: 14, color: '#e5534b', ox: 0.5 });
+    // Health: heart icon + segmented bar (drawn in update).
+    this.add.image(18, 15, 'heart').setOrigin(0).setScale(P);
 
-    // Terminal strip along the bottom.
-    this.add.rectangle(0, 540, 960, 64, 0x0d0d0d, 0.92).setOrigin(0, 1).setStrokeStyle(2, 0xd97757);
-    this.powers = Object.entries(POWERS).map(([name, p], i) => {
-      const x = 16 + i * 150;
-      const box = this.add.rectangle(x, 488, 140, 22, 0x2d2d2d).setOrigin(0);
-      const fill = this.add.rectangle(x, 488, 140, 22, 0xd97757).setOrigin(0);
-      const label = uiText(this, x + 70, 499, `[${p.key}] ${p.label}`, { size: 14, color: '#0d0d0d', ox: 0.5, oy: 0.5 });
-      return { name, p, box, fill, label };
-    });
-    this.heard = uiText(this, 16, 516, '', { size: 16, color: '#f5f5f5' });
-    this.mic = uiText(this, 944, 499, '', { size: 14, color: '#8b8b8b', ox: 1, oy: 0.5 });
-    uiText(this, 944, 526, '←→ move   ↑ jump   SPACE prompt   M mic', { size: 14, color: '#8b8b8b', ox: 1, oy: 0.5 });
+    // GitHub-style "★ Star | 42" badge (frame drawn in update).
+    this.add.image(744, 18, 'star').setOrigin(0).setScale(P);
+    uiText(this, 776, 22, 'Star', { size: 16, color: '#e3b341' });
+    this.stars = uiText(this, 900, 30, '0', { size: 24, color: '#f5f5f5', ox: 0.5, oy: 0.5 });
+
+    this.level = uiText(this, 480, 14, '', { size: 16, color: '#d97757', ox: 0.5 });
+    this.bossText = uiText(this, 480, 64, '', { size: 16, color: '#e5534b', ox: 0.5 });
+    this.reversed = uiText(this, 480, 96, '<-> CONTROLS REVERSED', { size: 16, color: '#bc8cff', ox: 0.5 }).setVisible(false);
+
+    // Bottom terminal strip.
+    this.powers = Object.entries(POWERS).map(([name, p], i) => ({
+      name,
+      p,
+      x: 18 + i * 186,
+      label: uiText(this, 18 + i * 186 + 87, 495, `${p.key} ${p.label}`, { size: 16, color: '#0d0d0d', ox: 0.5, oy: 0.5 }),
+    }));
+    this.mic = uiText(this, 942, 495, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+    this.heard = uiText(this, 18, 522, '', { size: 16, color: '#f5f5f5', oy: 0.5 });
+    uiText(this, 942, 522, '←→ move  ↑ jump  SPACE fire', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+    for (const pw of this.powers) pw.label.setDepth(1);
+    this.mic.setDepth(1);
   }
 
   update(time) {
     const r = this.registry;
+    const g = this.g;
+    g.clear();
+
+    // Static frames are redrawn each frame with the dynamic bars (cheap: a few dozen rects).
+    frame(g, 732, 12, 216, 36, 0x444c56, 0x21262d);
+    g.fillStyle(0x444c56).fillRect(852, 12, P, 36);
+    g.fillStyle(0x0d1117).fillRect(855, 15, 90, 30);
+    frame(g, 0, 474, 960, 66, 0xd97757, 0x0d0d0d);
+
     const hp = r.get('hp') ?? 0;
-    this.hearts.forEach((h, i) => (i < hp ? h.clearTint().setAlpha(1) : h.setTint(0x2d2d2d)));
+    segBar(g, 48, 15, MAX_HP, hp, [0xff8f80, 0xe5534b, 0xa33a33, 0x3a2a2a]);
+
     this.stars.setText(`${r.get('stars') ?? 0}`);
     this.level.setText(r.get('level') ?? '');
     this.reversed.setVisible(Boolean(r.get('reversed')) && Math.floor(time / 200) % 2 === 0);
 
     const boss = r.get('boss');
-    const showBoss = Boolean(boss);
-    this.bossBarBg.setVisible(showBoss);
-    this.bossBar.setVisible(showBoss);
-    this.bossText.setVisible(showBoss);
+    this.bossText.setVisible(Boolean(boss));
     if (boss) {
-      this.bossBar.width = 300 * Phaser.Math.Clamp(boss.hp / Math.max(1, boss.max), 0, 1);
-      this.bossText.setText(`CONTEXT ROT HYDRA   heads ${boss.heads}/3   turn ${boss.turn}`);
+      const cells = 12;
+      const filled = Math.ceil(cells * Phaser.Math.Clamp(boss.hp / Math.max(1, boss.max), 0, 1));
+      segBar(g, 480 - ((cells * 8 + 3) * P) / 2, 36, cells, filled, [0xffb199, 0xd97757, 0x8a4a36, 0x2a1a14]);
+      this.bossText.setText(`CONTEXT ROT HYDRA  heads ${boss.heads}/3  turn ${boss.turn}`);
     }
 
     for (const pw of this.powers) {
       const left = voice.remaining(pw.name);
       const ready = left <= 0;
-      pw.fill.width = 140 * (ready ? 1 : 1 - left / pw.p.cooldown);
-      pw.fill.fillColor = ready ? 0xd97757 : 0x6b3b2b;
-      pw.label.setColor(ready ? '#0d0d0d' : '#8b8b8b');
+      frame(g, pw.x, 483, 174, 24, ready ? 0xf3a07a : 0x6b3b2b, ready ? 0xd97757 : 0x2a1a14);
+      if (!ready) {
+        const frac = 1 - left / pw.p.cooldown;
+        g.fillStyle(0x6b3b2b).fillRect(pw.x + P, 483 + P, Math.floor(((174 - 2 * P) * frac) / P) * P, 24 - 2 * P);
+      }
+      pw.label.setTint(ready ? 0x0d0d0d : 0x8b8b8b);
     }
-    this.heard.setText(`$ heard: ${voice.heard ? `"${voice.heard.slice(-44)}"` : voice.enabled ? '(say "ship it")' : '...'}`);
-    this.mic.setText(`${voice.enabled ? '●' : '○'} ${voice.status}`);
-    this.mic.setColor(voice.enabled ? '#3fb950' : '#8b8b8b');
+
+    const heard = voice.heard ? `"${voice.heard.slice(-30)}"` : voice.listening ? '...' : '';
+    this.heard.setText(`$ ${heard || 'hold M: "ship it"'}`);
+    this.mic.setText(`${voice.listening ? '●' : '○'} ${voice.status}`);
+    this.mic.setTint(voice.listening ? 0x3fb950 : 0x8b8b8b);
   }
 }

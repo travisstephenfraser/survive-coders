@@ -4,7 +4,7 @@ import { worldText, floatText } from '../util.js';
 
 const LIES = [
   "You're absolutely right!",
-  'Tests pass ✅',
+  'Tests pass ✓',
   'I never said that',
   'That bug was always there',
   'Works on my context',
@@ -123,7 +123,7 @@ export default class Hydra {
     if (!alive.length) return;
     this.bubble?.destroy();
     const h = Phaser.Utils.Array.GetRandom(alive);
-    this.bubble = worldText(this.scene, h.x, h.y - 16, Phaser.Utils.Array.GetRandom(LIES), {
+    this.bubble = worldText(this.scene, h.x, this.bubbleY(h), Phaser.Utils.Array.GetRandom(LIES), {
       color: '#0d0d0d',
       bg: '#f5f5f5',
       size: 6,
@@ -133,11 +133,17 @@ export default class Hydra {
     this.scene.time.delayedCall(1800, () => this.bubble?.owner === h && this.bubble.destroy());
   }
 
+  // Above the head, unless that would collide with the HUD boss bar at the top.
+  bubbleY(h) {
+    const off = 12 + 6 * h.scale;
+    return h.y - off < 34 ? h.y + off : h.y - off;
+  }
+
   attack(head) {
     const scene = this.scene;
     const pl = scene.player;
     if (head.role === 'flood') {
-      floatText(scene, head.x, head.y - 14, 'IMAGE FLOOD', '#58a6ff', 6);
+      floatText(scene, Phaser.Math.Clamp(head.x, 60, 260), this.bubbleY(head), 'IMAGE FLOOD', '#58a6ff');
       scene.sfx('flood', 0.4);
       const n = 4 + head.g * 2;
       for (let i = 0; i < n; i++) {
@@ -207,7 +213,7 @@ export default class Hydra {
       for (const p of pts) g.fillCircle(p.x - 1, p.y - 1, r * 0.45);
     }
     if (this.bubble?.active && this.bubble.owner?.active) {
-      this.bubble.setPosition(this.bubble.owner.x, this.bubble.owner.y - 16 * this.bubble.owner.scale);
+      this.bubble.setPosition(Phaser.Math.Clamp(this.bubble.owner.x, 70, 250), this.bubbleY(this.bubble.owner));
     }
     this.publish();
   }

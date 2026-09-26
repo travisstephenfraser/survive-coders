@@ -90,7 +90,7 @@ export class BadPromptBlob extends Enemy {
       this.play('blob');
     }
     // Body made of scrambled text.
-    this.glyphs = worldText(scene, x, y, scramble(small ? 1 : 3), { size: small ? 3 : 4, color: '#f5f5f5', depth: 5 });
+    this.glyphs = worldText(scene, x, y, scramble(small ? 1 : 3), { tiny: true, color: '#f5f5f5', depth: 5 });
     this.nextScramble = 0;
     this.once('destroy', () => this.glyphs.destroy());
     this.nextHop = scene.time.now + Phaser.Math.Between(300, 900);

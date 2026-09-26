@@ -1,5 +1,6 @@
+import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
-import { LAYERS } from '../backdrops.js';
+import { LAYERS, TROLLEYS } from '../backdrops.js';
 import { worldText } from '../util.js';
 
 // Legend: # ground, = neon platform, P player, * star, B Bad Prompt Blob,
@@ -39,6 +40,16 @@ export default class Level1 extends PlayScene {
         .setDepth(-10),
     }));
 
+    // Trolleys ride the near-layer street; they share its parallax plus their own motion.
+    const near = LAYERS.find((l) => l.key === 'bg_near');
+    this.trolleys = this.textures.exists('trolley')
+      ? TROLLEYS.map((t) => ({
+          ...t,
+          f: near.f,
+          img: this.add.image(0, 180 + 150, 'trolley').setOrigin(0.5, 1).setScrollFactor(0).setDepth(-10).setAlpha(near.alpha).setFlipX(t.dir < 0),
+        }))
+      : [];
+
     this.buildWorld(SUBURBS, 'suburbs');
 
     worldText(this, 60, 92, '$ claude "make one small change"', { color: '#d97757', size: 6, depth: 2 });
@@ -58,6 +69,11 @@ export default class Level1 extends PlayScene {
     super.update(time, delta);
     const x = this.cameras.main.worldView.x;
     for (const l of this.parallax) l.ts.tilePositionX = x * l.f + (l.drift ? time * l.drift : 0);
+    const span = 320 + 140; // wrap just outside the view on both sides
+    for (const t of this.trolleys) {
+      const vx = Phaser.Math.Wrap(t.x0 + t.dir * t.speed * time * 3 - x * t.f, -70, span - 70);
+      t.img.x = 320 + vx; // scrollFactor-0 objects: x=320 is the view's left edge at 3x zoom
+    }
   }
 
   exit() {

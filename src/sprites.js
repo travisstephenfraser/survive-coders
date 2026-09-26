@@ -215,17 +215,12 @@ DEFS.head_flood = { rows: HEAD_ROWS, swap: { X: 'B' } };
 DEFS.head_gaslight = { rows: HEAD_ROWS, swap: { X: 'P' } };
 DEFS.head_spawn = { rows: HEAD_ROWS, swap: { X: 'H' } };
 
-// Tileset strip. Street tiles are code-drawn neon; HQ tiles are copied from the Sci-Fi Starter
-// pack (frame numbers in SCIFI) when it loads, else drawn as a cyan variant of the street.
+// Tileset strip: neon street tiles for SF, warm wood for the Anthropic HQ interior.
 export const T = {
   TOP: 0, FILL: 1, PLAT_L: 2, PLAT_M: 3, PLAT_R: 4,
   HQ_TOP: 5, HQ_FILL: 6, HQ_WALL_L: 7, HQ_WALL_R: 8, HQ_PL: 9, HQ_PM: 10, HQ_PR: 11, HQ_BLOCK: 12,
 };
 const TILE_COUNT = 13;
-const SCIFI = {
-  [T.HQ_TOP]: 1, [T.HQ_FILL]: 7, [T.HQ_WALL_L]: 8, [T.HQ_WALL_R]: 6,
-  [T.HQ_PL]: 24, [T.HQ_PM]: 25, [T.HQ_PR]: 26, [T.HQ_BLOCK]: 15,
-};
 
 function codeLines(ctx, ox, seed, colors) {
   // Deterministic "lines of code" dashes so fill tiles read as terminal text.
@@ -279,6 +274,58 @@ function slab(ctx, ox, hot, mid, glow, cap) {
   if (cap === 'R' || cap === 'B') ctx.fillRect(ox + 15, 0, 1, 12);
 }
 
+const OAK = { hi: '#e0aa70', top: '#c68e55', mid: '#a8703e', low: '#7a4e2a', seam: '#4e3120', deep: '#2e1e14' };
+
+function woodFloor(ctx, ox) {
+  const px = (x, y, w, h, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(ox + x, y, w, h);
+  };
+  px(0, 0, 16, 16, OAK.mid);
+  px(0, 0, 16, 1, OAK.hi);
+  px(0, 1, 16, 2, OAK.top);
+  px(0, 3, 16, 1, OAK.seam);
+  // Plank rows with offset seams and grain.
+  for (const [y, seam] of [[4, 5], [8, 12], [12, 2]]) {
+    px(0, y + 3, 16, 1, OAK.seam);
+    px(seam, y, 1, 3, OAK.seam);
+    px((seam + 7) % 16, y + 1, 3, 1, OAK.low);
+  }
+}
+
+function woodFill(ctx, ox) {
+  ctx.fillStyle = OAK.deep;
+  ctx.fillRect(ox, 0, 16, 16);
+  ctx.fillStyle = '#3a2618';
+  for (const [x, y, w] of [[1, 3, 5], [8, 6, 6], [3, 10, 4], [10, 13, 5]]) ctx.fillRect(ox + x, y, w, 1);
+}
+
+function woodSlats(ctx, ox) {
+  for (let x = 0; x < 16; x += 4) {
+    ctx.fillStyle = x % 8 === 0 ? '#6b4426' : '#8a5a32';
+    ctx.fillRect(ox + x, 0, 3, 16);
+    ctx.fillStyle = OAK.deep;
+    ctx.fillRect(ox + x + 3, 0, 1, 16);
+  }
+}
+
+// Wooden shelf platform: visible rows 0-9, ends capped with end grain.
+function shelf(ctx, ox, cap) {
+  const px = (x, y, w, h, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(ox + x, y, w, h);
+  };
+  px(0, 0, 16, 1, OAK.hi);
+  px(0, 1, 16, 2, OAK.top);
+  px(0, 3, 16, 5, OAK.mid);
+  px(0, 8, 16, 1, OAK.low);
+  px(0, 9, 16, 1, '#d97757'); // warm under-shelf light strip
+  px(4, 5, 5, 1, OAK.low);
+  px(11, 4, 3, 1, OAK.low);
+  if (cap === 'L' || cap === 'B') px(0, 0, 2, 9, OAK.seam);
+  if (cap === 'R' || cap === 'B') px(14, 0, 2, 9, OAK.seam);
+}
+
 const DRAWN = {
   tiles: {
     w: 16 * TILE_COUNT,
@@ -290,15 +337,15 @@ const DRAWN = {
       slab(ctx, at(T.PLAT_L), '#f3a07a', PIX.H, '#6b3b2b', 'L');
       slab(ctx, at(T.PLAT_M), '#f3a07a', PIX.H, '#6b3b2b', '');
       slab(ctx, at(T.PLAT_R), '#f3a07a', PIX.H, '#6b3b2b', 'R');
-      // HQ fallbacks (cyan) in case the Sci-Fi pack is missing.
-      neonTop(ctx, at(T.HQ_TOP), '#9ff3f7', '#39c5cf', '#1f6a70', 11);
-      fillTile(ctx, at(T.HQ_FILL), 5);
-      fillTile(ctx, at(T.HQ_WALL_L), 9);
-      fillTile(ctx, at(T.HQ_WALL_R), 15);
-      slab(ctx, at(T.HQ_PL), '#9ff3f7', '#39c5cf', '#1f6a70', 'L');
-      slab(ctx, at(T.HQ_PM), '#9ff3f7', '#39c5cf', '#1f6a70', '');
-      slab(ctx, at(T.HQ_PR), '#9ff3f7', '#39c5cf', '#1f6a70', 'R');
-      slab(ctx, at(T.HQ_BLOCK), '#9ff3f7', '#39c5cf', '#1f6a70', 'B');
+      // Anthropic HQ interior: oak floor, wood-slat walls, wooden shelf platforms.
+      woodFloor(ctx, at(T.HQ_TOP));
+      woodFill(ctx, at(T.HQ_FILL));
+      woodSlats(ctx, at(T.HQ_WALL_L));
+      woodSlats(ctx, at(T.HQ_WALL_R));
+      shelf(ctx, at(T.HQ_PL), 'L');
+      shelf(ctx, at(T.HQ_PM), '');
+      shelf(ctx, at(T.HQ_PR), 'R');
+      shelf(ctx, at(T.HQ_BLOCK), 'B');
     },
   },
 
@@ -407,14 +454,6 @@ export function buildTextures(scene) {
     const tex = scene.textures.createCanvas(key, def.w, def.h);
     const ctx = tex.getContext();
     def.draw(ctx);
-    if (key === 'tiles' && scene.textures.exists('pack_scifi_tiles')) {
-      const src = scene.textures.get('pack_scifi_tiles').getSourceImage();
-      const cols = Math.floor(src.width / 16);
-      for (const [slot, frame] of Object.entries(SCIFI)) {
-        ctx.clearRect(slot * 16, 0, 16, 16);
-        ctx.drawImage(src, (frame % cols) * 16, Math.floor(frame / cols) * 16, 16, 16, slot * 16, 0, 16, 16);
-      }
-    }
     tex.refresh();
   }
 
