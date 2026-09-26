@@ -7,6 +7,7 @@ import HUD from './scenes/HUD.js';
 import End from './scenes/End.js';
 import { params } from './util.js';
 import { CRTPipeline } from './fx.js';
+import { voice } from './voice.js';
 
 // 960x540 canvas; world scenes zoom 3x onto a 320x180 NES-style view.
 window.game = new Phaser.Game({
@@ -22,3 +23,5 @@ window.game = new Phaser.Game({
   pipeline: { CRTPipeline },
   scene: [Boot, Title, Level1, BossHQ, HUD, End],
 });
+
+if (import.meta.env.DEV) window.voice = voice; // debugging hook for dev builds only
