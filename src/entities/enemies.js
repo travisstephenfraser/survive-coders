@@ -14,6 +14,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.stunUntil = 0;
     this.refactorable = true;
     this.setDepth(4);
+    // Red rim glow separates enemies from the busy neon background.
+    if (this.preFX && scene.game.renderer.type === Phaser.WEBGL) this.preFX.addGlow(0xe5534b, 2, 0, false, 0.1, 8);
   }
 
   // Called after this enemy damages the player on contact: bounce off and pause.
@@ -43,6 +45,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   die() {
     if (this.dying) return;
     this.dying = true;
+    this.scene.hitStop?.(45);
     this.scene.sfx?.('kill', 0.35);
     this.scene.addStars(this.reward, this.x, this.y - 10);
     this.scene.burst(this.x, this.y, 'px_orange');

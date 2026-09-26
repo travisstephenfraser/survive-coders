@@ -59,9 +59,27 @@ export default class HUD extends Phaser.Scene {
     }));
     this.mic = uiText(this, 942, 495, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
     this.heard = uiText(this, 18, 522, '', { size: 16, color: '#f5f5f5', oy: 0.5 });
-    uiText(this, 942, 522, '←→ move  ↑ jump  SPACE fire', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+    uiText(this, 942, 522, '←→ move  ↑ jump  SPACE fire  P pause', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
     for (const pw of this.powers) pw.label.setDepth(1);
     this.mic.setDepth(1);
+
+    this.toastText = uiText(this, 480, 128, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
+    this.pausedText = uiText(this, 480, 250, 'PAUSED\n\nP: resume   N: mute', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+      .setDepth(3)
+      .setVisible(false);
+
+    // Pause / mute live here because the HUD keeps running while the play scene is paused.
+    const kb = this.input.keyboard;
+    const togglePause = () => {
+      const play = ['Level1', 'BossHQ'].map((k) => this.scene.get(k)).find((sc) => sc.sys.isActive() || sc.sys.isPaused());
+      if (!play) return;
+      if (play.sys.isPaused()) play.scene.resume();
+      else play.scene.pause();
+      this.pausedText.setVisible(play.sys.isPaused());
+    };
+    kb.on('keydown-P', togglePause);
+    kb.on('keydown-ESC', togglePause);
+    kb.on('keydown-N', () => (this.sound.mute = !this.sound.mute));
   }
 
   update(time) {
@@ -91,9 +109,23 @@ export default class HUD extends Phaser.Scene {
       this.bossText.setText(`CONTEXT ROT HYDRA  heads ${boss.heads}/3  turn ${boss.turn}`);
     }
 
+    // Contextual tip.
+    const toast = r.get('toast');
+    const play = this.scene.get('Level1')?.sys.isActive() ? this.scene.get('Level1') : this.scene.get('BossHQ');
+    const now = play?.time.now ?? 0;
+    const showToast = toast && now < toast.until;
+    this.toastText.setVisible(Boolean(showToast));
+    if (showToast) {
+      this.toastText.setText(toast.text);
+      const w = this.toastText.width + 24;
+      frame(g, 480 - w / 2, 110, w, 36, 0xd97757, 0x0d0d0d);
+    }
+    const pulse = showToast && toast.power && Math.floor(time / 180) % 2 === 0 ? toast.power : null;
+
     for (const pw of this.powers) {
       const left = voice.remaining(pw.name);
       const ready = left <= 0;
+      if (pw.name === pulse) frame(g, pw.x - P, 480, 174 + 2 * P, 30, 0xf5f5f5, 0xf5f5f5);
       frame(g, pw.x, 483, 174, 24, ready ? 0xf3a07a : 0x6b3b2b, ready ? 0xd97757 : 0x2a1a14);
       if (!ready) {
         const frac = 1 - left / pw.p.cooldown;

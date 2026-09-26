@@ -51,7 +51,7 @@ const DEFS = {
   bolt: {
     w: 8,
     h: 6,
-    rows: ['HH......', '.HH.....', '..HH....', '.HH.....', 'HH.WWWW.', '........'],
+    rows: ['WH......', 'HWH.....', '.HWH....', 'HWH.....', 'WH.WWWW.', '...HHHH.'],
   },
 
   star: {

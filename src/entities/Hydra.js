@@ -16,6 +16,7 @@ const LIES = [
 ];
 
 const TURN_MS = 8000;
+const TELEGRAPH_MS = 450; // every attack is preceded by a shake + flash (Cuphead/Mega Man rule: readable, fair)
 const MAX_GROWTH = 3;
 const BASE_HP = 14;
 
@@ -42,11 +43,25 @@ class Head extends Enemy {
     if (this.dying) return;
     // Heads drift toward the player as they grow ("longer reach").
     const reach = this.g * 14;
-    this.x = this.ax - reach + Math.sin(time / 600 + this.phase) * 6;
-    this.y = this.ay + Math.cos(time / 450 + this.phase) * 5;
+    let x = this.ax - reach + Math.sin(time / 600 + this.phase) * 6;
+    const y = this.ay + Math.cos(time / 450 + this.phase) * 5;
     this.setFlipX(true);
-    if (time > this.nextAttack && !this.scene.player.dead) {
-      this.nextAttack = time + 3200 - this.g * 450 + Math.random() * 800;
+    if (time < this.hydra.dormantUntil || this.scene.player.dead) {
+      this.nextAttack = Math.max(this.nextAttack, this.hydra.dormantUntil + 600 + Math.random() * 1400);
+      this.setPosition(x, y);
+      return;
+    }
+    const warn = this.nextAttack - time;
+    if (warn < TELEGRAPH_MS) {
+      x += (Math.random() - 0.5) * 3;
+      if (Math.floor(time / 70) % 2) this.setTintFill(0xffffff);
+      else this.setTint(0xff7a6a);
+    }
+    this.setPosition(x, y);
+    if (warn <= 0) {
+      this.clearTint();
+      const rage = this.hydra.alive.length === 1 ? 0.6 : 1; // last head attacks faster
+      this.nextAttack = time + (3200 - this.g * 450 + Math.random() * 800) * rage;
       this.hydra.attack(this);
     }
   }
@@ -86,6 +101,7 @@ export default class Hydra {
       new Head(scene, this, 'spawn', x - 40, 132),
     ];
     this.turn = 1;
+    this.dormantUntil = 0;
     this.bubble = null;
     this.minions = [];
     scene.physics.add.overlap(scene.player, this.body, () => scene.player.hurt(1, this.body.x));
@@ -170,11 +186,16 @@ export default class Hydra {
 
   headDied(head) {
     floatText(this.scene, head.x, head.y - 10, 'head -1', '#e5534b', 7);
+    this.scene.hitStop(180);
     this.scene.sfx('headkill', 0.5);
     this.scene.cameras.main.shake(200, 0.01);
     this.scene.time.delayedCall(0, () => {
       this.publish();
       if (!this.alive.length) this.collapse();
+      else if (this.alive.length === 1) {
+        floatText(this.scene, 160, 40, 'LAST HEAD: ENRAGED', '#e5534b');
+        this.scene.cameras.main.flash(250, 229, 83, 75);
+      }
     });
   }
 

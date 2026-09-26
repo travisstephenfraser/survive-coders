@@ -9,9 +9,17 @@ export default class Laptop extends Phaser.GameObjects.Sprite {
     this.setDepth(6);
   }
 
+  // Recoil + flash when a prompt fires.
+  kick() {
+    this.recoil = 2;
+    this.setTintFill(0xffffff);
+    this.scene.time.delayedCall(40, () => this.active && this.clearTint());
+  }
+
   follow(time) {
     const o = this.owner;
-    const tx = o.x + o.facing * 10;
+    this.recoil = Math.max(0, (this.recoil ?? 0) - 0.4);
+    const tx = o.x + o.facing * (10 - this.recoil);
     const ty = o.y - 1 + Math.sin(time / 250); // chest height: bolts must hit blobs
     
     this.x = Phaser.Math.Linear(this.x, tx, 0.3);

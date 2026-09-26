@@ -77,6 +77,7 @@ export default class PlayScene extends Phaser.Scene {
     this.physics.add.collider(this.hazards, this.layer, (h) => h.destroy());
     this.physics.add.overlap(this.bolts, this.enemies, (b, e) => {
       if (!b.active || e.dying) return;
+      this.burst(b.x, b.y, 'px_white', 4);
       b.destroy();
       e.hurt(1);
     });
@@ -103,8 +104,11 @@ export default class PlayScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setZoom(ZOOM);
     cam.setBounds(0, 0, this.worldW, this.worldH);
-    cam.startFollow(this.player, true, 0.15, 0.15);
+    cam.startFollow(this.player, true, 0.15, 0.06); // vertical follows slower (Eiserloh)
     cam.setBackgroundColor('#0d0d0d');
+    this.lookahead = 0;
+    this.markPits(data, W, H);
+    if (!hq) this.outlineBlocks(at, W, H);
     applyScreenFX(cam, { bloom: true });
 
     this.onPower = (name) => this.usePower(name);
@@ -119,6 +123,12 @@ export default class PlayScene extends Phaser.Scene {
     cam.fadeIn(300);
   }
 
+  // One-shot contextual tip in the HUD; `power` pulses that power's slot (teach at the moment
+  // of need, like Mario 1-1, instead of a wall of text on the title screen).
+  toast(text, power, ms = 4200) {
+    this.registry.set('toast', { text, power, until: this.time.now + ms, at: this.time.now });
+  }
+
   sfx(key, volume = 0.5) {
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
   }
@@ -131,10 +141,73 @@ export default class PlayScene extends Phaser.Scene {
 
   update(time) {
     this.player.tick(time);
+    // Camera lookahead: show more of what's ahead of the player (Itay Keren, "Scroll Back").
+    this.lookahead = Phaser.Math.Linear(this.lookahead, -this.player.facing * 48, 0.04);
+    this.cameras.main.setFollowOffset(this.lookahead, 0);
     if (this.player.y > this.worldH + 8 && !this.player.dead) this.player.fellInPit();
     for (const e of this.enemies.getChildren()) {
       if (e.y > this.worldH + 40 && !e.dying) e.destroy();
     }
+  }
+
+  // Pits read as hazards: a red "404" glow at the bottom of every gap in the ground.
+  markPits(data, W, H) {
+    const ground = H - 1;
+    let start = -1;
+    for (let x = 0; x <= W; x++) {
+      const gap = x < W && data[ground][x] === -1;
+      if (gap && start < 0) start = x;
+      if (!gap && start >= 0) {
+        const px = start * TILE;
+        const w = (x - start) * TILE;
+        const glow = this.add.graphics().setDepth(-1);
+        for (let i = 0; i < 6; i++) {
+          glow.fillStyle(0xe5534b, 0.08 + i * 0.07);
+          glow.fillRect(px, this.worldH - 18 + i * 3, w, 3);
+        }
+        worldText(this, px + w / 2, this.worldH - 26, '404', { color: '#e5534b', depth: -1 });
+        start = -1;
+      }
+    }
+  }
+
+  // Exposed side faces of ground blocks get a dim neon edge so steps read against the city.
+  outlineBlocks(at, W, H) {
+    const g = this.add.graphics().setDepth(1);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (at(x, y) !== '#') continue;
+        g.fillStyle(0xb8603f);
+        if (at(x - 1, y) !== '#' && x > 0) g.fillRect(x * TILE, y * TILE, 1, TILE);
+        if (at(x + 1, y) !== '#' && x < W - 1) g.fillRect(x * TILE + TILE - 1, y * TILE, 1, TILE);
+      }
+    }
+  }
+
+  // Landing dust.
+  dust(x, y) {
+    const em = this.add.particles(x, y - 1, 'px_white', {
+      speedX: { min: -40, max: 40 },
+      speedY: { min: -18, max: -4 },
+      lifespan: 260,
+      alpha: { start: 0.7, end: 0 },
+      scale: { start: 1, end: 0.5 },
+      emitting: false,
+    });
+    em.setDepth(6);
+    em.explode(6);
+    this.time.delayedCall(400, () => em.destroy());
+  }
+
+  // Hit stop: freeze physics for a beat so impacts land (Vlambeer, "The Art of Screenshake").
+  hitStop(ms = 50) {
+    if (this.stopping) return;
+    this.stopping = true;
+    this.physics.world.pause();
+    this.time.delayedCall(ms, () => {
+      this.physics.world.resume();
+      this.stopping = false;
+    });
   }
 
   placeStar(x, y) {
@@ -211,6 +284,7 @@ export default class PlayScene extends Phaser.Scene {
     if (name === 'ship') {
       this.shout('ship it');
       this.sfx('ship', 0.6);
+      this.hitStop(120);
       const bl = this.blasts.create(pl.x + pl.facing * 14, pl.y - 2, 'blast');
       bl.hit = new Set();
       bl.setFlipX(pl.facing < 0).setDepth(9).setVelocity(pl.facing * 260, 0);
@@ -249,7 +323,7 @@ export default class PlayScene extends Phaser.Scene {
       this.cameras.main.fadeOut(400);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.stop('HUD');
-        this.scene.start('End', { win: false });
+        this.scene.start('End', { win: false, retry: this.scene.key });
       });
     });
   }

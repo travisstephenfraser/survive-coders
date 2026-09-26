@@ -3,8 +3,20 @@ import Laptop from './Laptop.js';
 import { MAX_HP } from '../util.js';
 
 const SPEED = 95;
-const JUMP = 290;
 const FIRE_MS = 170;
+// Jump designed from height + time-to-apex (Pittman, "Building a Better Jump", GDC 2016):
+// v0 = 2h/t, g = 2h/t². h = 70px (4.4 tiles), t = 0.38s. Then Celeste-style forgiveness:
+// coyote time, jump buffer, half gravity at the apex while held, heavier fall, capped fall.
+const JUMP_H = 70;
+const JUMP_T = 0.38;
+const JUMP = (2 * JUMP_H) / JUMP_T; // ≈ 368 px/s
+const RISE_G = (2 * JUMP_H) / (JUMP_T * JUMP_T); // ≈ 970 px/s²
+const WORLD_G = 600; // must match main.js arcade gravity; bodies add extra gravity on top
+const COYOTE_MS = 100;
+const BUFFER_MS = 120;
+const APEX_VY = 40; // Celeste: half gravity while |vy| < 40 and jump is held
+const FALL_G = RISE_G * 1.6; // SMB falls ~3.5x; 1.6x keeps it readable at 3x zoom
+const MAX_FALL = 280;
 const SNAP_MS = 100;
 const SNAPS = 30; // ~3s of rollback history
 
@@ -21,6 +33,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.knockUntil = 0;
     this.reversedUntil = 0;
     this.coyoteUntil = 0;
+    this.jumpBufferedUntil = 0;
+    this.wasOnFloor = true;
     this.nextFire = 0;
     this.lastSnap = 0;
     this.history = [];
@@ -31,6 +45,13 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       fire: 'SPACE', fire2: 'X', fire3: 'J',
     });
     this.laptop = new Laptop(scene, this);
+  }
+
+  // Squash & stretch around the sprite center (sy > 1 = stretch).
+  pose(sx, sy, ms = 110) {
+    this.scene.tweens.killTweensOf(this);
+    this.setScale(sx, sy);
+    this.scene.tweens.add({ targets: this, scaleX: 1, scaleY: 1, duration: ms, ease: 'Quad.out' });
   }
 
   get hp() {
@@ -58,13 +79,27 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     const JD = Phaser.Input.Keyboard.JustDown;
     const jumpHeld = k.jump.isDown || k.jump2.isDown || k.jump3.isDown;
-    if (onFloor) this.coyoteUntil = time + 100;
-    if ((JD(k.jump) || JD(k.jump2) || JD(k.jump3)) && time < this.coyoteUntil) {
+    if (JD(k.jump) || JD(k.jump2) || JD(k.jump3)) this.jumpBufferedUntil = time + BUFFER_MS;
+    if (onFloor) this.coyoteUntil = time + COYOTE_MS;
+    if (time < this.jumpBufferedUntil && time < this.coyoteUntil) {
       this.setVelocityY(-JUMP);
       this.coyoteUntil = 0;
+      this.jumpBufferedUntil = 0;
+      this.pose(0.8, 1.25);
       this.scene.sfx?.('jump', 0.4);
     }
-    if (!jumpHeld && this.body.velocity.y < -110) this.setVelocityY(-110); // short hop on release
+    const vy = this.body.velocity.y;
+    if (!jumpHeld && vy < -120) this.setVelocityY(-120); // short hop on release
+    const apex = !onFloor && jumpHeld && Math.abs(vy) < APEX_VY;
+    const g = onFloor ? WORLD_G : apex ? RISE_G / 2 : vy > 0 ? FALL_G : RISE_G;
+    this.body.setGravityY(g - WORLD_G);
+    if (vy > MAX_FALL) this.setVelocityY(MAX_FALL); // cap the fall only (maxVelocity would also cap the jump)
+
+    if (onFloor && !this.wasOnFloor) {
+      this.pose(1.25, 0.8, 130);
+      this.scene.dust?.(this.x, this.body.bottom);
+    }
+    this.wasOnFloor = onFloor;
 
     if (!onFloor) {
       this.stop();
@@ -78,6 +113,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if ((k.fire.isDown || k.fire2.isDown || k.fire3.isDown) && time > this.nextFire) {
       this.nextFire = time + FIRE_MS;
       this.scene.firePrompt(this.laptop.x, this.laptop.y, this.facing);
+      this.laptop.kick();
       this.scene.sfx?.('shoot', 0.25);
     }
 
@@ -100,6 +136,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.knockUntil = t + 220;
     this.setVelocity((this.x < fromX ? -1 : 1) * 120, -160);
     this.scene.cameras.main.shake(120, 0.006);
+    this.scene.hitStop?.(100);
     this.scene.sfx?.('hurt', 0.5);
     if (this.hp <= 0) {
       this.dead = true;

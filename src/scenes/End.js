@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { uiText } from '../util.js';
+import { MAX_HP, uiText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
 
@@ -8,7 +8,7 @@ export default class End extends Phaser.Scene {
     super('End');
   }
 
-  create({ win }) {
+  create({ win, retry }) {
     applyScreenFX(this.cameras.main);
     const stars = this.registry.get('stars') ?? 0;
     const w = terminalWindow(this, win ? 'git push origin main - success' : 'process exited with code 1');
@@ -23,9 +23,21 @@ export default class End extends Phaser.Scene {
       { size: 16, color: '#f5f5f5', lineSpacing: 6 },
     );
     uiText(this, left, 290, `★ ${stars} GitHub stars`, { size: 40, color: '#e3b341' });
-    const again = uiText(this, left, 430, '$ press ENTER to play again_', { size: 24, color: '#d97757' });
+    // Cuphead-style progress on a boss death: show how close the run got.
+    const boss = this.registry.get('boss');
+    if (!win && retry === 'BossHQ' && boss) {
+      uiText(this, left, 350, `hydra: ${3 - boss.heads}/3 heads cut`, { size: 16, color: '#d97757' });
+    }
+    const retryLabel = !win && retry === 'BossHQ' ? 'retry the boss' : 'play again';
+    const again = uiText(this, left, 430, `$ ENTER ${retryLabel}   T title_`, { size: 24, color: '#d97757' });
     this.tweens.add({ targets: again, alpha: 0.35, duration: 600, yoyo: true, repeat: -1 });
     uiText(this, 480, 530, CREDITS, { size: 8, color: '#555555', ox: 0.5, oy: 1 });
-    this.input.keyboard.once('keydown-ENTER', () => this.scene.start('Title'));
+    // Fast retry (Team Meat: short respawns). Boss deaths restart at the HQ checkpoint.
+    this.input.keyboard.once('keydown-ENTER', () => {
+      const atBoss = !win && retry === 'BossHQ';
+      this.registry.set({ hp: MAX_HP, reversed: false, boss: null, stars: atBoss ? (this.registry.get('checkpointStars') ?? 0) : 0 });
+      this.scene.start(atBoss ? 'BossHQ' : 'Level1');
+    });
+    this.input.keyboard.once('keydown-T', () => this.scene.start('Title'));
   }
 }
