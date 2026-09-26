@@ -140,7 +140,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   hurt(dmg, fromX, force = false) {
     const t = this.scene.time.now;
-    if (this.dead || this.scene.outcome || this.god || (!force && t < this.invulnUntil)) return false;
+    if (this.dead || this.scene.outcome || this.scene.cutscene || this.god || (!force && t < this.invulnUntil)) return false;
     this.hp -= dmg;
     this.invulnUntil = t + 1000;
     this.knockUntil = t + 220;

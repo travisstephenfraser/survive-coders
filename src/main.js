@@ -5,6 +5,7 @@ import Level1 from './scenes/Level1.js';
 import BossHQ from './scenes/BossHQ.js';
 import HUD from './scenes/HUD.js';
 import End from './scenes/End.js';
+import Cine from './scenes/Cine.js';
 import { params } from './util.js';
 import { CRTPipeline } from './fx.js';
 import { voice } from './voice.js';
@@ -21,7 +22,7 @@ window.game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { gravity: { x: 0, y: 600 }, debug: params.has('debug') } },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   pipeline: { CRTPipeline },
-  scene: [Boot, Title, Level1, BossHQ, HUD, End],
+  scene: [Boot, Title, Level1, BossHQ, HUD, Cine, End],
 });
 
 if (import.meta.env.DEV) window.voice = voice; // debugging hook for dev builds only

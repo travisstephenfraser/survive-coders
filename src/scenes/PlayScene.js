@@ -15,6 +15,7 @@ export default class PlayScene extends Phaser.Scene {
     // (0 on a first run); sync it or every "now + delay" scheduled here is already in the past.
     this.time.now = this.game.loop.time;
     this.outcome = null; // 'win' | 'lose', decided once per encounter
+    this.cutscene = false;
     this.stopping = false;
     this.physics.world.resume(); // a shutdown mid hit-stop would otherwise leave physics paused
     const H = rows.length;
@@ -66,6 +67,15 @@ export default class PlayScene extends Phaser.Scene {
     this.bolts = this.physics.add.group({ allowGravity: false });
     this.blasts = this.physics.add.group({ allowGravity: false });
     this.enemies = this.physics.add.group({ runChildUpdate: true });
+    // Enemies hold still during cutscenes (their AI would otherwise walk up to a frozen player).
+    const runChildren = this.enemies.preUpdate.bind(this.enemies);
+    this.enemies.preUpdate = (time, delta) => {
+      if (this.cutscene) {
+        for (const e of this.enemies.getChildren()) if (e.body?.blocked.down) e.setVelocityX(0);
+        return;
+      }
+      runChildren(time, delta);
+    };
     this.hazards = this.physics.add.group({ allowGravity: false });
     this.stars = this.physics.add.group({ allowGravity: false });
 
@@ -147,6 +157,7 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   update(time) {
+    if (this.cutscene) return; // intro owns the player until it ends
     this.player.tick(time);
     // Camera lookahead: show more of what's ahead of the player (Itay Keren, "Scroll Back").
     this.lookahead = Phaser.Math.Linear(this.lookahead, -this.player.facing * 48, 0.04);

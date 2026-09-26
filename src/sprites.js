@@ -207,6 +207,7 @@ const DEFS = {
 
   px_orange: { w: 2, h: 2, rows: ['HH', 'HH'] },
   px_white: { w: 2, h: 2, rows: ['WW', 'WW'] },
+  px_cyan: { w: 2, h: 1, rows: ['CC'], swap: { C: 'B' } },
   px_green: { w: 2, h: 2, rows: ['EE', 'EE'] },
   px_purple: { w: 2, h: 2, rows: ['PP', 'PP'] },
 };
@@ -343,7 +344,63 @@ function shelf(ctx, ox, cap) {
   if (cap === 'R' || cap === 'B') px(14, 0, 2, 9, OAK.seam);
 }
 
+// Robotaxi (white SUV, roof sensor dome), side view facing right, 56x30. Built from per-row
+// spans so every edge stays pixel-crisp.
+function waymo(ctx, open) {
+  const span = (y, x0, x1, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(x0, y, x1 - x0 + 1, 1);
+  };
+  const WHITE = '#eef0f2';
+  const SHADE = '#c9ccd1';
+  const SEAM = '#a9aeb5';
+  const GLASS = '#1a1f26';
+  // Sensor dome on the roof.
+  ctx.fillStyle = '#3a3f47';
+  ctx.fillRect(25, 0, 7, 1);
+  ctx.fillStyle = '#2b2f36';
+  ctx.fillRect(24, 1, 9, 5);
+  span(3, 24, 32, '#39c5cf');
+  // Roof and windows.
+  span(6, 18, 38, WHITE);
+  span(7, 16, 41, WHITE);
+  [[8, 18, 40], [9, 17, 41], [10, 16, 42], [11, 15, 43], [12, 14, 44]].forEach(([y, a, b]) => span(y, a, b, GLASS));
+  span(9, 19, 26, '#2f6f78');
+  for (let y = 8; y <= 12; y++) span(y, 29, 29, WHITE); // B-pillar
+  span(8, 41, 42, '#2b2f36'); // front roof sensor
+  // Body.
+  [[13, 14, 45], [14, 8, 49], [15, 5, 52], [16, 3, 53], [17, 2, 54]].forEach(([y, a, b]) => span(y, a, b, WHITE));
+  for (let y = 18; y <= 24; y++) span(y, 2, 55, y >= 21 ? SHADE : WHITE);
+  for (let y = 14; y <= 22; y++) {
+    span(y, 18, 18, SEAM);
+    span(y, 29, 29, SEAM);
+  }
+  span(17, 51, 54, '#fff2c4'); // headlight
+  span(18, 51, 53, '#fff2c4');
+  span(18, 2, 4, '#e5534b'); // taillight
+  span(20, 55, 55, '#2b2f36'); // bumper sensor
+  span(15, 47, 48, '#2b2f36'); // fender camera
+  if (open) {
+    // Rear door open: warm interior light.
+    for (let y = 14; y <= 22; y++) span(y, 19, 28, y > 19 ? '#6b4a2a' : '#1c1410');
+    span(15, 21, 26, '#f0c090');
+  }
+  // Wheels with arches.
+  for (const cx of [13, 45]) {
+    for (let y = 20; y <= 29; y++) {
+      const dy = y - 25;
+      const half = Math.floor(Math.sqrt(Math.max(0, 20 - dy * dy)));
+      if (y <= 21) span(y, cx - 5, cx + 5, '#2a2d33');
+      else span(y, cx - half, cx + half, '#111317');
+    }
+    ctx.fillStyle = '#8b8f96';
+    ctx.fillRect(cx - 1, 24, 3, 3);
+  }
+}
+
 const DRAWN = {
+  waymo: { w: 56, h: 30, draw: (ctx) => waymo(ctx, false) },
+  waymo_open: { w: 56, h: 30, draw: (ctx) => waymo(ctx, true) },
   tiles: {
     w: 16 * TILE_COUNT,
     h: 16,

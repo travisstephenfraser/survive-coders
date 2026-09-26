@@ -15,3 +15,32 @@ export function terminalWindow(scene, title) {
 }
 
 export const CREDITS = 'art/audio: Ninja Adventure by Pixel-boy & AAA (CC0)';
+
+// Slack-style notification card (screen space). Returns { show(text), hide() }.
+export function phoneCard(scene, x, y, w, title) {
+  const g = scene.add.graphics().setDepth(20);
+  const head = uiText(scene, x + 14, y + 12, title, { size: 16, color: '#e3b341' }).setDepth(21);
+  const body = uiText(scene, x + 14, y + 38, '', { size: 16, color: '#f5f5f5', wrap: w - 28 }).setDepth(21);
+  const parts = [g, head, body];
+  // The card grows with the message so wrapped lines never spill out.
+  const draw = () => {
+    const h = 38 + body.height + 14;
+    g.clear();
+    g.fillStyle(0x444c56).fillRect(x, y, w, h);
+    g.fillStyle(0x1a1d21).fillRect(x + 3, y + 3, w - 6, h - 6);
+    g.fillStyle(0x4a154b).fillRect(x + 3, y + 3, 6, h - 6); // unread stripe
+  };
+  parts.forEach((o) => o.setVisible(false));
+  return {
+    show(text) {
+      body.setText(text);
+      draw();
+      parts.forEach((o) => o.setVisible(true).setAlpha(1));
+      scene.tweens.add({ targets: parts, x: '-=12', duration: 90, yoyo: true, repeat: 1 }); // buzz
+      if (scene.cache.audio.exists('hit')) scene.sound.play('hit', { volume: 0.25 });
+    },
+    hide() {
+      scene.tweens.add({ targets: parts, alpha: 0, duration: 250, onComplete: () => parts.forEach((o) => o.setVisible(false)) });
+    },
+  };
+}

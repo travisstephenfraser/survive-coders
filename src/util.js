@@ -49,6 +49,7 @@ export function uiText(scene, x, y, str, opts = {}) {
   const size = Math.max(8, Math.round((opts.size ?? 16) / 8) * 8);
   const t = bitmap(scene, x, y, str, size, opts.color ?? '#f5f5f5');
   if (opts.lineSpacing) t.setLineSpacing(opts.lineSpacing);
+  if (opts.wrap) t.setMaxWidth(opts.wrap);
   const ox = opts.ox ?? 0;
   const oy = opts.oy ?? 0;
   if (opts.bg) return boxed(scene, x, y, t, opts.bg, ox, oy, opts.pad ?? 6);

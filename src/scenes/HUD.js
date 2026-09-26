@@ -75,6 +75,7 @@ export default class HUD extends Phaser.Scene {
     // Pause / mute live here because the HUD keeps running while the play scene is paused.
     const kb = this.input.keyboard;
     const togglePause = () => {
+      if (this.registry.get('cutscene')) return;
       const play = ['Level1', 'BossHQ'].map((k) => this.scene.get(k)).find((sc) => sc.sys.isActive() || sc.sys.isPaused());
       if (!play) return;
       if (play.sys.isPaused()) play.scene.resume();

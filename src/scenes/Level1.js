@@ -68,6 +68,7 @@ export default class Level1 extends PlayScene {
     worldText(this, d.x, d.y - 32, 'SOMA: Anthropic HQ →', { color: '#3fb950', bg: '#0d0d0d', size: 6, depth: 2 });
     this.playMusic('music_level', 0.28);
     this.registry.set('toast', null);
+    if (!this.registry.get('introSeen')) this.playIntro();
     // x-position beats: [worldX, text, power to pulse]
     this.beats = [
       [70, 'SPACE fires prompts at bad prompts', null],
@@ -80,6 +81,10 @@ export default class Level1 extends PlayScene {
 
   update(time, delta) {
     super.update(time, delta);
+    if (this.cutscene) {
+      this.updateIntro(time);
+      return;
+    }
     if (!this.leaving && !this.player.dead && this.player.x >= this.door.x - 4) this.exit();
     this.updateCableCar(time);
     while (this.beats.length && this.player.x >= this.beats[0][0]) {
@@ -93,6 +98,84 @@ export default class Level1 extends PlayScene {
       const vx = Phaser.Math.Wrap(t.x0 + t.dir * t.speed * time * 3 - x * t.f, -70, span - 70);
       t.img.x = 320 + vx; // scrollFactor-0 objects: x=320 is the view's left edge at 3x zoom
     }
+  }
+
+  // ---- Intro cutscene: a robotaxi drops the vibe coder at the edge of its service area. ----
+  playIntro() {
+    this.registry.set({ introSeen: true, cutscene: true });
+    this.cutscene = true;
+    const p = this.player;
+    p.setVisible(false).body.enable = false;
+    p.laptop.setVisible(false);
+    this.scene.setVisible(false, 'HUD');
+    this.scene.launch('Cine');
+    this.scene.bringToTop('Cine');
+    const cine = this.scene.get('Cine');
+
+    const STOP_X = 64;
+    this.waymo = this.add.image(-40, 145, 'waymo').setDepth(4);
+    this.lidar = this.add.image(0, 0, 'px_cyan').setDepth(5);
+    this.tweens.add({ targets: this.waymo, x: STOP_X, duration: 2200, ease: 'Cubic.out' });
+
+    const at = (ms, fn) => this.introEvents.push(this.time.delayedCall(ms, fn));
+    this.introEvents = [];
+    at(2300, () => cine.phone("can you make one small change before the demo? it's literally one line"));
+    at(4800, () => cine.phone('also maybe dark mode'));
+    at(6300, () => cine.phone("demo's at 5 btw"));
+    at(7800, () => {
+      cine.hidePhone();
+      cine.say('WAYMO', 'You have arrived at the edge of my service area.');
+      this.sfx('start', 0.4);
+    });
+    at(10300, () => cine.say('WAYMO', 'Anthropic HQ is 9.4 miles away. Please take your belongings.'));
+    at(13000, () => {
+      this.waymo.setTexture('waymo_open');
+      p.setPosition(this.waymo.x - 5, 150).setVisible(true);
+      p.body.enable = true;
+      p.setVelocityY(-120);
+      p.laptop.setPosition(p.x, p.y + 6).setVisible(true);
+    });
+    at(13500, () => cine.say('WAYMO', 'Rate your ride: ★★★★★?'));
+    at(15300, () => {
+      this.waymo.setTexture('waymo');
+      cine.say(null, null);
+      this.tweens.add({ targets: this.waymo, x: -80, duration: 1800, ease: 'Cubic.in' });
+    });
+    at(16000, () => cine.phone('btw the office AI has been acting weird today'));
+    at(18200, () => this.endIntro());
+
+    this.skipIntro = () => this.endIntro();
+    for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.once(k, this.skipIntro);
+  }
+
+  updateIntro(time) {
+    // HUD launch is queued and starting a scene makes it visible again; keep it hidden.
+    if (this.scene.isVisible('HUD')) this.scene.setVisible(false, 'HUD');
+    // Spinning roof sensor: a light sweeping across the dome.
+    if (this.waymo?.active) this.lidar.setPosition(this.waymo.x - 3 + Math.sin(time / 70) * 3, this.waymo.y - 12);
+    if (this.player.visible) this.player.laptop.follow(time);
+  }
+
+  endIntro() {
+    if (!this.cutscene) return;
+    this.cutscene = false;
+    this.registry.set('cutscene', false);
+    for (const e of this.introEvents) e.remove(false);
+    for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.off(k, this.skipIntro);
+    this.tweens.killTweensOf(this.waymo);
+    this.waymo.destroy();
+    this.lidar.destroy();
+    const p = this.player;
+    if (!p.visible) {
+      const spawn = this.spawns.find((sp) => sp.ch === 'P');
+      p.setPosition(spawn.x, spawn.y);
+    }
+    p.setVisible(true).body.enable = true;
+    p.laptop.setVisible(true);
+    this.scene.setVisible(true, 'HUD');
+    const cine = this.scene.get('Cine');
+    if (cine?.top) cine.close();
+    else this.scene.stop('Cine'); // skipped before the overlay finished starting
   }
 
   // Powell St cable car over the widened gap: waits at the left station until someone lands
