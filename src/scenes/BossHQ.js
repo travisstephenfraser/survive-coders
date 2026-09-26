@@ -33,15 +33,60 @@ export default class BossHQ extends PlayScene {
     this.buildWorld(ARENA, 'hq');
     this.decorate();
     this.hydra = new Hydra(this, 272, 160);
-    this.playMusic('music_boss', 0.3);
-    this.introCard();
+    if (this.registry.get('bossIntroSeen')) {
+      this.playMusic('music_boss', 0.3);
+      this.introCard(1100); // retries: short card only
+    } else {
+      this.registry.set('bossIntroSeen', true);
+      this.stagedEntrance();
+    }
+  }
+
+  // First attempt only: the office goes quiet, the terminal asks for one small change, and
+  // each head answers in character before the fight starts.
+  stagedEntrance() {
+    const REPLIES = [
+      ['flood', 'Sure! Rewriting the whole repo.'],
+      ['gaslight', "You're absolutely right!"],
+      ['spawn', 'Also added 14 features ✓'],
+    ];
+    const TYPE_MS = 34;
+    const cmd = '$ claude "make one small change"';
+    const typedAt = 300 + cmd.length * TYPE_MS;
+    const cardAt = typedAt + 500 + REPLIES.length * 650;
+    this.hydra.dormantUntil = this.time.now + cardAt + 2600;
+
+    const hush = this.add.rectangle(0, 0, 320, 192, 0x0d0d0d, 0.6).setOrigin(0).setDepth(55);
+    const line = worldText(this, 24, 64, '', { color: '#d97757', ox: 0, depth: 60 });
+    let n = 0;
+    this.time.addEvent({
+      delay: TYPE_MS,
+      startAt: 0,
+      repeat: cmd.length - 1,
+      callback: () => line.setText(cmd.slice(0, ++n) + (n < cmd.length ? '_' : '')),
+    });
+    this.time.delayedCall(300, () => this.sfx('start', 0.4));
+
+    REPLIES.forEach(([role, text], i) => {
+      this.time.delayedCall(typedAt + 500 + i * 650, () => {
+        const h = this.hydra.heads.find((x) => x.role === role && x.active);
+        if (!h) return;
+        const b = worldText(this, Phaser.Math.Clamp(h.x, 70, 250), this.hydra.bubbleY(h), text, { color: '#0d0d0d', bg: '#f5f5f5', depth: 61 });
+        this.sfx('hit', 0.25);
+        this.time.delayedCall(cardAt - (typedAt + 500 + i * 650) + 200, () => b.destroy());
+      });
+    });
+
+    this.time.delayedCall(cardAt, () => {
+      this.tweens.add({ targets: [hush, line], alpha: 0, duration: 400, onComplete: () => (hush.destroy(), line.destroy()) });
+      this.playMusic('music_boss', 0.3);
+      this.introCard(2600);
+    });
   }
 
   // Boss title card; the Hydra holds its attacks until it clears.
-  introCard() {
-    const INTRO_MS = this.registry.get('bossIntroSeen') ? 1100 : 2600; // retries skip most of it
-    this.registry.set('bossIntroSeen', true);
-    this.hydra.dormantUntil = this.time.now + INTRO_MS;
+  introCard(INTRO_MS) {
+    this.hydra.dormantUntil = Math.max(this.hydra.dormantUntil, this.time.now + INTRO_MS);
     const card = worldText(this, 160, 84, 'CONTEXT ROT HYDRA', { color: '#e5534b', size: 14, bg: '#0d0d0d', depth: 60 });
     const sub = worldText(this, 160, 104, 'it remembers everything. wrongly.', { color: '#f5f5f5', bg: '#0d0d0d', depth: 60 });
     this.cameras.main.shake(300, 0.004);

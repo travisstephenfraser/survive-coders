@@ -122,7 +122,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.history.push({ x: this.x, y: this.y, hp: this.hp });
       if (this.history.length > SNAPS) this.history.shift();
     }
-    if (onFloor && time > this.knockUntil) this.safe = { x: this.x, y: this.y };
+    // Pit respawn point: only real ground tiles (never a moving platform over a gap).
+    if (onFloor && time > this.knockUntil && this.scene.layer.getTileAtWorldXY(this.x, this.body.bottom + 2)) {
+      this.safe = { x: this.x, y: this.y };
+    }
 
     this.setAlpha(time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.35 : 1);
     this.laptop.follow(time);

@@ -140,7 +140,8 @@ export default class HUD extends Phaser.Scene {
     for (const pw of this.powers) {
       const left = voice.remaining(pw.name);
       const ready = left <= 0;
-      if (pw.name === pulse) frame(g, pw.x - P, 480, 174 + 2 * P, 30, 0xf5f5f5, 0xf5f5f5);
+      const justRan = voice.lastEvent?.type === 'fired' && voice.lastEvent.name === pw.name && performance.now() - voice.lastEvent.at < 400;
+      if (pw.name === pulse || justRan) frame(g, pw.x - P, 480, 174 + 2 * P, 30, justRan ? 0x3fb950 : 0xf5f5f5, justRan ? 0x3fb950 : 0xf5f5f5);
       frame(g, pw.x, 483, 174, 24, ready ? 0xf3a07a : 0x6b3b2b, ready ? 0xd97757 : 0x2a1a14);
       if (!ready) {
         const frac = 1 - left / pw.p.cooldown;
@@ -149,9 +150,21 @@ export default class HUD extends Phaser.Scene {
       pw.label.setTint(ready ? 0x0d0d0d : 0x8b8b8b);
     }
 
-    const heard = voice.heard ? `"${voice.heard.slice(-30)}"` : voice.listening ? '...' : '';
-    this.heard.setText(`$ ${heard || 'hold M: "ship it"'}`);
-    this.mic.setText(`${voice.listening ? '●' : '○'} ${voice.status}`);
-    this.mic.setTint(voice.listening ? 0x3fb950 : 0x8b8b8b);
+    // Left: what the mic heard. Right: what actually happened (ran / cooling down) for ~2s,
+    // otherwise the mic state. Speech recognized is not the same as a power firing.
+    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : 'hold M: "ship it"';
+    this.heard.setText(`$ ${heard}`);
+    const ev = voice.lastEvent;
+    const fresh = ev && performance.now() - ev.at < 2000;
+    if (fresh && ev.type === 'fired') {
+      this.mic.setText(`✓ ran: ${POWERS[ev.name].label}`);
+      this.mic.setTint(0x3fb950);
+    } else if (fresh && ev.type === 'cooldown') {
+      this.mic.setText(`${POWERS[ev.name].label}: cooling down ${Math.ceil(ev.left / 1000)}s`);
+      this.mic.setTint(0xe3b341);
+    } else {
+      this.mic.setText(`${voice.listening ? '●' : '○'} ${voice.status}`);
+      this.mic.setTint(voice.listening ? 0x3fb950 : 0x8b8b8b);
+    }
   }
 }

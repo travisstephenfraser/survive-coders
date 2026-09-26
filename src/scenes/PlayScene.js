@@ -11,6 +11,9 @@ import { applyScreenFX } from '../fx.js';
 export default class PlayScene extends Phaser.Scene {
   buildWorld(rows, theme = 'suburbs') {
     // Phaser reuses scene instances: reset per-run state so a second run behaves like the first.
+    // The scene clock only refreshes `now` in its first update, so during create() it is stale
+    // (0 on a first run); sync it or every "now + delay" scheduled here is already in the past.
+    this.time.now = this.game.loop.time;
     this.outcome = null; // 'win' | 'lose', decided once per encounter
     this.stopping = false;
     this.physics.world.resume(); // a shutdown mid hit-stop would otherwise leave physics paused

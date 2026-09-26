@@ -18,6 +18,7 @@ const LIES = [
 const TURN_MS = 8000;
 const TELEGRAPH_MS = 600; // wind-up before every attack: shake, flash, and a role-specific warning
 const MAX_GROWTH = 3;
+const STAGGER = { flood: 0, gaslight: 1100, spawn: 2200 };
 const BASE_HP = 14;
 
 // One chat-bubble head. Not refactorable: refactor only resets its growth.
@@ -50,8 +51,11 @@ class Head extends Enemy {
     const y = this.ay + Math.cos(time / 450 + this.phase) * 5;
     this.setFlipX(true);
     if (time < this.hydra.dormantUntil || this.scene.player.dead) {
-      this.nextAttack = Math.max(this.nextAttack, this.hydra.dormantUntil + 600 + Math.random() * 1400);
+      // First attacks after the intro are staggered per head so they never land together.
+      const earliest = this.hydra.dormantUntil + 600 + STAGGER[this.role];
+      if (this.nextAttack < earliest) this.nextAttack = earliest + Math.random() * 400;
       this.setPosition(x, y);
+      this.icon.setPosition(x + 9 * this.scale, y - 9 * this.scale);
       return;
     }
     const warn = this.nextAttack - time;
@@ -140,7 +144,7 @@ export default class Hydra {
   }
 
   nextTurn() {
-    if (!this.alive.length) return;
+    if (!this.alive.length || this.scene.time.now < this.dormantUntil) return;
     this.turn++;
     for (const h of this.alive) h.grow();
     this.scene.sfx('grow', 0.4);
@@ -150,7 +154,7 @@ export default class Hydra {
 
   lie() {
     const alive = this.alive;
-    if (!alive.length) return;
+    if (!alive.length || this.scene.time.now < this.dormantUntil) return;
     this.bubble?.destroy();
     const h = Phaser.Utils.Array.GetRandom(alive);
     this.bubble = worldText(this.scene, h.x, this.bubbleY(h), Phaser.Utils.Array.GetRandom(LIES), {

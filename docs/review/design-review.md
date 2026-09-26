@@ -64,3 +64,16 @@ Source: `feed/astrafeedback/HANDOFF-2026-09-26.md`, written against `fd9b850`, b
 | God mode (Travis) | G on the title screen toggles it (remembered via localStorage), with a HUD `GOD MODE` badge. No damage; pits still respawn you. | Used for the retry and victory tests above. |
 
 Not verified: real spoken commands (automation can't use the mic), audio mix, and difficulty with human players. HUD overlap at small window sizes isn't a concern because the canvas scales uniformly (FIT), so the HUD layout is resolution-independent.
+
+## Astra next-improvements pass (2026-09-26)
+
+| Item | Change | Verified |
+|---|---|---|
+| Voice feedback clarity | The HUD separates what was **heard** (left: `heard "…"`) from what **happened** (right, for 2s: `✓ ran: refactor` or `refactor: cooling down Ns`), and the slot of the power that ran flashes green. Mic setup is an explicit **V** on the title screen, so no permission prompt interrupts a run. Keys 1/2/3 always work. | Pressing 3 twice showed `✓ ran: refactor`, then `refactor: cooling down 10s`, then `○ hold M to talk`. |
+| Staged boss entrance | First attempt: the office dims and the music is held, the terminal types `$ claude "make one small change"`, and each head answers in turn ("Sure! Rewriting the whole repo." / "You're absolutely right!" / "Also added 14 features ✓"). Then the title card and the music. Retries get the 1.1s card only. Random lies and growth pause during the intro. | The Hydra holds its attacks for about 6.5s. First attacks are staggered at 7.4/8.3/9.6s on the first attempt and from 2.8s on retries. |
+| Neighborhood set piece | Powell St cable car: the third pit widens into a 176px gap. The car waits at the Twin Peaks station until someone lands on its roof, carries them across past a star trail, waits 1.5s, then returns. It has a warm outline; background trolleys are dimmed so the rideable one reads as foreground. The high platform stays as a skill route over the gap. | Riding carries the player at the car's speed. After a missed jump the car comes back. |
+
+Bugs found while testing:
+- **Scene clock stale in `create()`:** `this.time.now` updates only in the first update, so anything scheduled from it at create (intro hold, first attacks, blob hops) was already in the past. Fixed by syncing the clock in `buildWorld()`.
+- **Synchronized first attacks:** the hold logic re-rolled attack times every frame and they converged. Fixed with a per-head stagger.
+- **Softlock:** the pit respawn point could be saved on the moving car roof, which respawned you in mid-air over the gap. Respawn points now save only on ground tiles.

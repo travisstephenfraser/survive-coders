@@ -43,6 +43,17 @@ export default class Title extends Phaser.Scene {
     } catch {
       /* storage blocked: default off */
     }
+    // Explicit mic setup (V) so a permission prompt never interrupts a run; keys 1/2/3 always work.
+    const micText = uiText(this, left + 520, 428, '', { size: 16 });
+    const showMic = () => {
+      micText.setText(voice.primed ? 'V  mic ready ✓' : voice.supported ? 'V  set up mic (optional)' : 'no speech here: keys 1/2/3');
+      micText.setTint(voice.primed ? 0x3fb950 : 0x8b8b8b);
+    };
+    showMic();
+    this.input.keyboard.on('keydown-V', async () => {
+      await voice.prime();
+      showMic();
+    });
     const godText = uiText(this, left + 520, 452, '', { size: 16 });
     const showGod = () => {
       godText.setText(`G  god mode: ${god ? 'ON' : 'off'}`);
@@ -64,7 +75,6 @@ export default class Title extends Phaser.Scene {
     uiText(this, 480, 530, CREDITS, { size: 8, color: '#555555', ox: 0.5, oy: 1 });
 
     const go = () => {
-      voice.prime(); // mic permission prompt now, not mid-fight
       voice.resetCooldowns();
       if (this.cache.audio.exists('start')) this.sound.play('start', { volume: 0.5 });
       this.registry.set({ hp: MAX_HP, stars: 0, reversed: false, boss: null, god, bossIntroSeen: false, toast: null });

@@ -47,7 +47,10 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
+      this.primed = true;
+      this.status = 'hold M to talk';
     } catch {
+      this.primed = false;
       this.status = 'mic blocked: allow it in the address bar';
     }
   }
@@ -149,11 +152,16 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   }
 
   // Returns true if the power fired. Powers only fire while a play scene is listening.
+  // `lastEvent` lets the HUD tell "heard" apart from "ran" and "cooling down".
   trigger(name, source) {
     if (this.listenerCount('power') === 0) return false;
     const now = performance.now();
-    if ((this.readyAt[name] ?? 0) > now) return false;
+    if ((this.readyAt[name] ?? 0) > now) {
+      this.lastEvent = { type: 'cooldown', name, source, left: this.readyAt[name] - now, at: now };
+      return false;
+    }
     this.readyAt[name] = now + POWERS[name].cooldown;
+    this.lastEvent = { type: 'fired', name, source, at: now };
     this.emit('power', name, source);
     return true;
   }
