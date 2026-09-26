@@ -1,0 +1,7 @@
+node_modules
+dist
+.vercel
+.DS_Store
+
+# raw asset packs stay out of git (Sci-Fi Starter license forbids redistributing raw files)
+feed/*/
