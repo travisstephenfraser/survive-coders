@@ -26,10 +26,10 @@ const player = {
 };
 
 const DEFS = {
-  player_idle: { rows: [...player.head, ...player.idle] },
-  player_run0: { rows: [...player.head, ...player.run0] },
-  player_run1: { rows: [...player.head, ...player.run1] },
-  player_jump: { rows: [...player.head, ...player.jump] },
+  player_idle: { rows: [...player.head, ...player.idle], swap: { H: 'O' } },
+  player_run0: { rows: [...player.head, ...player.run0], swap: { H: 'O' } },
+  player_run1: { rows: [...player.head, ...player.run1], swap: { H: 'O' } },
+  player_jump: { rows: [...player.head, ...player.jump], swap: { H: 'O' } },
 
   laptop: {
     rows: [
@@ -445,6 +445,21 @@ const DRAWN = {
   },
 };
 
+// 1px dark outline around opaque pixels (4-neighborhood): the classic sprite-readability trick
+// against busy backgrounds; the Ninja pack sprites already have one.
+const OUTLINE = '#140c12';
+function outline(ctx, w, h) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const a = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : img.data[(y * w + x) * 4 + 3]);
+  ctx.fillStyle = OUTLINE;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (a(x, y)) continue;
+      if (a(x - 1, y) || a(x + 1, y) || a(x, y - 1) || a(x, y + 1)) ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+
 function paintRows(ctx, rows, w, swap) {
   rows.forEach((row, y) => {
     for (let x = 0; x < w; x++) {
@@ -457,6 +472,8 @@ function paintRows(ctx, rows, w, swap) {
   });
 }
 
+const OUTLINED = /^(player_|laptop|goblin|keycap|blob|skullops|head_)/;
+
 export function buildTextures(scene) {
   for (const [key, def] of Object.entries(DEFS)) {
     if (scene.textures.exists(key)) continue;
@@ -464,6 +481,7 @@ export function buildTextures(scene) {
     const h = def.h ?? 16;
     const tex = scene.textures.createCanvas(key, w, h);
     paintRows(tex.getContext(), def.rows, w, def.swap);
+    if (OUTLINED.test(key)) outline(tex.getContext(), w, h);
     tex.refresh();
   }
   for (const [key, def] of Object.entries(DRAWN)) {

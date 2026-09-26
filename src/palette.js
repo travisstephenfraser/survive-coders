@@ -16,6 +16,7 @@ export const PIX = {
   P: '#bc8cff', // purple
   p: '#7a4fbf', // dark purple
   B: '#58a6ff', // blue
+  O: '#f59a70', // player hoodie: a brighter Claude orange so the hero pops off orange-lit streets
 };
 
 export const hex = (s) => parseInt(s.slice(1), 16);

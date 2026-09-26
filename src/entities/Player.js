@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Laptop from './Laptop.js';
 import { MAX_HP } from '../util.js';
+import { pop } from '../fx.js';
 
 const SPEED = 95;
 const FIRE_MS = 170;
@@ -45,6 +46,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       fire: 'SPACE', fire2: 'X', fire3: 'J',
     });
     this.laptop = new Laptop(scene, this);
+    pop(this, 1.25);
+    pop(this.laptop, 1.25);
   }
 
   // Squash & stretch around the sprite center (sy > 1 = stretch).

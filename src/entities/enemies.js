@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { floatText, worldText } from '../util.js';
+import { pop } from '../fx.js';
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, key, hp, reward) {
@@ -16,6 +17,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(4);
     // Red rim glow separates enemies from the busy neon background.
     if (this.preFX && scene.game.renderer.type === Phaser.WEBGL) this.preFX.addGlow(0xe5534b, 2, 0, false, 0.1, 8);
+    pop(this);
   }
 
   // Called after this enemy damages the player on contact: bounce off and pause.
