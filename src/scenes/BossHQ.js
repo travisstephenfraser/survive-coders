@@ -41,21 +41,19 @@ export default class BossHQ extends PlayScene {
     else this.add.rectangle(0, 0, 320, 192, 0x2a1c14).setOrigin(0).setDepth(-10);
 
     const FLOOR = 160;
-    const prop = (key, x, y = FLOOR) => (has(key) ? this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(-4) : null);
-    prop('rug', 140);
-    prop('bookshelf', 76);
-    prop('womb_chair', 112);
-    const table = prop('round_table', 162);
-    prop('plant', 204);
-    prop('sconce', 24, 70);
+    const prop = (key, x, y = FLOOR, depth = -4) => (has(key) ? this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(depth) : null);
+    prop('rug', 108, FLOOR, -5);
+    prop('round_table', 100);
+    prop('womb_chair', 180);
+    prop('plant', 208);
 
-    worldText(this, 76, 92, "dario's office", { color: '#e3b341', bg: '#1a120c', depth: -3 });
+    worldText(this, 100, 118, "dario's office", { color: '#e3b341', bg: '#1a120c', depth: -3 });
 
-    const tableTop = table ? FLOOR - table.height + 2 : FLOOR - 20;
+    const TABLETOP = FLOOR - 13; // round_table surface (local y ~11) on a 24px-tall prop
     this.furbies = [
-      ['furby_pink', 68, FLOOR - 48],
-      ['furby_teal', 86, FLOOR - 48],
-      ['furby_gold', 170, tableTop],
+      ['furby_gold', 92, TABLETOP],
+      ['furby_pink', 110, TABLETOP],
+      ['furby_teal', 148, FLOOR],
     ]
       .filter(([k]) => has(k))
       .map(([k, x, y], i) => {

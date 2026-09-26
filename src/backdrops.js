@@ -365,6 +365,6 @@ export const LAYERS = [
 
 // Cable cars running along the Painted Ladies street (near layer plane).
 export const TROLLEYS = [
-  { x0: 40, speed: 0.018, dir: 1 },
-  { x0: 300, speed: 0.026, dir: -1 },
+  { x0: 40, speed: 0.012, dir: 1 },
+  { x0: 300, speed: 0.016, dir: -1 },
 ];
