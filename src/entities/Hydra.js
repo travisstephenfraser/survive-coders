@@ -16,7 +16,7 @@ const LIES = [
 ];
 
 const TURN_MS = 8000;
-const TELEGRAPH_MS = 450; // every attack is preceded by a shake + flash (Cuphead/Mega Man rule: readable, fair)
+const TELEGRAPH_MS = 600; // wind-up before every attack: shake, flash, and a role-specific warning
 const MAX_GROWTH = 3;
 const BASE_HP = 14;
 
@@ -37,6 +37,9 @@ class Head extends Enemy {
     this.body.setSize(14, 11).setOffset(1, 1);
     this.phase = Math.random() * Math.PI * 2;
     this.nextAttack = scene.time.now + 1500 + Math.random() * 1500;
+    // Role icon so players can tell the heads apart: image flood, gaslight (<->), notifications.
+    this.icon = scene.add.image(ax, ay, `icon_${role}`).setDepth(6);
+    this.plan = null;
   }
 
   update(time) {
@@ -53,16 +56,21 @@ class Head extends Enemy {
     }
     const warn = this.nextAttack - time;
     if (warn < TELEGRAPH_MS) {
+      // Targets are chosen when the warning starts and reused by the attack itself.
+      this.plan ??= this.hydra.prepare(this);
       x += (Math.random() - 0.5) * 3;
       if (Math.floor(time / 70) % 2) this.setTintFill(0xffffff);
       else this.setTint(0xff7a6a);
     }
     this.setPosition(x, y);
+    this.icon.setPosition(x + 9 * this.scale, y - 9 * this.scale);
+    this.icon.setScale(warn < TELEGRAPH_MS ? 1.4 + 0.4 * Math.sin(time / 45) : 1);
     if (warn <= 0) {
       this.clearTint();
       const rage = this.hydra.alive.length === 1 ? 0.6 : 1; // last head attacks faster
       this.nextAttack = time + (3200 - this.g * 450 + Math.random() * 800) * rage;
-      this.hydra.attack(this);
+      this.hydra.attack(this, this.plan);
+      this.plan = null;
     }
   }
 
@@ -83,6 +91,9 @@ class Head extends Enemy {
   }
 
   onDie() {
+    this.hydra.cancelPlan(this.plan);
+    this.plan = null;
+    this.icon.destroy();
     this.hydra.headDied(this);
   }
 }
@@ -104,7 +115,7 @@ export default class Hydra {
     this.dormantUntil = 0;
     this.bubble = null;
     this.minions = [];
-    scene.physics.add.overlap(scene.player, this.body, () => scene.player.hurt(1, this.body.x));
+    this.contact = scene.physics.add.overlap(scene.player, this.body, () => scene.player.hurt(1, this.body.x));
 
     this.turnTimer = scene.time.addEvent({ delay: TURN_MS, loop: true, callback: () => this.nextTurn() });
     this.lieTimer = scene.time.addEvent({ delay: 2200, loop: true, callback: () => this.lie() });
@@ -122,6 +133,9 @@ export default class Hydra {
       max: this.heads.reduce((s, h) => s + h.maxHp, 0),
       heads: alive.length,
       turn: this.turn,
+      growth: alive.reduce((g, h) => Math.max(g, h.g), 0),
+      maxGrowth: MAX_GROWTH,
+      nextMs: this.turnTimer && !this.turnTimer.hasDispatched ? this.turnTimer.getRemaining() : 0,
     });
   }
 
@@ -155,22 +169,58 @@ export default class Hydra {
     return h.y - off < 34 ? h.y + off : h.y - off;
   }
 
-  attack(head) {
+  // Wind-up: pick targets and show them. The attack later uses exactly these targets.
+  prepare(head) {
     const scene = this.scene;
-    const pl = scene.player;
+    const plan = { objs: [] };
     if (head.role === 'flood') {
+      const lanes = [];
+      for (let x = 24; x <= 232; x += 16) lanes.push(x);
+      const safe = Phaser.Math.Between(0, lanes.length - 3); // 3 adjacent lanes always stay clear
+      const open = lanes.filter((_, i) => i < safe || i > safe + 2);
+      plan.xs = Phaser.Utils.Array.Shuffle(open).slice(0, Math.min(open.length, 4 + head.g * 2));
+      for (const x of plan.xs) {
+        const floor = scene.add.rectangle(x, 158, 12, 3, 0x58a6ff).setDepth(9);
+        const drop = scene.add.image(x, 30, 'imgtile').setDepth(9);
+        scene.tweens.add({ targets: [floor, drop], alpha: 0.25, duration: 110, yoyo: true, repeat: -1 });
+        plan.objs.push(floor, drop);
+      }
       floatText(scene, Phaser.Math.Clamp(head.x, 60, 260), this.bubbleY(head), 'IMAGE FLOOD', '#58a6ff');
       scene.sfx('flood', 0.4);
-      const n = 4 + head.g * 2;
-      for (let i = 0; i < n; i++) {
-        scene.time.delayedCall(i * 120, () => {
-          scene.spawnHazard(Phaser.Math.Between(24, 230), -8, 'imgtile', 0, 30, true);
-        });
-      }
     } else if (head.role === 'gaslight') {
-      const a = Phaser.Math.Angle.Between(head.x, head.y, pl.x, pl.y);
+      const orb = scene.add.image(head.x - 10, head.y + 2, 'orb').setScale(0.2).setDepth(9);
+      scene.tweens.add({ targets: orb, scale: 1.2, duration: TELEGRAPH_MS });
+      plan.orb = orb;
+      plan.objs.push(orb);
+    } else if (head.role === 'spawn') {
+      floatText(scene, head.x, head.y - 14, 'new notification', '#d97757');
+    }
+    return plan;
+  }
+
+  cancelPlan(plan) {
+    plan?.objs.forEach((o) => o.destroy());
+  }
+
+  attack(head, plan) {
+    const scene = this.scene;
+    const pl = scene.player;
+    this.cancelPlan(plan);
+    if (scene.outcome || !head.active) return;
+    if (head.role === 'flood') {
+      const xs = plan?.xs ?? [Phaser.Math.Between(24, 230)];
+      xs.forEach((x, i) => {
+        scene.time.delayedCall(i * 90, () => {
+          if (scene.outcome) return; // victory or defeat cancels the rest of the flood
+          scene.spawnHazard(x, -8, 'imgtile', 0, 30, true);
+        });
+      });
+    } else if (head.role === 'gaslight') {
+      const ox = plan?.orb?.x ?? head.x;
+      const oy = plan?.orb?.y ?? head.y;
+      const a = Phaser.Math.Angle.Between(ox, oy, pl.x, pl.y);
       const v = 75 + head.g * 15;
-      scene.spawnHazard(head.x, head.y, 'orb', Math.cos(a) * v, Math.sin(a) * v, false, (p) => {
+      scene.spawnHazard(ox, oy, 'orb', Math.cos(a) * v, Math.sin(a) * v, false, (p) => {
         p.reverseControls(3000);
         scene.sfx('gaslight', 0.5);
         floatText(scene, p.x, p.y - 20, 'controls? what controls?', '#bc8cff', 6);
@@ -201,6 +251,13 @@ export default class Hydra {
 
   collapse() {
     const scene = this.scene;
+    if (!scene.endEncounter('win')) return; // the player already died: no late victory
+    this.contact.active = false;
+    for (const h of this.heads) {
+      this.cancelPlan(h.plan);
+      h.plan = null;
+    }
+    for (const h of [...scene.hazards.getChildren()]) h.destroy();
     this.turnTimer.remove();
     this.lieTimer.remove();
     this.bubble?.destroy();

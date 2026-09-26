@@ -47,8 +47,12 @@ export default class HUD extends Phaser.Scene {
     this.stars = uiText(this, 900, 30, '0', { size: 24, color: '#f5f5f5', ox: 0.5, oy: 0.5 });
 
     this.level = uiText(this, 480, 14, '', { size: 16, color: '#d97757', ox: 0.5 });
+    this.godBadge = uiText(this, 48, 52, 'GOD MODE', { size: 8, color: '#3fb950' });
     this.bossText = uiText(this, 480, 64, '', { size: 16, color: '#e5534b', ox: 0.5 });
-    this.reversed = uiText(this, 480, 96, '<-> CONTROLS REVERSED', { size: 16, color: '#bc8cff', ox: 0.5 }).setVisible(false);
+    // Context growth is labeled separately from boss health (Astra review item 5).
+    this.ctxLabel = uiText(this, 330, 94, 'CONTEXT', { size: 8, color: '#58a6ff', oy: 0.5 });
+    this.ctxText = uiText(this, 470, 94, '', { size: 8, color: '#58a6ff', oy: 0.5 });
+    this.reversed = uiText(this, 480, 116, '<-> CONTROLS REVERSED', { size: 16, color: '#bc8cff', ox: 0.5 }).setVisible(false);
 
     // Bottom terminal strip.
     this.powers = Object.entries(POWERS).map(([name, p], i) => ({
@@ -63,7 +67,7 @@ export default class HUD extends Phaser.Scene {
     for (const pw of this.powers) pw.label.setDepth(1);
     this.mic.setDepth(1);
 
-    this.toastText = uiText(this, 480, 128, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
+    this.toastText = uiText(this, 480, 158, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
     this.pausedText = uiText(this, 480, 250, 'PAUSED\n\nP: resume   N: mute', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
       .setDepth(3)
       .setVisible(false);
@@ -97,16 +101,27 @@ export default class HUD extends Phaser.Scene {
     segBar(g, 48, 15, MAX_HP, hp, [0xff8f80, 0xe5534b, 0xa33a33, 0x3a2a2a]);
 
     this.stars.setText(`${r.get('stars') ?? 0}`);
+    this.godBadge.setVisible(Boolean(r.get('god')));
     this.level.setText(r.get('level') ?? '');
     this.reversed.setVisible(Boolean(r.get('reversed')) && Math.floor(time / 200) % 2 === 0);
 
     const boss = r.get('boss');
     this.bossText.setVisible(Boolean(boss));
+    this.ctxLabel.setVisible(Boolean(boss && boss.heads));
+    this.ctxText.setVisible(Boolean(boss && boss.heads));
     if (boss) {
       const cells = 12;
       const filled = Math.ceil(cells * Phaser.Math.Clamp(boss.hp / Math.max(1, boss.max), 0, 1));
       segBar(g, 480 - ((cells * 8 + 3) * P) / 2, 36, cells, filled, [0xffb199, 0xd97757, 0x8a4a36, 0x2a1a14]);
       this.bossText.setText(`CONTEXT ROT HYDRA  heads ${boss.heads}/3  turn ${boss.turn}`);
+      if (boss.heads) {
+        // Growth meter: one cell per growth step, then time to the next growth (the real timer).
+        for (let i = 0; i < boss.maxGrowth; i++) {
+          g.fillStyle(i < boss.growth ? 0x58a6ff : 0x1c2a3a).fillRect(390 + i * 24, 88, 21, 12);
+        }
+        const full = boss.growth >= boss.maxGrowth;
+        this.ctxText.setText(full ? 'FULL  (refactor it!)' : `next growth ${Math.ceil(boss.nextMs / 1000)}s`);
+      }
     }
 
     // Contextual tip.
@@ -118,7 +133,7 @@ export default class HUD extends Phaser.Scene {
     if (showToast) {
       this.toastText.setText(toast.text);
       const w = this.toastText.width + 24;
-      frame(g, 480 - w / 2, 110, w, 36, 0xd97757, 0x0d0d0d);
+      frame(g, 480 - w / 2, 140, w, 36, 0xd97757, 0x0d0d0d);
     }
     const pulse = showToast && toast.power && Math.floor(time / 180) % 2 === 0 ? toast.power : null;
 

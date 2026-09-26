@@ -10,6 +10,10 @@ import { applyScreenFX } from '../fx.js';
 // stars, voice powers, HUD. Subclasses call buildWorld() and add their own content.
 export default class PlayScene extends Phaser.Scene {
   buildWorld(rows, theme = 'suburbs') {
+    // Phaser reuses scene instances: reset per-run state so a second run behaves like the first.
+    this.outcome = null; // 'win' | 'lose', decided once per encounter
+    this.stopping = false;
+    this.physics.world.resume(); // a shutdown mid hit-stop would otherwise leave physics paused
     const H = rows.length;
     const W = Math.max(...rows.map((r) => r.length));
     const hq = theme === 'hq';
@@ -316,7 +320,16 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
+  // First result wins; later callbacks (a death during the boss collapse, a queued victory
+  // after a death) are ignored.
+  endEncounter(result) {
+    if (this.outcome) return false;
+    this.outcome = result;
+    return true;
+  }
+
   onPlayerDead() {
+    if (!this.endEncounter('lose')) return;
     this.music?.stop();
     this.sfx('lose', 0.6);
     this.time.delayedCall(900, () => {

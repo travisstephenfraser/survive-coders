@@ -24,6 +24,7 @@ export default class BossHQ extends PlayScene {
   }
 
   create() {
+    this.leaving = false;
     this.registry.set('level', '~/anthropic-hq');
     this.registry.set('hp', MAX_HP); // checkpoint heal before the boss
     if (this.registry.get('stars') === undefined) this.registry.set('stars', 0);
@@ -38,7 +39,8 @@ export default class BossHQ extends PlayScene {
 
   // Boss title card; the Hydra holds its attacks until it clears.
   introCard() {
-    const INTRO_MS = 2600;
+    const INTRO_MS = this.registry.get('bossIntroSeen') ? 1100 : 2600; // retries skip most of it
+    this.registry.set('bossIntroSeen', true);
     this.hydra.dormantUntil = this.time.now + INTRO_MS;
     const card = worldText(this, 160, 84, 'CONTEXT ROT HYDRA', { color: '#e5534b', size: 14, bg: '#0d0d0d', depth: 60 });
     const sub = worldText(this, 160, 104, 'it remembers everything. wrongly.', { color: '#f5f5f5', bg: '#0d0d0d', depth: 60 });
@@ -55,6 +57,14 @@ export default class BossHQ extends PlayScene {
         this.toast('Heads grow every turn. "refactor" shrinks them', 'refactor', 4500);
       },
     });
+  }
+
+  // Refactor on the boss: heads shrink back (Head.onRefactor); say so, truthfully. The growth
+  // schedule itself is not reset, so the HUD countdown keeps running.
+  onRefactor() {
+    if (!this.hydra?.alive.length) return;
+    floatText(this, 200, 72, 'context compacted', '#3fb950');
+    this.hydra.publish();
   }
 
   // Anthropic HQ interior (art from hqArt.js), plus the Furbies in Dario's office.
@@ -110,6 +120,8 @@ export default class BossHQ extends PlayScene {
   }
 
   win() {
+    if (this.leaving) return;
+    this.leaving = true;
     this.cameras.main.fadeOut(500);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop('HUD');

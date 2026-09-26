@@ -49,3 +49,18 @@ The polish pass (commit `7bd188d`) fixed all five. The remaining backlog is at t
 5. **A greyscale value check of the SF backdrop at gameplay height.** If it's still busy, darken only the band behind the street and keep the opacity ladder.
 6. **One-way platforms,** so the player can jump up through shelves and slabs.
 7. **Sign-in and a leaderboard** (deferred earlier).
+
+## Astra handoff pass (2026-09-26)
+
+Source: `feed/astrafeedback/HANDOFF-2026-09-26.md`, written against `fd9b850`, before the polish pass above.
+
+| Item | Result | Verified |
+|---|---|---|
+| 1. Repeat runs can't exit | Reproduced: on run 2 the player walked past the door with `leaving` still true. Fixed by resetting per-run state in `create()`/`buildWorld()`, including the hit-stop latch and a physics world paused mid hit stop. | 3 consecutive runs reach HQ without a reload. |
+| 2. Victory/defeat race | Reproduced: touching the Hydra's body during the collapse turned a win into a loss. Fixed with a single `outcome` per encounter: the first result wins, damage stops, hazards clear, and queued flood drops and attacks are cancelled. | The final head dies with the player at 1 HP against the body: exactly one `End {win:true}`. |
+| 3. HQ retry | Already added in `7bd188d`. Now also resets cooldowns and the tip, and retries get a short intro (1.1s instead of 2.6s). | 3 boss retries: 1 music track, 1 voice listener, 1 pause listener, 3 heads, and stars restored to the checkpoint (a farmed 999 was discarded). |
+| 4. Readable warnings | Each head has a role icon (image, ⇄, bell) that pulses during a 600ms wind-up. Flood lanes are chosen first and marked (drop icon + floor strip), then dropped exactly there, with 3 adjacent lanes always clear. Gaslight charges its orb, and the spawn head shows "new notification". Warnings are cleared on attack, head death, victory and retry. | Tiles landed on exactly the marked lanes (120px clear gap in the test). The charging orb was removed when the head died. See `14-after-flood-lanes.png`. |
+| 5. Explain context growth | A HUD `CONTEXT` meter (one cell per growth step) with `next growth Ns` read from the real timer, and `FULL (refactor it!)` at max. Refactor shows `context compacted`, and the countdown keeps running because the schedule doesn't reset. The Title says refactor shrinks the Hydra. | The HUD countdown matched the timer (6s = 6s). Max growth reads FULL; after refactor, growth is 0 and the countdown continues at 5s. |
+| God mode (Travis) | G on the title screen toggles it (remembered via localStorage), with a HUD `GOD MODE` badge. No damage; pits still respawn you. | Used for the retry and victory tests above. |
+
+Not verified: real spoken commands (automation can't use the mic), audio mix, and difficulty with human players. HUD overlap at small window sizes isn't a concern because the canvas scales uniformly (FIT), so the HUD layout is resolution-independent.

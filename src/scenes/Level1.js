@@ -26,6 +26,7 @@ export default class Level1 extends PlayScene {
   }
 
   create() {
+    this.leaving = false;
     this.registry.set('level', '~/sf/daly-city → soma');
     this.registry.set('boss', null);
 

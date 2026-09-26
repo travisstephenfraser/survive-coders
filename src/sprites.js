@@ -188,6 +188,23 @@ const DEFS = {
     rows: ['..PPPP..', '.PPWWPP.', 'PPWPPWPP', 'PPPPWPPP', 'PPPWPPPP', 'PPPPPPPP', '.PPWPPP.', '..PPPP..'],
   },
 
+  // Hydra role icons (8x8): image flood, gaslight (reversed arrows), notification bell.
+  icon_flood: {
+    w: 8,
+    h: 8,
+    rows: ['BBBBBBBB', 'BWWWWWWB', 'BWWWWYWB', 'BWWWWWWB', 'BWEWWWWB', 'BEEEWEWB', 'BEEEEEEB', 'BBBBBBBB'],
+  },
+  icon_gaslight: {
+    w: 8,
+    h: 8,
+    rows: ['..P.....', '.PPPPPP.', '..P.....', '........', '.....P..', '.PPPPPP.', '.....P..', '........'],
+  },
+  icon_spawn: {
+    w: 8,
+    h: 8,
+    rows: ['...HH...', '..HHHH..', '.HHHHHH.', '.HHHHHH.', '.HHHHHH.', 'HHHHHHHH', '...WW...', '........'],
+  },
+
   px_orange: { w: 2, h: 2, rows: ['HH', 'HH'] },
   px_white: { w: 2, h: 2, rows: ['WW', 'WW'] },
   px_green: { w: 2, h: 2, rows: ['EE', 'EE'] },

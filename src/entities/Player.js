@@ -128,9 +128,13 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.laptop.follow(time);
   }
 
+  get god() {
+    return Boolean(this.scene.registry.get('god'));
+  }
+
   hurt(dmg, fromX, force = false) {
     const t = this.scene.time.now;
-    if (this.dead || (!force && t < this.invulnUntil)) return false;
+    if (this.dead || this.scene.outcome || this.god || (!force && t < this.invulnUntil)) return false;
     this.hp -= dmg;
     this.invulnUntil = t + 1000;
     this.knockUntil = t + 220;
@@ -147,7 +151,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   fellInPit() {
-    if (this.hurt(1, this.x, true) && !this.dead) {
+    if ((this.god || this.hurt(1, this.x, true)) && !this.dead) {
       this.setPosition(this.safe.x - this.facing * 8, this.safe.y - 4);
       this.setVelocity(0, 0);
     }
