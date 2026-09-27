@@ -8,6 +8,7 @@
 //   near (0.55): Painted Ladies, cable car, street lamps
 
 import { FONT_KEY } from './util.js';
+import { mix } from './hqArt.js';
 
 const ORANGE = '#d97757';
 const ORANGE_DIM = '#b8603f';
@@ -294,6 +295,48 @@ function drawFog(ctx, w, h) {
   }
 }
 
+// Salesforce Tower, the tallest thing in the skyline: a rounded-square obelisk whose sides run
+// straight for the lower 40%, then curve in, ever faster, to a top half the base's width.
+// Pale glass is striped by white fins, darker where the rounded corners turn away, with a warm
+// rim on the sunset side. The crown is the open lattice of the top six floors, lit by Jim
+// Campbell's "Day for Night" LEDs (here in bands, as on a pride night seen from the Bay Bridge),
+// and a strip of lit panels runs down the face below it.
+const TOWER_BANDS = ['#ff9ae8', '#ff6a5e', '#ff9a6a', '#ffe066', '#fff0c8', '#7fe8f0'];
+function drawSalesforceTower(ctx, cx, base, top) {
+  const r = rng(415); // 415 Mission St
+  const H = base - top;
+  const CROWN = 17; // lattice rows under the top
+  const half = (y) => {
+    const t = (base - y) / H; // 0 at the street, 1 at the top of the crown
+    const curve = t < 0.42 ? 0 : ((t - 0.42) / 0.58) ** 2;
+    const shoulder = [2, 1, 1][y - top] ?? 0; // the crown's rounded top corners
+    return Math.round(12 - 6 * curve) - shoulder;
+  };
+  for (let y = top; y < base; y++) {
+    const hw = half(y);
+    const crown = y - top < CROWN;
+    const sky = 1 - (y - top) / H; // glass higher up reflects more of the dusk sky
+    for (let x = -hw; x < hw; x++) {
+      const edge = Math.min(x + hw, hw - 1 - x); // 0 at the silhouette's edge
+      let c;
+      if (crown) {
+        const row = y - top;
+        if (row % 3 === 0 || (x + 20) % 2 === 0) c = '#241f2c'; // floor bands and mullions
+        else c = r() < 0.12 ? '#3a3040' : TOWER_BANDS[Math.min(TOWER_BANDS.length - 1, Math.floor(row / 3))];
+      } else {
+        const fin = (x + 20) % 3 === 0;
+        c = mix(fin ? '#4a4d5e' : '#23242f', fin ? '#8a7f98' : '#3c3548', sky);
+        if (y % 4 === 1 && !fin && r() < 0.1) c = r() < 0.7 ? WARM : '#dfe8f0'; // a few offices still lit
+      }
+      if (edge === 0) c = x < 0 ? '#b0605a' : '#15141b'; // sunset rim on the left, shadow on the right
+      else if (edge === 1 && !crown) c = mix(c, '#101018', 0.45); // the corner turning away
+      rect(ctx, cx + x, y, 1, 1, c);
+    }
+  }
+  // Lit panels running down the face from the crown.
+  for (let y = top + CROWN; y < top + CROWN + 12; y++) if ((y - top) % 3) rect(ctx, cx + 1, y, 1, 1, y - top < CROWN + 6 ? CYAN : '#2e6d78');
+}
+
 function drawMid(ctx, w, signs) {
   const r = rng(99);
   const base = 150;
@@ -339,13 +382,7 @@ function drawMid(ctx, w, signs) {
   line(ctx, px, 16, px, 4, '#d8d0c4');
   rect(ctx, px, 3, 1, 1, '#ff5a4e');
 
-  // Salesforce Tower with its LED crown.
-  const sx = 630;
-  rect(ctx, sx - 13, 22, 26, base - 22, '#1a1b23');
-  poly(ctx, [[sx - 13, 22], [sx - 10, 12], [sx - 4, 7], [sx + 4, 7], [sx + 10, 12], [sx + 13, 22]], '#1a1b23');
-  for (let x = sx - 11; x < sx + 12; x += 3) line(ctx, x, 26, x, base - 1, '#262833');
-  for (let y = 12; y < 24; y += 2) for (let x = sx - 11; x < sx + 12; x += 2) if (r() < 0.6) rect(ctx, x, y, 1, 1, r() < 0.7 ? ORANGE : '#f5d0a0');
-  windows(ctx, sx - 12, 30, 24, base - 30, r, 0.18);
+  drawSalesforceTower(ctx, 630, base, 20);
 
   // Neon billboard frames; their lettering is bg_signs.
   for (const sg of signs) neonSign(ctx, sg);
@@ -406,30 +443,89 @@ function drawNear(ctx, w) {
   }
 }
 
-// Salesforce Park's near plane: low SoMa blocks behind the park's trees and lamps.
+// A glass tower beside the park: dusk sky caught in the upper floors, mullions, floors lit in
+// runs, a sunset rim. `braced` is 181 Fremont: a diagonal exoskeleton and a sloped top.
+const GLASS = [['#172029', '#33485a'], ['#1b1d2b', '#3b4063'], ['#1d1a24', '#433a52'], ['#142326', '#2c5256']];
+function glassTower(ctx, x, top, bw, base, [body, sky], r, braced) {
+  const roof = (gx) => (braced ? top + Math.round(((gx - x) / bw) * 12) : top);
+  for (let gx = x; gx < x + bw; gx++) {
+    for (let y = roof(gx); y < base; y++) rect(ctx, gx, y, 1, 1, mix(sky, body, Math.min(1, ((y - top) / (base - top)) * 1.6)));
+  }
+  for (let mx = x + 3; mx < x + bw - 1; mx += 4) line(ctx, mx, roof(mx) + 2, mx, base - 1, mix(body, '#000000', 0.35));
+  for (let y = top + 16; y < base - 2; y += 5) {
+    let run = 0;
+    for (let wx = x + 1; wx < x + bw - 3; wx += 4) {
+      if (!run && r() < 0.09) run = 1 + Math.floor(r() * 5);
+      if (run && y > roof(wx) + 2) {
+        rect(ctx, wx, y, 3, 2, r() < 0.8 ? WARM : '#dfe8f0');
+        run--;
+      }
+    }
+  }
+  if (braced) {
+    for (let gx = x; gx < x + bw; gx++) {
+      const d = gx - x;
+      for (let k = -2; k < 8; k++) {
+        for (const y of [top + k * 22 + d, top + k * 22 + bw - 1 - d]) if (y > roof(gx) && y < base) rect(ctx, gx, y, 1, 1, '#6a7382');
+      }
+    }
+  }
+  line(ctx, x, roof(x), x, base, '#9c5a58'); // sunset rim
+  for (let gx = x; gx < x + bw; gx++) rect(ctx, gx, roof(gx), 1, 1, mix(sky, '#ffffff', 0.25));
+}
+
+// Salesforce Park's near plane: the glass towers that wall the park in, kept below the skyline
+// so the Salesforce Tower always clears them, and in front of them the park's own canopy:
+// redwood spires, round street trees, palms from the palm garden, a hedge along the path, and
+// the slim lamps. Nothing crosses the texture's edges, so it wraps cleanly.
 function drawPark(ctx, w) {
   const r = rng(23);
   const base = 150;
-  for (let x = 0; x < w; ) {
-    const bw = 20 + Math.floor(r() * 26);
-    const bh = 30 + Math.floor(r() * 40);
-    rect(ctx, x, base - bh, bw, bh, r() < 0.5 ? '#17141c' : '#1a1720');
-    windows(ctx, x, base - bh, bw, bh, r, 0.22);
-    x += bw + 2;
+  let fremont = false; // 181 Fremont, once
+  for (let x = 4; x < w - 30; ) {
+    const bw = 28 + Math.floor(r() * 26);
+    if (x + bw > w - 4) break;
+    const braced = !fremont && x > 380;
+    fremont ||= braced;
+    glassTower(ctx, x, base - (braced ? 100 : 52 + Math.floor(r() * 36)), bw, base, GLASS[Math.floor(r() * GLASS.length)], r, braced);
+    x += bw + 4 + Math.floor(r() * 22);
   }
-  const CANOPY = ['#1d2b22', '#23352a', '#2f4636'];
-  for (let x = 10; x < w; x += 26 + Math.floor(r() * 18)) {
-    const trunkH = 14 + Math.floor(r() * 8);
-    rect(ctx, x - 1, base - trunkH, 3, trunkH, '#2a211c');
-    const cy = base - trunkH - 6;
-    ellipse(ctx, x, cy, 13 + r() * 5, 10 + r() * 4, CANOPY[0]);
-    ellipse(ctx, x - 3, cy - 3, 8 + r() * 3, 6 + r() * 2, CANOPY[1]);
-    ellipse(ctx, x - 5, cy - 5, 4, 3, CANOPY[2]);
+  const CANOPY = ['#1a2c20', '#24392b', '#30503a', '#44694f'];
+  for (let x = 24; x < w - 20; x += 50 + Math.floor(r() * 50)) {
+    const h = 46 + Math.floor(r() * 18);
+    for (let y = base - h; y < base - 6; y++) {
+      const half = Math.round(((y - (base - h)) / h) * 9);
+      rect(ctx, x - half, y, half * 2 + 1, 1, (y + x) % 6 === 0 ? CANOPY[1] : CANOPY[0]);
+    }
   }
-  for (let x = 60; x < w; x += 150) {
-    line(ctx, x, base, x, 118, '#34343c');
-    rect(ctx, x - 2, 116, 5, 2, '#34343c');
-    rect(ctx, x - 1, 118, 3, 2, '#f5d0a0');
+  const roundTree = (x) => {
+    const trunkH = 10 + Math.floor(r() * 10);
+    rect(ctx, x - 1, base - trunkH, 2, trunkH, '#2a211c');
+    const cy = base - trunkH - 9;
+    const rx = 14 + r() * 6;
+    const ry = 11 + r() * 5;
+    ellipse(ctx, x, cy, rx, ry, CANOPY[0]);
+    ellipse(ctx, x - 3, cy - 3, rx * 0.65, ry * 0.6, CANOPY[1]);
+    ellipse(ctx, x - 6, cy - 6, rx * 0.3, ry * 0.3, CANOPY[2]);
+    rect(ctx, x - 8, cy - 9, 2, 1, CANOPY[3]);
+  };
+  for (let x = 20; x < w - 20; x += 22 + Math.floor(r() * 16)) {
+    if (r() < 0.25) {
+      // Palm: a leaning trunk and drooping fronds.
+      const lean = r() < 0.5 ? -3 : 3;
+      line(ctx, x, base, x + lean, base - 44, '#3a2e24');
+      for (const [dx, dy] of [[-11, 5], [-9, -2], [-4, -5], [3, -5], [9, -2], [11, 5]]) {
+        line(ctx, x + lean, base - 44, x + lean + dx, base - 44 + dy, CANOPY[2]);
+        rect(ctx, x + lean + dx, base - 44 + dy + 1, 1, 1, CANOPY[1]);
+      }
+    } else roundTree(x);
+  }
+  // Hedge along the path.
+  for (let x = 0; x < w; x += 7) ellipse(ctx, x + 3, base - 3, 6, 4 + ((x * 13) % 3), CANOPY[(x * 7) % 3 === 0 ? 1 : 0]);
+  for (let x = 44; x < w - 10; x += 110) {
+    line(ctx, x, base, x, 108, '#34343c');
+    rect(ctx, x - 1, 106, 3, 2, '#f5d0a0');
+    rect(ctx, x, 105, 1, 1, '#fff0c8');
   }
 }
 
@@ -457,8 +553,13 @@ export const LAYERS = [
   { key: 'bg_near', f: 0.55, tint: 0xc8c4d0 },
 ];
 
-// Salesforce Park: the same sky and skyline, with the park's trees as the near plane.
-export const PARK_LAYERS = [...LAYERS.filter((l) => l.key !== 'bg_near'), { key: 'bg_park', f: 0.55, tint: 0xc8c4d0 }];
+// Salesforce Park: the same sky and skyline, with the park's glass towers and trees as the near
+// plane. The skyline sits 100px further right (`ox`), so the Salesforce Tower rises
+// over the second half of the park and slides behind its own lobby at the exit.
+export const PARK_LAYERS = [
+  ...LAYERS.filter((l) => l.key !== 'bg_near').map((l) => (l.key === 'bg_mid' || l.key === 'bg_signs' ? { ...l, ox: -100 } : l)),
+  { key: 'bg_park', f: 0.55, tint: 0xc8c4d0 },
+];
 
 // Cable cars running along the Painted Ladies street (near layer plane).
 export const TROLLEYS = [

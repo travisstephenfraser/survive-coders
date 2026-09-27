@@ -49,11 +49,12 @@ export default class Park extends PlayScene {
     this.buildParallax(PARK_LAYERS);
     this.buildWorld(PARK, 'park');
 
+    this.buildLandmarks();
     this.sign(88, 112, 'SALESFORCE PARK', '#3fb950');
-    this.sign(12 * TILE, 118, 'NO PITCHING', '#e5534b');
-    this.sign(38 * TILE, 118, 'OAT MILK ONLY', '#a8905e');
-    this.sign(29 * TILE, 118, 'GARDEN ZONE 4: SERIES A FERNS', '#3fb950');
-    this.sign(69 * TILE, 110, 'NEXT BUS: 2 MIN (PROBABLY)', '#e3b341');
+    this.sign(244, 118, 'NO PITCHING', '#e5534b');
+    this.sign(520, 118, 'ZONE 4: SERIES A FERNS', '#3fb950');
+    this.sign(690, 118, 'PLAY AREA: FOUNDERS WELCOME', '#e3b341');
+    this.sign(1130, 110, 'NEXT BUS: 2 MIN (PROBABLY)', '#e3b341');
     this.buildJets();
     this.buildArena();
     // The tower's floors come next; until then its lobby leads to the Hydra.
@@ -85,6 +86,45 @@ export default class Park extends PlayScene {
       const [, keys, taps, power] = this.beats.shift();
       this.toast(TOUCH && taps ? taps : keys, power);
     }
+  }
+
+  // ---- The real park, walking west from the gondola (the layouts in feed/sfpark): the Light
+  // Column's Oculus on its glass floor, the Main Plaza and its cafe, the children's play area,
+  // picnics on the Central Lawn, the West Skylight behind the bus fountain, and the
+  // amphitheater's terracotta wall and lawn chairs. ----
+  buildLandmarks() {
+    const ground = 10 * TILE; // the lawn's top edge
+    const prop = (key, x, depth = -2) => this.add.image(x, ground, key).setOrigin(0.5, 1).setDepth(depth);
+    // The gondola's station: its cable climbs out of Mission & Fremont, off the map's left edge.
+    const station = this.add.graphics().setDepth(-1);
+    station.lineStyle(1, 0x5a5a62).lineBetween(-120, ground + 122, 44, ground - 40);
+    station.fillStyle(0x34343c).fillRect(43, ground - 42, 3, 42);
+    station.fillStyle(0xdfe3dc).fillRect(36, ground - 44, 18, 2);
+    // Paving over the lawn's grass: glass panels around the Oculus, stone across the Main Plaza.
+    const floor = this.add.graphics().setDepth(0.5);
+    for (let x = 128; x < 232; x += 8) {
+      floor.fillStyle(0x8fc6de).fillRect(x, ground, 8, 6);
+      floor.fillStyle(0xd6f1fc).fillRect(x, ground, 7, 1);
+      floor.fillStyle(0x5f7c8a).fillRect(x + 7, ground, 1, 6);
+    }
+    for (let x = 232; x < 528; x += 8) {
+      floor.fillStyle(0xa9a497).fillRect(x, ground, 8, 6);
+      floor.fillStyle(0xcfcabd).fillRect(x, ground, 7, 1);
+      floor.fillStyle(0x7d786d).fillRect(x + 7, ground, 1, 6).fillRect(x, ground + 3, 8, 1);
+    }
+    prop('oculus', 180);
+    prop('cafe', 336);
+    worldText(this, 336, ground - 29, 'OAT MILK ONLY', { color: '#a8905e', bg: '#0d0d0d', depth: -1.5 });
+    prop('play_frame', 668);
+    // Picnic blankets on the Central Lawn.
+    const picnic = this.add.graphics().setDepth(0.5);
+    for (const [x, color] of [[912, 0xe5534b], [1014, 0x3b6fd8], [1090, 0xe5534b]]) {
+      for (let i = 0; i < 12; i++) picnic.fillStyle(i % 2 ? 0xf5f5f5 : color).fillRect(x + i, ground - 1, 1, 2);
+      picnic.fillStyle(0xa8703e).fillRect(x + 8, ground - 4, 4, 3); // a basket
+    }
+    prop('skylight', 1256);
+    prop('amphi_wall', 1736, -3);
+    for (const x of [1600, 1822, 1918]) prop('chairs', x);
   }
 
   // ---- Bus fountain jets: idle, a rumble under the grate, then a column that launches you. ----
@@ -236,12 +276,10 @@ export default class Park extends PlayScene {
     this.scene.bringToTop('Cine');
     const cine = this.scene.get('Cine');
 
-    // The cabin rides a cable up the park's west edge and docks on the lawn.
+    // The cabin rides its cable up from Mission & Fremont, at the park's east end, and docks
+    // at the station on the lawn.
     const DOCK = { x: 30, y: 160 - 14 };
-    const FROM = { x: DOCK.x - 60, y: DOCK.y + 120 };
-    const cable = this.add.graphics().setDepth(-1);
-    cable.lineStyle(1, 0x5a5a62).lineBetween(FROM.x - 20, FROM.y - 54, DOCK.x + 14, DOCK.y - 26);
-    cable.fillStyle(0x34343c).fillRect(DOCK.x + 13, DOCK.y - 28, 3, 42);
+    const FROM = { x: DOCK.x - 120, y: DOCK.y + 120 }; // the grip (14px above centre) stays on the cable
     this.gondola = this.add.image(FROM.x, FROM.y, 'gondola').setDepth(6);
     this.tweens.add({ targets: this.gondola, x: DOCK.x, y: DOCK.y, duration: 4200, ease: 'Sine.out' });
 

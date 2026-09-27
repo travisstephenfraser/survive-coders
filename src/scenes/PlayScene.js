@@ -238,7 +238,7 @@ export default class PlayScene extends Phaser.Scene {
   scrollParallax(time) {
     const x = this.cameras.main.worldView.x;
     // tilePosition is in texels, so a hi-res layer scrolls res texels per world pixel.
-    for (const l of this.parallax) l.ts.tilePositionX = (x * l.f + (l.drift ? time * l.drift : 0)) * (l.res ?? 1);
+    for (const l of this.parallax) l.ts.tilePositionX = (x * l.f + (l.ox ?? 0) + (l.drift ? time * l.drift : 0)) * (l.res ?? 1);
   }
 
   // A building on the map's exit (D): the facade runs past the camera's top and right edges;

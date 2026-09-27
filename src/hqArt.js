@@ -91,7 +91,7 @@ export const mix = (a, b, t) => {
 const step = (t, n = 10) => Math.round(t * n) / n; // quantize light so it bands like pixel art
 
 // Blend pixels toward `color` by fn(x, y) in [0, 1] (quantized). Keeps every pixel opaque.
-function light(ctx, x0, y0, x1, y1, color, fn) {
+export function light(ctx, x0, y0, x1, y1, color, fn) {
   const w = x1 - x0;
   const h = y1 - y0;
   const img = ctx.getImageData(x0, y0, w, h);
