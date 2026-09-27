@@ -86,48 +86,54 @@ car's roof across and collect the star trail.
 
 ![Riding the cable car](docs/screenshots/07-cable-car-ride.png)
 
-**8. Anthropic HQ.** The tower's sliding glass doors part and let you in. The office goes quiet,
-the terminal types `make one small change`, the heads answer, and the boss card lands. The HUD
-shows boss health and, separately, context growth.
+**8. Anthropic HQ.** The level ends at a glass tower that runs out of frame, offices lit late and
+a lobby glowing behind white pillars. Its sliding doors part as you reach them and close behind
+you as you walk in.
 
-![Context Rot Hydra title card](docs/screenshots/08-boss-title-card.png)
+![Anthropic HQ at the end of Level 1, its sliding doors opening](docs/screenshots/08-hq-entrance.png)
 
-**9. A full context window.** Every attack has a 600 ms wind-up: the image-flood head flashes
+**9. The Context Rot Hydra.** Inside, the office goes quiet, the terminal types
+`make one small change`, the heads answer, and the boss card lands. The HUD shows boss health
+and, separately, context growth.
+
+![Context Rot Hydra title card](docs/screenshots/09-boss-title-card.png)
+
+**10. A full context window.** Every attack has a 600 ms wind-up: the image-flood head flashes
 and marks its drop lanes on the floor before the tiles fall, always leaving three adjacent lanes
 clear. The heads here are fully grown, so the context overflows: terminal rain starts falling,
 context rot will deal damage until you refactor, the meter reads OVERFLOW, and the refactor tip
 stays up with its slot flashing. A notification skull hunts from the Hydra's base.
 
-![Hydra at full context: flood lanes marked, overflow starting](docs/screenshots/09-boss-context-overflow.png)
+![Hydra at full context: flood lanes marked, overflow starting](docs/screenshots/10-boss-context-overflow.png)
 
-**10. The payoff.** The robotaxi comes back (HQ is inside its service area), `#demo-day` asks
+**11. The payoff.** The robotaxi comes back (HQ is inside its service area), `#demo-day` asks
 for one more small change, and an original chiptune victory song plays.
 
-![Win screen with the robotaxi and the last Slack ping](docs/screenshots/10-win-payoff.png)
+![Win screen with the robotaxi and the last Slack ping](docs/screenshots/11-win-payoff.png)
 
 ### On a phone
 
 iPhone-size landscape (844x390) at 2x, in Chrome's device emulation.
 
-**11. Touch title.** The same terminal, with touch instructions; a tap starts the run, and on
+**12. Touch title.** The same terminal, with touch instructions; a tap starts the run, and on
 Android it goes fullscreen.
 
-![Title screen on a phone](docs/screenshots/11-phone-title.png)
+![Title screen on a phone](docs/screenshots/12-phone-title.png)
 
-**12. Touch controls.** The D-pad and the fire (`>_`) and jump buttons sit at the screen's
+**13. Touch controls.** The D-pad and the fire (`>_`) and jump buttons sit at the screen's
 corners, the outer ones in the letterbox bars rather than over the game; here right and fire
 are held. Powers are taps on the terminal bar, beside a hold-to-talk slot, and the tips say tap.
 
-![Level 1 on a phone with the touch controls](docs/screenshots/12-phone-level.png)
+![Level 1 on a phone with the touch controls](docs/screenshots/13-phone-level.png)
 
-**13. The Hydra on a phone.** A jump-shot with fire and jump held together, a pause button
+**14. The Hydra on a phone.** A jump-shot with fire and jump held together, a pause button
 beside the star badge, and a head lying to you.
 
-![Boss fight on a phone](docs/screenshots/13-phone-boss.png)
+![Boss fight on a phone](docs/screenshots/14-phone-boss.png)
 
-**14. Portrait.** Turned upright, the game pauses behind a prompt to turn the phone sideways.
+**15. Portrait.** Turned upright, the game pauses behind a prompt to turn the phone sideways.
 
-<img src="docs/screenshots/14-phone-portrait.png" alt="Rotate-your-phone prompt in portrait" width="240">
+<img src="docs/screenshots/15-phone-portrait.png" alt="Rotate-your-phone prompt in portrait" width="240">
 
 A dated design review with before and after screenshots is in
 [`docs/review/design-review.md`](docs/review/design-review.md).
@@ -279,7 +285,8 @@ against the running game, recorded with screenshots in
 | Check | Result |
 |---|---|
 | Jump tuned from a height and rise time | 70 px apex, 0.8 s airtime (was 0.94 s); a jump pressed just before landing fires |
-| Repeat runs reach HQ without reloading | 3 of 3 runs cross the exit door |
+| Repeat runs reach HQ without reloading | 3 of 3 back-to-back runs walk in through the HQ doors |
+| HQ doors | They open within 40 px of the player and close when the player backs off; crossing in mid-air still walks the player in from the doorstep; a rollback pressed during the walk-in is ignored |
 | Winning while taking damage | Exactly one outcome: the final head dies with the player at 1 HP against the boss, and the game ends in victory |
 | Three consecutive boss retries | One music track, one voice listener, one pause listener each time; stars restored to the checkpoint |
 | Flood warnings are honest | Tiles land exactly on the marked lanes, leaving a clear gap |
