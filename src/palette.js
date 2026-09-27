@@ -26,6 +26,10 @@ export const PIX = {
   L: '#a8c8e8', // oxford-blue shirt
   Z: '#d9b25c', // blond swoop
   c: '#6b4226', // coffee
+  // Salesforce Tower.
+  U: '#56637a', // sales suit
+  u: '#3b455a', // suit shade
+  X: '#8fd0ff', // chatbot screen glow
 };
 
 export const hex = (s) => parseInt(s.slice(1), 16);

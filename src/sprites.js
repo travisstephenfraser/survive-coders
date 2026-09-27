@@ -72,6 +72,25 @@ const bro = {
   walk1: ['....NNNNNNN.....', '.....NN.NN......', '.....NN.NN......', '....WWW.WWW.....'],
 };
 
+const agent = {
+  head: [
+    '................',
+    '.....DDDDD......',
+    '....DDDDDDD.....',
+    '...KDSSSSSS.....',
+    '...KSSKSSKS.....',
+    '...KSSSSSSS.....',
+    '....KKSSSS......',
+    '....UUWBWUU.....',
+    '...UUUWBWUUU....',
+    '..SUUUWBWUUUS...',
+    '..SuUUUBUWUuS...',
+    '...uUUUUUUUu....',
+  ],
+  walk0: ['....uuuuuuu.....', '....uu...uu.....', '....uu...uu.....', '...KKK...KKK....'],
+  walk1: ['....uuuuuuu.....', '.....uu.uu......', '.....uu.uu......', '....KKK.KKK.....'],
+};
+
 const DEFS = {
   player_idle: { rows: [...player.head, ...player.idle], swap: { H: 'O' } },
   player_run0: { rows: [...player.head, ...player.run0], swap: { H: 'O' } },
@@ -302,6 +321,38 @@ const DEFS = {
       '....BB....BB....',
     ],
   },
+  // ---- Salesforce Tower ----
+  // CRM agent: slate suit, headset with a boom mic, blue tie, a cloud on the lanyard.
+  agent0: { rows: [...agent.head, ...agent.walk0] },
+  agent1: { rows: [...agent.head, ...agent.walk1] },
+  // Chatbot: a floating speech bubble with a face and an antenna.
+  chatbot: {
+    rows: [
+      '.......Y........',
+      '.......G........',
+      '..BBBBBBBBBBBB..',
+      '.BWWWWWWWWWWWWB.',
+      '.BWXXXXXXXXXXWB.',
+      '.BWXKKXXXXKKXWB.',
+      '.BWXKKXXXXKKXWB.',
+      '.BWXXXXXXXXXXWB.',
+      '.BWXXKXXXXKXXWB.',
+      '.BWXXXKKKKXXXWB.',
+      '.BWWWWWWWWWWWWB.',
+      '..BBBBWWBBBBBB..',
+      '.....BWB........',
+      '....BWB.........',
+      '....BB..........',
+      '................',
+    ],
+  },
+  // A contract: signature line, red seal.
+  contract: {
+    w: 8,
+    h: 10,
+    rows: ['WWWWWW..', 'WGGGGWW.', 'WWWWWWW.', 'WGGGGGW.', 'WWWWWWW.', 'WGGGGGW.', 'WWWWWWW.', 'WBBWRRW.', 'WWWWRRW.', 'WWWWWWW.'],
+  },
+
   // Demo-day judge, seated behind the table (only head and shoulders show).
   judge: {
     rows: [
@@ -762,7 +813,7 @@ function paintRows(ctx, rows, w, swap) {
   });
 }
 
-const OUTLINED = /^(player_|laptop|goblin|keycap|blob|head_|founder|bro|jogger|judge|slide|coffee|email)/;
+const OUTLINED = /^(player_|laptop|goblin|keycap|blob|head_|founder|bro|jogger|judge|slide|coffee|email|agent|chatbot|contract)/;
 
 // Paints a row-defined sprite (colour swaps, outline) onto any 2D context. Shared with
 // scripts/make-images.mjs, which draws the favicon and link-preview art from the same pixels.
@@ -804,6 +855,7 @@ export function buildTextures(scene) {
   mk('founder_walk', ['founder0', 'founder1'], 5);
   mk('bro_walk', ['bro0', 'bro1'], 4);
   mk('jog', ['jogger0', 'jogger1'], 10);
+  mk('agent_walk', ['agent0', 'agent1'], 5);
   // Ninja Adventure sheets: 4 columns = facing down/up/left/right, rows = animation frames.
   const sheet = (key, tex, frames, rate) => {
     if (scene.textures.exists(tex) && !anims.exists(key)) {
