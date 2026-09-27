@@ -4,7 +4,10 @@
 //   far  (0.15): Twin Peaks + Sutro Tower, Golden Gate Bridge, Marin headlands
 //   fog  (0.2):  Karl the Fog, drifting
 //   mid  (0.3):  Coit Tower, Transamerica Pyramid, Salesforce Tower, downtown + neon billboards
+//   signs (0.3): the billboards' lettering, at 3x resolution (see SIGNS)
 //   near (0.55): Painted Ladies, cable car, street lamps
+
+import { FONT_KEY } from './util.js';
 
 const ORANGE = '#d97757';
 const ORANGE_DIM = '#b8603f';
@@ -125,15 +128,74 @@ function windows(ctx, x, y, w, h, r, density = 0.28) {
   }
 }
 
-function neonSign(ctx, x, y, text, border, fg) {
-  const w = text.length * 6 + 6;
-  rect(ctx, x, y, w, 12, '#0d0d0d');
-  ctx.strokeStyle = border;
+// Neon billboards on the mid skyline. Their frames are painted into bg_mid; the lettering is
+// its own layer, bg_signs, with the same parallax. That layer is drawn at 3x the world's
+// resolution in the game's 8x8 pixel font, so a font pixel is 2 screen pixels (as on the
+// street signs) instead of a 3-pixel world block, and it sits above the skyline haze, so
+// the neon reads. (It was an 8px system font thresholded onto the world grid: mush.)
+const SIGNS = [
+  { x: 196, y: 70, text: 'AGI SOON', border: CYAN, fg: ORANGE },
+  { x: 300, y: 60, text: 'SERIES A', border: MAGENTA, fg: WARM },
+  { x: 540, y: 76, text: 'GPU', border: ORANGE, fg: CYAN },
+  { x: 700, y: 58, text: 'NOW HIRING 10x', border: YELLOW, fg: ORANGE },
+];
+export const SIGN_RES = 3; // bg_signs texels per world pixel
+const SIGN_PX = 2; // texels per font pixel
+
+// Glyph metrics from the bitmap font font.js builds (proportional advances), plus the ink
+// rows of each string, so the frames can be sized to the lettering.
+function layoutSigns(scene) {
+  const font = scene.cache.bitmapFont.get(FONT_KEY);
+  const sheet = scene.textures.get(font.texture).getSourceImage();
+  const px = sheet.getContext('2d').getImageData(0, 0, sheet.width, sheet.height).data;
+  return SIGNS.map((sg) => {
+    const glyphs = [...sg.text].map((ch) => font.data.chars[ch.charCodeAt(0)]);
+    let [top, bottom] = [8, -1];
+    for (const g of glyphs) {
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          if (px[((g.y + y) * sheet.width + g.x + x) * 4 + 3]) [top, bottom] = [Math.min(top, y), Math.max(bottom, y)];
+        }
+      }
+    }
+    const inkW = glyphs.reduce((w, g) => w + g.xAdvance, 0) - 1; // font px
+    const w = Math.ceil((inkW * SIGN_PX) / SIGN_RES) + 6; // world px: 3 px padding a side
+    const h = Math.ceil(((bottom - top + 1) * SIGN_PX) / SIGN_RES) + 5;
+    return { ...sg, glyphs, top, bottom, inkW, w, h, sheet };
+  });
+}
+
+function neonSign(ctx, sg) {
+  const { x, y, w, h } = sg;
+  rect(ctx, x, y, w, h, '#0d0d0d');
+  ctx.strokeStyle = sg.border;
   ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, 11);
-  pixelText(ctx, text, x + 3, y + 1, fg, 8);
-  line(ctx, x + 4, y + 12, x + 4, y + 18, '#3a3a3a');
-  line(ctx, x + w - 5, y + 12, x + w - 5, y + 18, '#3a3a3a');
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  line(ctx, x + 4, y + h, x + 4, y + h + 6, '#3a3a3a');
+  line(ctx, x + w - 5, y + h, x + w - 5, y + h + 6, '#3a3a3a');
+}
+
+// The lettering, centred in each frame, on a transparent 3x canvas.
+function drawSignText(ctx, signs) {
+  for (const sg of signs) {
+    const ink = document.createElement('canvas');
+    ink.width = sg.inkW * SIGN_PX;
+    ink.height = 8 * SIGN_PX;
+    const t = ink.getContext('2d');
+    t.imageSmoothingEnabled = false;
+    let pen = 0;
+    for (const g of sg.glyphs) {
+      t.drawImage(sg.sheet, g.x, g.y, 8, 8, (pen + g.xOffset) * SIGN_PX, 0, 8 * SIGN_PX, 8 * SIGN_PX);
+      pen += g.xAdvance;
+    }
+    t.globalCompositeOperation = 'source-in'; // white glyphs take the sign's colour
+    t.fillStyle = sg.fg;
+    t.fillRect(0, 0, ink.width, ink.height);
+    const inkH = (sg.bottom - sg.top + 1) * SIGN_PX;
+    const x = Math.round((sg.x + sg.w / 2) * SIGN_RES - ink.width / 2);
+    const y = Math.round((sg.y + sg.h / 2) * SIGN_RES - inkH / 2) - sg.top * SIGN_PX;
+    ctx.drawImage(ink, x, y);
+  }
 }
 
 function drawSky(ctx, w, h) {
@@ -230,7 +292,7 @@ function drawFog(ctx, w, h) {
   }
 }
 
-function drawMid(ctx, w) {
+function drawMid(ctx, w, signs) {
   const r = rng(99);
   const base = 150;
 
@@ -283,11 +345,8 @@ function drawMid(ctx, w) {
   for (let y = 12; y < 24; y += 2) for (let x = sx - 11; x < sx + 12; x += 2) if (r() < 0.6) rect(ctx, x, y, 1, 1, r() < 0.7 ? ORANGE : '#f5d0a0');
   windows(ctx, sx - 12, 30, 24, base - 30, r, 0.18);
 
-  // Neon billboards.
-  neonSign(ctx, 196, 70, 'AGI SOON', CYAN, ORANGE);
-  neonSign(ctx, 300, 60, 'SERIES A', MAGENTA, WARM);
-  neonSign(ctx, 540, 76, 'GPU', ORANGE, CYAN);
-  neonSign(ctx, 700, 58, 'NOW HIRING 10x', YELLOW, ORANGE);
+  // Neon billboard frames; their lettering is bg_signs.
+  for (const sg of signs) neonSign(ctx, sg);
 }
 
 function drawNear(ctx, w) {
@@ -349,7 +408,9 @@ export function buildBackdrops(scene) {
   canvasTex(scene, 'bg_sky', 320, 180, drawSky, false);
   canvasTex(scene, 'bg_far', 600, 180, drawFar);
   canvasTex(scene, 'bg_fog', 320, 40, drawFog, false);
-  canvasTex(scene, 'bg_mid', 900, 180, drawMid);
+  const signs = layoutSigns(scene); // the pixel font is built first (Boot)
+  canvasTex(scene, 'bg_mid', 900, 180, (ctx, w) => drawMid(ctx, w, signs));
+  canvasTex(scene, 'bg_signs', 900 * SIGN_RES, 180 * SIGN_RES, (ctx) => drawSignText(ctx, signs));
   canvasTex(scene, 'bg_near', 900, 180, drawNear);
 }
 
@@ -362,6 +423,7 @@ export const LAYERS = [
   { key: 'bg_far', f: 0.15, alpha: 0.4 },
   { key: 'bg_fog', f: 0.2, y: 96, h: 40, drift: 0.004 },
   { key: 'bg_mid', f: 0.3, alpha: 0.65, haze: 0.3 },
+  { key: 'bg_signs', f: 0.3, alpha: 0.9, res: SIGN_RES }, // above the haze: neon glows
   { key: 'bg_near', f: 0.55, alpha: 0.9 },
 ];
 

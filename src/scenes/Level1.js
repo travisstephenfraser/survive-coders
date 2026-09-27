@@ -40,6 +40,7 @@ export default class Level1 extends PlayScene {
         .setOrigin(0)
         .setScrollFactor(0)
         .setAlpha(l.alpha ?? 1)
+        .setTileScale(1 / (l.res ?? 1)) // a hi-res layer's texels are 1/res of a world pixel
         .setDepth(-10);
       if (l.haze) this.add.rectangle(320, 180, 320, 180, 0x000000, l.haze).setOrigin(0).setScrollFactor(0).setDepth(-10);
       return { ...l, ts };
@@ -96,7 +97,8 @@ export default class Level1 extends PlayScene {
       this.toast(TOUCH && taps ? taps : keys, power);
     }
     const x = this.cameras.main.worldView.x;
-    for (const l of this.parallax) l.ts.tilePositionX = x * l.f + (l.drift ? time * l.drift : 0);
+    // tilePosition is in texels, so a hi-res layer scrolls res texels per world pixel.
+    for (const l of this.parallax) l.ts.tilePositionX = (x * l.f + (l.drift ? time * l.drift : 0)) * (l.res ?? 1);
     const span = 320 + 140; // wrap just outside the view on both sides
     for (const t of this.trolleys) {
       const vx = Phaser.Math.Wrap(t.x0 + t.dir * t.speed * time * 3 - x * t.f, -70, span - 70);
