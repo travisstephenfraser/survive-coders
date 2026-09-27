@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { floatText, worldText } from '../util.js';
+import { TOUCH } from '../touch.js';
 
 // Context overflow: once the Hydra's context window is full, terminal text rains over the whole
 // arena and the player takes context rot until a refactor compacts it.
@@ -12,7 +13,7 @@ const GRACE_MS = 3000; // warning time before the first context rot
 const ROT_MS = 3000; // then 1 damage per tick while full
 const DEPTH = 45; // over the whole fight (speech bubbles are 30), under float text (50)
 const ARENA_H = 192;
-const TIP = 'Context full! HOLD M, say "refactor" (or press 3)';
+const TIP = TOUCH ? 'Context full! Tap "refactor" below' : 'Context full! HOLD M, say "refactor" (or press 3)';
 
 const glyphs = (n) => Array.from({ length: n }, () => Phaser.Utils.Array.GetRandom(GLYPHS));
 

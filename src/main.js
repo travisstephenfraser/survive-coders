@@ -20,6 +20,7 @@ window.game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   physics: { default: 'arcade', arcade: { gravity: { x: 0, y: 600 }, debug: params.has('debug') } },
+  input: { activePointers: 3 }, // canvas taps (powers, talk, pause) alongside other fingers
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   pipeline: { CRTPipeline },
   scene: [Boot, Title, Level1, BossHQ, HUD, Cine, End],

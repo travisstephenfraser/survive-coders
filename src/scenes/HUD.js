@@ -1,10 +1,17 @@
 import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, uiText } from '../util.js';
+import { TOUCH, dimPad, showPad, touch } from '../touch.js';
 
 // Screen-space overlay. Everything sits on a 3px grid (one world pixel at 3x zoom) so the
 // bars and frames read as the same pixel art as the game.
 const P = 3;
+const STRIP_Y = 474; // top of the bottom terminal strip
+// Touch only: the pause button (between the level name and the star badge) and, while
+// paused, a sound toggle.
+const PAUSE_BTN = { x: 684, y: 12, w: 36, h: 36 };
+const SOUND_BTN = { x: 390, y: 318, w: 180, h: 42 };
+const hit = (p, r, pad = 0) => p.x >= r.x - pad && p.x < r.x + r.w + pad && p.y >= r.y - pad && p.y < r.y + r.h + pad;
 
 // Segmented pixel bar with 3-tone shading, drawn in world-pixel units.
 function segBar(g, x, y, cells, filled, colors, cellW = 7) {
@@ -58,37 +65,111 @@ export default class HUD extends Phaser.Scene {
     // White box so the warning reads over the busy office; sits above the toast frame (y 140).
     this.reversed = uiText(this, 480, 104, '<-> CONTROLS REVERSED', { size: 16, color: '#7a4fbf', ox: 0.5, bg: '#f5f5f5' }).setVisible(false);
 
-    // Bottom terminal strip.
-    this.powers = Object.entries(POWERS).map(([name, p], i) => ({
-      name,
-      p,
-      x: 18 + i * 186,
-      label: uiText(this, 18 + i * 186 + 87, 495, `${p.key} ${p.label}`, { size: 16, color: '#0d0d0d', ox: 0.5, oy: 0.5 }),
-    }));
-    this.mic = uiText(this, 942, 495, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
-    this.heard = uiText(this, 18, 522, '', { size: 16, color: '#f5f5f5', oy: 0.5 });
-    uiText(this, 942, 522, '←→ move  ↑ jump  SPACE fire  P pause', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
-    for (const pw of this.powers) pw.label.setDepth(1);
-    this.mic.setDepth(1);
+    // Bottom terminal strip. On touch the corners belong to the D-pad and FIRE/JUMP, so the
+    // slots centre up as tap targets, plus a hold-to-talk slot when speech is available.
+    const slotW = TOUCH ? 150 : 174;
+    const talk = TOUCH && voice.supported;
+    const span = 3 * slotW + 2 * 12 + (talk ? 12 + 102 : 0);
+    const x0 = TOUCH ? Math.round((960 - span) / 2 / P) * P : 18;
+    this.powers = Object.entries(POWERS).map(([name, p], i) => {
+      const x = x0 + i * (slotW + 12);
+      const text = TOUCH ? p.label : `${p.key} ${p.label}`;
+      return { name, p, x, w: slotW, label: uiText(this, x + slotW / 2, 495, text, { size: 16, color: '#0d0d0d', ox: 0.5, oy: 0.5 }).setDepth(1) };
+    });
+    if (talk) {
+      const x = x0 + 3 * (slotW + 12);
+      this.talk = { x, w: 102, label: uiText(this, x + 51, 495, '● talk', { size: 16, color: '#8b8b8b', ox: 0.5, oy: 0.5 }).setDepth(1) };
+    }
+    if (TOUCH) {
+      // One centred status line between the thumbs: what ran, what the mic heard, or a hint.
+      this.heard = uiText(this, 480, 522, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 });
+    } else {
+      this.mic = uiText(this, 942, 495, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 }).setDepth(1);
+      this.heard = uiText(this, 18, 522, '', { size: 16, color: '#f5f5f5', oy: 0.5 });
+      uiText(this, 942, 522, '←→ move  ↑ jump  SPACE fire  P pause', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+    }
 
     this.toastText = uiText(this, 480, 158, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
-    this.pausedText = uiText(this, 480, 250, 'PAUSED\n\nP: resume   N: mute', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+    // Paused: the scene dims so the text reads over the busy city.
+    this.dim = this.add.rectangle(0, 0, 960, 540, 0x0d0d0d, 0.6).setOrigin(0).setDepth(2).setVisible(false);
+    this.pausedText = uiText(this, 480, 250, TOUCH ? 'PAUSED\n\ntap to resume' : 'PAUSED\n\nP: resume   N: mute', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+      .setCenterAlign()
       .setDepth(3)
       .setVisible(false);
+    const { x: sx, y: sy, w: sw, h: sh } = SOUND_BTN;
+    this.soundBox = this.add.rectangle(sx, sy, sw, sh, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
+    this.soundText = uiText(this, sx + sw / 2, sy + sh / 2, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
 
     // Pause / mute live here because the HUD keeps running while the play scene is paused.
     const kb = this.input.keyboard;
-    const togglePause = () => {
-      if (this.registry.get('cutscene')) return;
-      const play = ['Level1', 'BossHQ'].map((k) => this.scene.get(k)).find((sc) => sc.sys.isActive() || sc.sys.isPaused());
-      if (!play) return;
-      if (play.sys.isPaused()) play.scene.resume();
-      else play.scene.pause();
-      this.pausedText.setVisible(play.sys.isPaused());
-    };
+    const togglePause = () => this.setPaused(!this.playScene()?.sys.isPaused());
     kb.on('keydown-P', togglePause);
     kb.on('keydown-ESC', togglePause);
     kb.on('keydown-N', () => (this.sound.mute = !this.sound.mute));
+
+    // Taps: power slots (any pointer, so a mouse can click them too), and on touch the
+    // hold-to-talk slot, the pause button and the pause screen.
+    this.talkPointer = null;
+    this.input.on('pointerdown', (p) => this.tap(p));
+    const untap = (p) => {
+      if (p.id !== this.talkPointer) return;
+      this.talkPointer = null;
+      voice.release();
+    };
+    this.input.on('pointerup', untap);
+    this.input.on('pointerupoutside', untap);
+
+    // Auto-pause when the tab hides (a phone call, an app switch) or the phone turns
+    // portrait, so the run is never lost behind the rotate overlay.
+    const autoPause = () => this.setPaused(true);
+    const portrait = matchMedia('(orientation: portrait)');
+    const onTurn = () => portrait.matches && autoPause();
+    this.game.events.on('hidden', autoPause);
+    if (TOUCH) portrait.addEventListener('change', onTurn);
+    this.events.once('shutdown', () => {
+      this.game.events.off('hidden', autoPause);
+      portrait.removeEventListener('change', onTurn);
+      if (this.talkPointer !== null) voice.release();
+      showPad(false);
+    });
+  }
+
+  playScene() {
+    return ['Level1', 'BossHQ'].map((k) => this.scene.get(k)).find((sc) => sc.sys.isActive() || sc.sys.isPaused());
+  }
+
+  setPaused(on) {
+    const play = this.playScene();
+    if (!play || this.registry.get('cutscene') || play.sys.isPaused() === on) return;
+    if (on) play.scene.pause();
+    else play.scene.resume();
+    touch.dropJump(); // held thumbs carry over like held keys; a jump tapped meanwhile doesn't
+    this.pausedText.setVisible(on);
+    this.dim.setVisible(on);
+    this.soundBox.setVisible(on && TOUCH);
+    this.soundText.setVisible(on && TOUCH);
+  }
+
+  tap(p) {
+    const play = this.playScene();
+    if (!play || this.registry.get('cutscene')) return;
+    if (play.sys.isPaused()) {
+      if (!TOUCH) return;
+      if (hit(p, SOUND_BTN, 12)) this.sound.mute = !this.sound.mute;
+      else this.setPaused(false);
+      return;
+    }
+    if (TOUCH && hit(p, PAUSE_BTN, 12)) {
+      this.setPaused(true);
+      return;
+    }
+    if (p.y < STRIP_Y - 6) return;
+    const pw = this.powers.find((s) => p.x >= s.x - 6 && p.x < s.x + s.w + 6);
+    if (pw) voice.trigger(pw.name, 'touch');
+    else if (this.talk && p.x >= this.talk.x - 6 && p.x < this.talk.x + this.talk.w + 6) {
+      this.talkPointer = p.id;
+      voice.press();
+    }
   }
 
   update(time) {
@@ -100,7 +181,7 @@ export default class HUD extends Phaser.Scene {
     frame(g, 732, 12, 216, 36, 0x444c56, 0x21262d);
     g.fillStyle(0x444c56).fillRect(852, 12, P, 36);
     g.fillStyle(0x0d1117).fillRect(855, 15, 90, 30);
-    frame(g, 0, 474, 960, 66, 0xd97757, 0x0d0d0d);
+    frame(g, 0, STRIP_Y, 960, 66, 0xd97757, 0x0d0d0d);
 
     const hp = r.get('hp') ?? 0;
     segBar(g, 48, 15, MAX_HP, hp, [0xff8f80, 0xe5534b, 0xa33a33, 0x3a2a2a]);
@@ -152,21 +233,43 @@ export default class HUD extends Phaser.Scene {
       const left = voice.remaining(pw.name);
       const ready = left <= 0;
       const justRan = voice.lastEvent?.type === 'fired' && voice.lastEvent.name === pw.name && performance.now() - voice.lastEvent.at < 400;
-      if (pw.name === pulse || justRan) frame(g, pw.x - P, 480, 174 + 2 * P, 30, justRan ? 0x3fb950 : 0xf5f5f5, justRan ? 0x3fb950 : 0xf5f5f5);
-      frame(g, pw.x, 483, 174, 24, ready ? 0xf3a07a : 0x6b3b2b, ready ? 0xd97757 : 0x2a1a14);
+      if (pw.name === pulse || justRan) frame(g, pw.x - P, 480, pw.w + 2 * P, 30, justRan ? 0x3fb950 : 0xf5f5f5, justRan ? 0x3fb950 : 0xf5f5f5);
+      frame(g, pw.x, 483, pw.w, 24, ready ? 0xf3a07a : 0x6b3b2b, ready ? 0xd97757 : 0x2a1a14);
       if (!ready) {
         const frac = 1 - left / pw.p.cooldown;
-        g.fillStyle(0x6b3b2b).fillRect(pw.x + P, 483 + P, Math.floor(((174 - 2 * P) * frac) / P) * P, 24 - 2 * P);
+        g.fillStyle(0x6b3b2b).fillRect(pw.x + P, 483 + P, Math.floor(((pw.w - 2 * P) * frac) / P) * P, 24 - 2 * P);
       }
       pw.label.setTint(ready ? 0x0d0d0d : 0x8b8b8b);
+    }
+    if (this.talk) {
+      const on = voice.listening;
+      frame(g, this.talk.x, 483, this.talk.w, 24, on ? 0x3fb950 : 0x444c56, on ? 0x3fb950 : 0x21262d);
+      this.talk.label.setTint(on ? 0x0d0d0d : 0xf5f5f5);
+    }
+
+    const ev = voice.lastEvent;
+    const fresh = ev && performance.now() - ev.at < 2000;
+    const paused = Boolean(this.playScene()?.sys.isPaused());
+    if (TOUCH) {
+      showPad(!r.get('cutscene'));
+      dimPad(paused);
+      if (!paused) {
+        // Pause button: two bars in a badge frame, like the star badge.
+        frame(g, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.w, PAUSE_BTN.h, 0x444c56, 0x21262d);
+        g.fillStyle(0xf5f5f5).fillRect(PAUSE_BTN.x + 9, PAUSE_BTN.y + 9, 6, 18).fillRect(PAUSE_BTN.x + 21, PAUSE_BTN.y + 9, 6, 18);
+      }
+      this.soundText.setText(this.sound.mute ? 'sound: off' : 'sound: on');
+      let line = voice.heard ? `$ heard "${voice.heard.slice(-26)}"` : voice.listening ? '$ listening... let go to run it' : this.talk ? '$ tap a power, or hold talk and say it' : '$ tap a power to run it';
+      if (fresh && ev.type === 'fired') line = `✓ ran: ${POWERS[ev.name].label}`;
+      else if (fresh && ev.type === 'cooldown') line = `${POWERS[ev.name].label}: cooling down ${Math.ceil(ev.left / 1000)}s`;
+      this.heard.setText(line).setTint(fresh && ev.type === 'fired' ? 0x3fb950 : fresh ? 0xe3b341 : 0xf5f5f5);
+      return;
     }
 
     // Left: what the mic heard. Right: what actually happened (ran / cooling down) for ~2s,
     // otherwise the mic state. Speech recognized is not the same as a power firing.
     const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : 'hold M: "ship it"';
     this.heard.setText(`$ ${heard}`);
-    const ev = voice.lastEvent;
-    const fresh = ev && performance.now() - ev.at < 2000;
     if (fresh && ev.type === 'fired') {
       this.mic.setText(`✓ ran: ${POWERS[ev.name].label}`);
       this.mic.setTint(0x3fb950);

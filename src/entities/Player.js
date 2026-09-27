@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Laptop from './Laptop.js';
 import { MAX_HP } from '../util.js';
 import { pop } from '../fx.js';
+import { touch } from '../touch.js';
 
 const SPEED = 95;
 const FIRE_MS = 170;
@@ -70,7 +71,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   tick(time) {
     if (this.dead) return;
     const k = this.keys;
-    let dir = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
+    let dir = (k.right.isDown || k.d.isDown || touch.right ? 1 : 0) - (k.left.isDown || k.a.isDown || touch.left ? 1 : 0);
     const reversed = time < this.reversedUntil;
     if (this.scene.registry.get('reversed') !== reversed) this.scene.registry.set('reversed', reversed);
     if (reversed) dir = -dir;
@@ -83,8 +84,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     const JD = Phaser.Input.Keyboard.JustDown;
-    const jumpHeld = k.jump.isDown || k.jump2.isDown || k.jump3.isDown;
-    if (JD(k.jump) || JD(k.jump2) || JD(k.jump3)) this.jumpBufferedUntil = time + BUFFER_MS;
+    const jumpHeld = k.jump.isDown || k.jump2.isDown || k.jump3.isDown || touch.jump;
+    const touchJump = touch.takeJump(); // always consumed, so a press can't linger a frame
+    if (JD(k.jump) || JD(k.jump2) || JD(k.jump3) || touchJump) this.jumpBufferedUntil = time + BUFFER_MS;
     if (onFloor) this.coyoteUntil = time + COYOTE_MS;
     if (time < this.jumpBufferedUntil && time < this.coyoteUntil) {
       this.setVelocityY(-JUMP);
@@ -115,7 +117,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.setTexture('player_idle');
     }
 
-    const firing = k.fire.isDown || k.fire2.isDown || k.fire3.isDown;
+    const firing = k.fire.isDown || k.fire2.isDown || k.fire3.isDown || touch.fire;
     const tokens = () => this.scene.registry.get('maxTokens') > 0;
     if (firing && tokens()) {
       // MAX streams in fixed steps and catches up within a frame, so the rate is the same at

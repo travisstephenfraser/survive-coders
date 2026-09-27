@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { uiText } from '../util.js';
 import { phoneCard } from '../terminal.js';
+import { TOUCH } from '../touch.js';
 
 // Cutscene overlay: letterbox bars, a Slack phone card, and a speaker dialogue box with a
 // typewriter reveal. Driven by the play scene (Level1 intro); the HUD is hidden meanwhile.
@@ -19,7 +20,7 @@ export default class Cine extends Phaser.Scene {
     this.phoneUI = phoneCard(this, 590, 84, 350, 'Slack · #demo-day');
     this.speaker = uiText(this, 40, 492, '', { size: 16, color: '#39c5cf', oy: 0.5 });
     this.line = uiText(this, 40, 516, '', { size: 16, color: '#f5f5f5', oy: 0.5 });
-    uiText(this, 944, 36, 'ENTER skip', { size: 8, color: '#8b8b8b', ox: 1, oy: 0.5 });
+    uiText(this, 944, 36, TOUCH ? 'tap to skip' : 'ENTER skip', { size: 8, color: '#8b8b8b', ox: 1, oy: 0.5 });
     this.typing = null;
   }
 

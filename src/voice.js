@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TOUCH } from './touch.js';
 
 // "Wispr Flow": spoken keywords fire powers.
 export const POWERS = {
@@ -6,6 +7,8 @@ export const POWERS = {
   rollback: { label: 'rollback', key: '2', cooldown: 8000, re: /\broll ?backs?\b|\brole ?back\b|\broll bag\b|\brollback\b/ },
   refactor: { label: 'refactor', key: '3', cooldown: 10000, re: /\bre-? ?factor(ed|ing|s)?\b|\breactor\b|\brefractor\b/ },
 };
+
+const TALK = TOUCH ? 'talk' : 'M'; // the push-to-talk control: the M key, or the HUD's talk slot
 
 // Push-to-talk: hold M, say a command, release. The command fires on release, so ordinary
 // talking (demo narration!) never triggers powers. Keys 1/2/3 always work too, because
@@ -19,7 +22,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.listening = false; // M is held
     this.running = false; // recognizer session active
     this.pendingFire = false;
-    this.status = 'hold M to talk';
+    this.status = `hold ${TALK} to talk`;
     window.addEventListener('keydown', (e) => {
       if (e.key === 'm' || e.key === 'M') {
         if (!e.repeat) this.press();
@@ -48,7 +51,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
       this.primed = true;
-      this.status = 'hold M to talk';
+      this.status = `hold ${TALK} to talk`;
     } catch {
       this.primed = false;
       this.status = 'mic blocked: allow it in the address bar';
@@ -75,7 +78,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       this.running = false;
       if (this.pendingFire) {
         this.pendingFire = false;
-        if (!this.fireFromTranscript() && this.status === 'processing...') this.status = 'hold M to talk';
+        if (!this.fireFromTranscript() && this.status === 'processing...') this.status = `hold ${TALK} to talk`;
       }
       // M pressed again (or Chrome timed out mid-hold): keep listening.
       if (this.listening) this.startSession();
@@ -103,7 +106,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.pendingFire = false;
     this.transcript = '';
     this.heard = '';
-    this.status = 'listening... release M';
+    this.status = `listening... release ${TALK}`;
     this.rec ??= this.makeRecognizer();
     this.startSession();
   }
@@ -146,7 +149,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       return false;
     }
     this.transcript = '';
-    this.status = 'hold M to talk';
+    this.status = `hold ${TALK} to talk`;
     this.trigger(best, 'voice');
     return true;
   }

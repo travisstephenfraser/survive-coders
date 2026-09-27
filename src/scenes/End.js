@@ -5,6 +5,7 @@ import { applyScreenFX } from '../fx.js';
 import { CREDITS, phoneCard, terminalWindow } from '../terminal.js';
 import { placeLidar } from '../sprites.js';
 import { playVictorySong } from '../victorySong.js';
+import { TOUCH } from '../touch.js';
 
 export default class End extends Phaser.Scene {
   constructor() {
@@ -32,7 +33,10 @@ export default class End extends Phaser.Scene {
       uiText(this, left, 350, `hydra: ${3 - boss.heads}/3 heads cut`, { size: 16, color: '#d97757' });
     }
     const retryLabel = !win && retry === 'BossHQ' ? 'retry the boss' : 'play again';
-    const again = uiText(this, left, 430, `$ ENTER ${retryLabel}   T title_`, { size: 24, color: '#d97757' });
+    const again = uiText(this, left, 430, TOUCH ? `$ tap to ${retryLabel}_` : `$ ENTER ${retryLabel}   T title_`, { size: 24, color: '#d97757' });
+    // On touch the title screen gets its own button; a tap anywhere else retries.
+    const titleBtn = TOUCH ? uiText(this, w.x + w.w - 30, 424, 'title', { size: 24, color: '#f5f5f5', ox: 1, bg: '#21262d', pad: 9 }) : null;
+    titleBtn?.list[0].setStrokeStyle(3, 0x444c56); // the HUD's badge frame
     this.tweens.add({ targets: again, alpha: 0.35, duration: 600, yoyo: true, repeat: -1 });
     uiText(this, 480, 530, CREDITS, { size: 8, color: '#555555', ox: 0.5, oy: 1 });
     if (win) {
@@ -41,7 +45,13 @@ export default class End extends Phaser.Scene {
       this.events.once('shutdown', () => song?.stop());
     }
     // Fast retry (Team Meat: short respawns). Boss deaths restart at the HQ checkpoint.
-    this.input.keyboard.once('keydown-ENTER', () => {
+    let done = false;
+    const once = (fn) => () => {
+      if (done) return;
+      done = true;
+      fn();
+    };
+    const playAgain = once(() => {
       const atBoss = !win && retry === 'BossHQ';
       this.registry.set({
         hp: MAX_HP,
@@ -54,7 +64,20 @@ export default class End extends Phaser.Scene {
       voice.resetCooldowns();
       this.scene.start(atBoss ? 'BossHQ' : 'Level1');
     });
-    this.input.keyboard.once('keydown-T', () => this.scene.start('Title'));
+    const toTitle = once(() => this.scene.start('Title'));
+    this.input.keyboard.once('keydown-ENTER', playAgain);
+    this.input.keyboard.once('keydown-T', toTitle);
+    // Touch: taps act on release and only if they began on this screen. (Desktop keeps keys
+    // only, so a stray click can't cut the win screen short.)
+    if (TOUCH) {
+      let armed = false;
+      this.input.on('pointerdown', () => (armed = true));
+      this.input.on('pointerup', (p) => {
+        if (!armed) return;
+        if (Phaser.Geom.Rectangle.Inflate(titleBtn.getBounds(), 12, 12).contains(p.x, p.y)) toTitle();
+        else playAgain();
+      });
+    }
   }
 
   // Story bookend for the Waymo intro: the robotaxi comes back (HQ is in its service area),

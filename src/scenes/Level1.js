@@ -3,6 +3,7 @@ import PlayScene from './PlayScene.js';
 import { LAYERS, TROLLEYS } from '../backdrops.js';
 import { placeLidar } from '../sprites.js';
 import { worldText } from '../util.js';
+import { TOUCH } from '../touch.js';
 
 // Legend: # ground, = neon platform, P player, * star, M MAX power-up, B Bad Prompt Blob,
 // G Keyboard Goblin, H H100 GPU, D exit door to Anthropic HQ.
@@ -72,13 +73,13 @@ export default class Level1 extends PlayScene {
     this.playMusic('music_level', 0.28);
     this.registry.set('toast', null);
     if (!this.registry.get('introSeen')) this.playIntro();
-    // x-position beats: [worldX, text, power to pulse]
+    // x-position beats: [worldX, keyboard text, touch text (if different), power to pulse]
     this.beats = [
-      [70, 'SPACE fires prompts at bad prompts', null],
-      [640, 'Swarmed? HOLD M, say "refactor" (or press 3)', 'refactor'],
-      [1200, 'Low on HP? HOLD M, say "rollback" (or 2)', 'rollback'],
-      [1372, 'Too far to jump. Hop on the cable car roof', null],
-      [1760, 'Boss ahead. HOLD M, say "ship it" (or 1)', 'ship'],
+      [70, 'SPACE fires prompts at bad prompts', '>_ fires prompts at bad prompts', null],
+      [640, 'Swarmed? HOLD M, say "refactor" (or press 3)', 'Swarmed? Tap "refactor" below', 'refactor'],
+      [1200, 'Low on HP? HOLD M, say "rollback" (or 2)', 'Low on HP? Tap "rollback" below', 'rollback'],
+      [1372, 'Too far to jump. Hop on the cable car roof', null, null],
+      [1760, 'Boss ahead. HOLD M, say "ship it" (or 1)', 'Boss ahead. Tap "ship it" below', 'ship'],
     ];
   }
 
@@ -91,8 +92,8 @@ export default class Level1 extends PlayScene {
     if (!this.leaving && !this.player.dead && this.player.x >= this.door.x - 4) this.exit();
     this.updateCableCar(time);
     while (this.beats.length && this.player.x >= this.beats[0][0]) {
-      const [, text, power] = this.beats.shift();
-      this.toast(text, power);
+      const [, keys, taps, power] = this.beats.shift();
+      this.toast(TOUCH && taps ? taps : keys, power);
     }
     const x = this.cameras.main.worldView.x;
     for (const l of this.parallax) l.ts.tilePositionX = x * l.f + (l.drift ? time * l.drift : 0);
@@ -149,6 +150,7 @@ export default class Level1 extends PlayScene {
 
     this.skipIntro = () => this.endIntro();
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.once(k, this.skipIntro);
+    this.input.once('pointerdown', this.skipIntro);
   }
 
   updateIntro(time) {
@@ -164,6 +166,7 @@ export default class Level1 extends PlayScene {
     this.registry.set('cutscene', false);
     for (const e of this.introEvents) e.remove(false);
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.off(k, this.skipIntro);
+    this.input.off('pointerdown', this.skipIntro);
     this.tweens.killTweensOf(this.waymo);
     this.waymo.destroy();
     this.lidar.destroy();

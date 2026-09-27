@@ -5,6 +5,7 @@ import { T } from '../sprites.js';
 import { voice } from '../voice.js';
 import { MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
+import { TOUCH } from '../touch.js';
 
 // MAX stream: random alphanumerics, mostly white with syntax-highlight accents.
 const STREAM_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
@@ -282,7 +283,7 @@ export default class PlayScene extends Phaser.Scene {
     floatText(this, x, y - 10, 'MAX', '#f59a70');
     this.burst(x, y, 'px_orange', 14);
     this.sfx('start', 0.5);
-    this.toast('MAX: hold SPACE to stream tokens');
+    this.toast(`MAX: hold ${TOUCH ? '>_' : 'SPACE'} to stream tokens`);
   }
 
   // Spend one MAX token on one character.
