@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import { LAYERS, TROLLEYS } from '../backdrops.js';
-import { FACADE } from '../hqArt.js';
 import { placeLidar } from '../sprites.js';
-import { TILE, worldText } from '../util.js';
+import { worldText } from '../util.js';
 import { TOUCH } from '../touch.js';
 
 // Legend: # ground, = neon platform, P player, * star, M MAX power-up, B Bad Prompt Blob,
-// G Keyboard Goblin, H H100 GPU, D the doors into Anthropic HQ (the facade is built around them).
+// G Keyboard Goblin, H H100 GPU, D the doors into the Transit Center, up to Salesforce Park.
 const SUBURBS = [
   '............................................................................................................................',
   '............................................................................................................................',
@@ -48,22 +47,11 @@ export default class Level1 extends PlayScene {
   }
 
   create() {
-    this.leaving = false;
     this.registry.set('level', routeLabel(0));
     this.registry.set('boss', null);
     this.registry.set('maxTokens', 0); // MAX's chip is in this level; unspent tokens carry into the boss
 
-    // Camera-pinned parallax layers; with a 3x zoom, (320,180) is the view's top-left.
-    this.parallax = LAYERS.map((l) => {
-      const ts = this.add
-        .tileSprite(320, 180 + (l.y ?? 0), 320, l.h ?? 180, l.key)
-        .setOrigin(0)
-        .setScrollFactor(0)
-        .setTint(l.tint ?? 0xffffff)
-        .setTileScale(1 / (l.res ?? 1)) // a hi-res layer's texels are 1/res of a world pixel
-        .setDepth(-10);
-      return { ...l, ts };
-    });
+    this.buildParallax(LAYERS);
 
     // Trolleys ride the near-layer street; they share its parallax plus their own motion.
     const near = LAYERS.find((l) => l.key === 'bg_near');
@@ -81,7 +69,8 @@ export default class Level1 extends PlayScene {
     worldText(this, 60, 92, '$ claude "make one small change"', { color: '#d97757', size: 6, depth: 2 });
     for (const [x, name, color] of HOODS) this.sign(x, 118, name, color);
     this.buildCableCar();
-    this.buildHQ(this.spawns.find((s) => s.ch === 'D'));
+    const door = this.buildExit('transit_facade', 'Park');
+    worldText(this, door.x - 16, door.ground - 66, 'TRANSIT CENTER · PARK ↑', { color: '#39c5cf', bg: '#0d0d0d', depth: 0 });
     this.playMusic('music_level', 0.28);
     this.registry.set('toast', null);
     if (!this.registry.get('introSeen')) this.playIntro();
@@ -90,23 +79,17 @@ export default class Level1 extends PlayScene {
       [70, 'SPACE fires prompts at bad prompts', '>_ fires prompts at bad prompts', null],
       [640, 'Swarmed? HOLD M, say "refactor" (or press 3)', 'Swarmed? Tap "refactor" below', 'refactor'],
       [1372, 'Too far to jump. Hop on the cable car roof', null, null],
-      [1760, 'Boss ahead. HOLD M, say "ship it" (or 1)', 'Boss ahead. Tap "ship it" below', 'ship'],
+      [1760, 'Save a big one for the park: HOLD M, "ship it" (or 1)', 'Save a big one for the park: tap "ship it"', 'ship'],
     ];
   }
 
   update(time, delta) {
-    if (!this.leaving) super.update(time, delta); // on the way in, the walk-in tweens own the player
+    super.update(time, delta);
     if (this.cutscene) {
       this.updateIntro(time);
       return;
     }
     const p = this.player;
-    if (!this.leaving) {
-      // The doors open within 40px. The exit is crossing the threshold at any height, so
-      // hopping over it still counts.
-      this.setDoors(!p.dead && Math.abs(p.x - this.hq.x) < 40);
-      if (!p.dead && p.x >= this.hq.x - 4) this.exit();
-    }
     this.updateCableCar(time);
     const label = routeLabel(p.x);
     if (label !== this.registry.get('level')) this.registry.set('level', label);
@@ -114,9 +97,8 @@ export default class Level1 extends PlayScene {
       const [, keys, taps, power] = this.beats.shift();
       this.toast(TOUCH && taps ? taps : keys, power);
     }
+    this.scrollParallax(time);
     const x = this.cameras.main.worldView.x;
-    // tilePosition is in texels, so a hi-res layer scrolls res texels per world pixel.
-    for (const l of this.parallax) l.ts.tilePositionX = (x * l.f + (l.drift ? time * l.drift : 0)) * (l.res ?? 1);
     const span = 320 + 140; // wrap just outside the view on both sides
     for (const t of this.trolleys) {
       const vx = Phaser.Math.Wrap(t.x0 + t.dir * t.speed * time * 3 - x * t.f, -70, span - 70);
@@ -243,56 +225,5 @@ export default class Level1 extends PlayScene {
     else if (c.state === 'goL' && c.img.x <= c.xL) c.state = 'waitL';
     c.img.setVelocityX(c.state === 'goR' ? SPEED : c.state === 'goL' ? -SPEED : 0);
     if (c.state === 'waitL' || c.state === 'waitR') c.img.x = Phaser.Math.Clamp(c.img.x, c.xL, c.xR);
-  }
-
-  // Anthropic HQ, lined up on the map's exit (D). The facade runs past the camera's top and
-  // right edges; two glass panels slide open as the player nears.
-  buildHQ(d) {
-    const ground = d.y + TILE / 2;
-    this.add.image(d.x - FACADE.door, ground, 'hq_facade').setOrigin(0, 1).setDepth(-1);
-    // Behind everyone on the pavement; the walk-in brings them in front.
-    const panels = [-1, 1].map((side) =>
-      this.add.image(d.x + side * 5, ground, 'hq_door').setOrigin(0.5, 1).setFlipX(side > 0).setAlpha(0.6).setDepth(-0.5),
-    );
-    this.hq = { x: d.x, ground, panels, open: false };
-  }
-
-  setDoors(open) {
-    const hq = this.hq;
-    if (hq.open === open) return;
-    hq.open = open;
-    hq.panels.forEach((panel, i) => {
-      const x = hq.x + (i ? 1 : -1) * (open ? 15 : 5);
-      this.tweens.killTweensOf(panel);
-      this.tweens.add({ targets: panel, x, duration: Math.max(16, 26 * Math.abs(x - panel.x)), ease: 'Sine.inOut' });
-    });
-  }
-
-  // Walk in: into the doorway, the doors slide shut in front, then the player shrinks and fades
-  // into the lobby light (walking away from the camera) before the fade to the boss.
-  exit() {
-    if (this.leaving) return;
-    this.leaving = true;
-    const p = this.player;
-    const { x, ground, panels } = this.hq;
-    p.body.enable = false;
-    this.tweens.killTweensOf([p, p.laptop]); // a landing squash would fight the walk-in's scale
-    p.facing = 1;
-    p.setFlipX(false).setScale(1).setAlpha(1).play('run', true);
-    p.laptop.setFlipX(false);
-    for (const panel of panels) panel.setDepth(6.5); // over the player (5) and laptop (6)
-    this.setDoors(true);
-    this.tweens.add({ targets: p, x: x - 1, y: ground - 8, duration: 220, ease: 'Sine.out' });
-    this.tweens.add({ targets: p.laptop, x: x + 2, y: ground - 9, duration: 220, ease: 'Sine.out' });
-    this.time.delayedCall(220, () => this.setDoors(false));
-    this.tweens.add({ targets: [p, p.laptop], alpha: 0, scale: 0.8, y: ground - 11, delay: 220, duration: 480, ease: 'Sine.in' });
-    this.time.delayedCall(620, () => {
-      this.cameras.main.fadeOut(500);
-      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('BossHQ'));
-    });
-  }
-
-  usePower(name) {
-    if (!this.leaving) super.usePower(name); // a rollback mid walk-in would teleport the player
   }
 }

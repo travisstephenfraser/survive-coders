@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, uiText } from '../util.js';
 import { TOUCH, dimPad, showPad, touch } from '../touch.js';
+import PlayScene from './PlayScene.js';
 
 // Screen-space overlay. Everything sits on a 3px grid (one world pixel at 3x zoom) so the
 // bars and frames read as the same pixel art as the game.
@@ -133,7 +134,7 @@ export default class HUD extends Phaser.Scene {
   }
 
   playScene() {
-    return ['Level1', 'BossHQ'].map((k) => this.scene.get(k)).find((sc) => sc.sys.isActive() || sc.sys.isPaused());
+    return this.scene.manager.scenes.find((sc) => sc instanceof PlayScene && (sc.sys.isActive() || sc.sys.isPaused()));
   }
 
   setPaused(on) {
@@ -221,7 +222,7 @@ export default class HUD extends Phaser.Scene {
 
     // Contextual tip.
     const toast = r.get('toast');
-    const play = this.scene.get('Level1')?.sys.isActive() ? this.scene.get('Level1') : this.scene.get('BossHQ');
+    const play = this.playScene();
     const now = play?.time.now ?? 0;
     const showToast = toast && now < toast.until;
     this.toastText.setVisible(Boolean(showToast));

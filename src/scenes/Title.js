@@ -87,8 +87,9 @@ export default class Title extends Phaser.Scene {
       started = true;
       voice.resetCooldowns();
       if (this.cache.audio.exists('start')) this.sound.play('start', { volume: 0.5 });
-      this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, rollbackTaught: false, cutscene: false, toast: null });
-      this.scene.start(params.has('boss') ? 'BossHQ' : 'Level1');
+      this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, cutscene: false, toast: null });
+      // Dev shortcuts: ?park, ?boss jump straight to a level.
+      this.scene.start(params.has('park') ? 'Park' : params.has('boss') ? 'BossHQ' : 'Level1');
     };
     this.input.keyboard.once('keydown-ENTER', go);
     // Start on release of a tap that began here (a tap that left another screen can't start a

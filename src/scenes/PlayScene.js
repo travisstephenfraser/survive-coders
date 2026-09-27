@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Player from '../entities/Player.js';
 import { SPAWNERS } from '../entities/enemies.js';
 import { T } from '../sprites.js';
+import { FACADE } from '../hqArt.js';
 import { voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
@@ -10,6 +11,12 @@ import { TOUCH } from '../touch.js';
 // MAX stream: random alphanumerics, mostly white with syntax-highlight accents.
 const STREAM_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
 const STREAM_COLORS = ['#f5f5f5', '#f5f5f5', '#f5f5f5', '#d97757', '#3fb950'];
+
+// Outdoor tile sets per theme (the HQ interior has its own wall/shelf logic in buildWorld).
+const TILESETS = {
+  suburbs: { top: T.TOP, fill: T.FILL, pl: T.PLAT_L, pm: T.PLAT_M, pr: T.PLAT_R },
+  park: { top: T.PARK_TOP, fill: T.PARK_FILL, pl: T.PARK_PL, pm: T.PARK_PM, pr: T.PARK_PR },
+};
 
 // Shared plumbing for playable scenes: tilemap from ASCII, player, bolts, enemies, hazards,
 // stars, voice powers, HUD. Subclasses call buildWorld() and add their own content.
@@ -22,15 +29,18 @@ export default class PlayScene extends Phaser.Scene {
     this.outcome = null; // 'win' | 'lose', decided once per encounter
     this.cutscene = false;
     this.stopping = false;
+    this.leaving = false;
+    this.exitDoor = null;
     this.physics.world.resume(); // a shutdown mid hit-stop would otherwise leave physics paused
     const H = rows.length;
     const W = Math.max(...rows.map((r) => r.length));
     const hq = theme === 'hq';
+    const set = TILESETS[theme] ?? TILESETS.suburbs;
     // Out-of-bounds counts as solid on the sides/bottom and open above.
     const at = (x, y) => (y < 0 ? '.' : y >= H || x < 0 || x >= W ? '#' : (rows[y][x] ?? '.'));
     const groundTile = (x, y) => {
-      if (at(x, y - 1) !== '#') return hq ? T.HQ_TOP : T.TOP;
-      if (!hq) return T.FILL;
+      if (at(x, y - 1) !== '#') return hq ? T.HQ_TOP : set.top;
+      if (!hq) return set.fill;
       if (at(x + 1, y) !== '#') return T.HQ_WALL_L;
       if (at(x - 1, y) !== '#') return T.HQ_WALL_R;
       return T.HQ_FILL;
@@ -39,9 +49,9 @@ export default class PlayScene extends Phaser.Scene {
       const l = at(x - 1, y) === '=';
       const r = at(x + 1, y) === '=';
       if (hq && !l && !r) return T.HQ_BLOCK;
-      if (!l) return hq ? T.HQ_PL : T.PLAT_L;
-      if (!r) return hq ? T.HQ_PR : T.PLAT_R;
-      return hq ? T.HQ_PM : T.PLAT_M;
+      if (!l) return hq ? T.HQ_PL : set.pl;
+      if (!r) return hq ? T.HQ_PR : set.pr;
+      return hq ? T.HQ_PM : set.pm;
     };
     const data = [];
     const spawns = [];
@@ -96,7 +106,8 @@ export default class PlayScene extends Phaser.Scene {
     this.spawns = spawns;
 
     this.physics.add.collider(this.player, this.layer);
-    this.physics.add.collider(this.enemies, this.layer);
+    // Ghost enemies (follow-up emails) drift through the terrain.
+    this.physics.add.collider(this.enemies, this.layer, null, (e) => !e.ghost);
     this.physics.add.collider(this.bolts, this.layer, (b) => b.destroy());
     // Ghost hazards (the gaslight orb) pass through platforms instead of breaking on them.
     this.physics.add.collider(this.hazards, this.layer, (h) => h.destroy(), (h) => !h.ghost);
@@ -112,8 +123,10 @@ export default class PlayScene extends Phaser.Scene {
       bl.hit.add(e);
       e.hurt(6);
     });
+    // An enemy can answer contact itself (a founder's demo grab, a jogger's bump); otherwise it hurts.
     this.physics.add.overlap(this.player, this.enemies, (pl, e) => {
-      if (!e.dying && pl.hurt(1, e.x)) e.recoil(pl.x);
+      if (e.dying || e.onTouchPlayer?.(pl)) return;
+      if (pl.hurt(1, e.x)) e.recoil(pl.x);
     });
     this.physics.add.overlap(this.player, this.hazards, (pl, h) => {
       if (!h.active) return;
@@ -141,7 +154,7 @@ export default class PlayScene extends Phaser.Scene {
     cam.setBackgroundColor('#0d0d0d');
     this.lookahead = 0;
     this.markPits(data, W, H);
-    if (!hq) this.markBlocks(at, W, H);
+    if (theme === 'suburbs') this.markBlocks(at, W, H);
     applyScreenFX(cam);
 
     this.onPower = (name) => this.usePower(name);
@@ -187,7 +200,7 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   update(time) {
-    if (this.cutscene) return; // intro owns the player until it ends
+    if (this.cutscene || this.leaving) return; // an intro or the walk-in owns the player
     this.player.tick(time);
     this.teachRollback();
     // Camera lookahead: show more of what's ahead of the player (Itay Keren, "Scroll Back").
@@ -197,6 +210,95 @@ export default class PlayScene extends Phaser.Scene {
     for (const e of this.enemies.getChildren()) {
       if (e.y > this.worldH + 40 && !e.dying) e.destroy();
     }
+    this.updateExit();
+  }
+
+  // Each level after the first is a checkpoint: heal, and remember what a retry restores.
+  checkpoint() {
+    this.registry.set('hp', MAX_HP);
+    if (this.registry.get('stars') === undefined) this.registry.set('stars', 0);
+    this.registry.set('checkpointStars', this.registry.get('stars'));
+    this.registry.set('checkpointTokens', this.registry.get('maxTokens') ?? 0);
+  }
+
+  // Camera-pinned parallax layers; with a 3x zoom, (320,180) is the view's top-left.
+  buildParallax(layers) {
+    this.parallax = layers.map((l) => {
+      const ts = this.add
+        .tileSprite(320, 180 + (l.y ?? 0), 320, l.h ?? 180, l.key)
+        .setOrigin(0)
+        .setScrollFactor(0)
+        .setTint(l.tint ?? 0xffffff)
+        .setTileScale(1 / (l.res ?? 1)) // a hi-res layer's texels are 1/res of a world pixel
+        .setDepth(-10);
+      return { ...l, ts };
+    });
+  }
+
+  scrollParallax(time) {
+    const x = this.cameras.main.worldView.x;
+    // tilePosition is in texels, so a hi-res layer scrolls res texels per world pixel.
+    for (const l of this.parallax) l.ts.tilePositionX = (x * l.f + (l.drift ? time * l.drift : 0)) * (l.res ?? 1);
+  }
+
+  // A building on the map's exit (D): the facade runs past the camera's top and right edges;
+  // two glass panels slide open as the player nears, and crossing the threshold walks in.
+  buildExit(facadeKey, next) {
+    const d = this.spawns.find((s) => s.ch === 'D');
+    const ground = d.y + TILE / 2;
+    this.add.image(d.x - FACADE.door, ground, facadeKey).setOrigin(0, 1).setDepth(-1);
+    // Behind everyone on the pavement; the walk-in brings them in front.
+    const panels = [-1, 1].map((side) =>
+      this.add.image(d.x + side * 5, ground, 'hq_door').setOrigin(0.5, 1).setFlipX(side > 0).setAlpha(0.6).setDepth(-0.5),
+    );
+    this.exitDoor = { x: d.x, ground, panels, open: false, next };
+    return this.exitDoor;
+  }
+
+  updateExit() {
+    const door = this.exitDoor;
+    const p = this.player;
+    if (!door || this.leaving) return;
+    // The doors open within 40px. The exit is crossing the threshold at any height, so
+    // hopping over it still counts.
+    this.setDoors(!p.dead && Math.abs(p.x - door.x) < 40);
+    if (!p.dead && p.x >= door.x - 4) this.exit();
+  }
+
+  setDoors(open) {
+    const door = this.exitDoor;
+    if (door.open === open) return;
+    door.open = open;
+    door.panels.forEach((panel, i) => {
+      const x = door.x + (i ? 1 : -1) * (open ? 15 : 5);
+      this.tweens.killTweensOf(panel);
+      this.tweens.add({ targets: panel, x, duration: Math.max(16, 26 * Math.abs(x - panel.x)), ease: 'Sine.inOut' });
+    });
+  }
+
+  // Walk in: into the doorway, the doors slide shut in front, then the player shrinks and fades
+  // into the lobby light (walking away from the camera) before the fade to the next scene.
+  exit() {
+    if (this.leaving) return;
+    this.leaving = true;
+    const p = this.player;
+    const { x, ground, panels, next } = this.exitDoor;
+    p.release?.();
+    p.body.enable = false;
+    this.tweens.killTweensOf([p, p.laptop]); // a landing squash would fight the walk-in's scale
+    p.facing = 1;
+    p.setFlipX(false).setScale(1).setAlpha(1).play('run', true);
+    p.laptop.setFlipX(false);
+    for (const panel of panels) panel.setDepth(6.5); // over the player (5) and laptop (6)
+    this.setDoors(true);
+    this.tweens.add({ targets: p, x: x - 1, y: ground - 8, duration: 220, ease: 'Sine.out' });
+    this.tweens.add({ targets: p.laptop, x: x + 2, y: ground - 9, duration: 220, ease: 'Sine.out' });
+    this.time.delayedCall(220, () => this.setDoors(false));
+    this.tweens.add({ targets: [p, p.laptop], alpha: 0, scale: 0.8, y: ground - 11, delay: 220, duration: 480, ease: 'Sine.in' });
+    this.time.delayedCall(620, () => {
+      this.cameras.main.fadeOut(500);
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(next));
+    });
   }
 
   // Pits read as hazards: a red "404" glow at the bottom of every gap in the ground.
@@ -372,7 +474,7 @@ export default class PlayScene extends Phaser.Scene {
 
   usePower(name) {
     const pl = this.player;
-    if (pl.dead) return;
+    if (pl.dead || this.leaving) return; // a rollback mid walk-in would teleport the player
     if (name === 'ship') {
       this.shout('ship it');
       this.sfx('ship', 0.6);

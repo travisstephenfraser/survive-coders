@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import Hydra from '../entities/Hydra.js';
-import { MAX_HP, floatText, worldText } from '../util.js';
+import { floatText, worldText } from '../util.js';
 
 const ARENA = [
   '#..................#',
@@ -26,10 +26,7 @@ export default class BossHQ extends PlayScene {
   create() {
     this.leaving = false;
     this.registry.set('level', '~/anthropic-hq');
-    this.registry.set('hp', MAX_HP); // checkpoint heal before the boss
-    if (this.registry.get('stars') === undefined) this.registry.set('stars', 0);
-    this.registry.set('checkpointStars', this.registry.get('stars')); // retry restores this
-    this.registry.set('checkpointTokens', this.registry.get('maxTokens') ?? 0); // and the MAX carried in
+    this.checkpoint(); // heal before the boss; a retry restores the stars and MAX carried in
 
     this.buildWorld(ARENA, 'hq');
     this.decorate();

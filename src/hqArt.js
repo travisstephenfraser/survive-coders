@@ -3,18 +3,18 @@
 // of Level 1, and the Powell St cable car.
 // Everything is integer fillRects so it stays crisp under pixelArt scaling.
 
-function rng(seed) {
+export function rng(seed) {
   let s = seed;
   return () => (s = (s * 9301 + 49297) % 233280) / 233280;
 }
 
-function rect(ctx, x, y, w, h, color) {
+export function rect(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
 // Bresenham so thin structures (legs, poles) are exactly one pixel.
-function line(ctx, x0, y0, x1, y1, color) {
+export function line(ctx, x0, y0, x1, y1, color) {
   ctx.fillStyle = color;
   x0 = Math.round(x0);
   y0 = Math.round(y0);
@@ -41,7 +41,7 @@ function line(ctx, x0, y0, x1, y1, color) {
 }
 
 // Scanline fills: no canvas paths, so no antialiased edges.
-function fillEllipse(ctx, cx, cy, rx, ry, color) {
+export function fillEllipse(ctx, cx, cy, rx, ry, color) {
   ctx.fillStyle = color;
   for (let dy = -ry; dy <= ry; dy++) {
     const half = ry === 0 ? rx : Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
@@ -49,7 +49,7 @@ function fillEllipse(ctx, cx, cy, rx, ry, color) {
   }
 }
 
-function fillPoly(ctx, pts, color) {
+export function fillPoly(ctx, pts, color) {
   ctx.fillStyle = color;
   const ys = pts.map((p) => p[1]);
   const minY = Math.floor(Math.min(...ys));
@@ -83,7 +83,7 @@ function paint(ctx, rows, ox, oy, pal) {
 
 const toRgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const toHex = (c) => `#${c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
-const mix = (a, b, t) => {
+export const mix = (a, b, t) => {
   const A = toRgb(a);
   const B = toRgb(b);
   return toHex(A.map((v, i) => v + (B[i] - v) * t));
@@ -112,7 +112,7 @@ function light(ctx, x0, y0, x1, y1, color, fn) {
 }
 
 // Canvas-drawn alpha is binary after this, matching backdrops.js.
-function hardenAlpha(ctx, w, h) {
+export function hardenAlpha(ctx, w, h) {
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
   for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 110 ? 255 : 0;

@@ -406,6 +406,33 @@ function drawNear(ctx, w) {
   }
 }
 
+// Salesforce Park's near plane: low SoMa blocks behind the park's trees and lamps.
+function drawPark(ctx, w) {
+  const r = rng(23);
+  const base = 150;
+  for (let x = 0; x < w; ) {
+    const bw = 20 + Math.floor(r() * 26);
+    const bh = 30 + Math.floor(r() * 40);
+    rect(ctx, x, base - bh, bw, bh, r() < 0.5 ? '#17141c' : '#1a1720');
+    windows(ctx, x, base - bh, bw, bh, r, 0.22);
+    x += bw + 2;
+  }
+  const CANOPY = ['#1d2b22', '#23352a', '#2f4636'];
+  for (let x = 10; x < w; x += 26 + Math.floor(r() * 18)) {
+    const trunkH = 14 + Math.floor(r() * 8);
+    rect(ctx, x - 1, base - trunkH, 3, trunkH, '#2a211c');
+    const cy = base - trunkH - 6;
+    ellipse(ctx, x, cy, 13 + r() * 5, 10 + r() * 4, CANOPY[0]);
+    ellipse(ctx, x - 3, cy - 3, 8 + r() * 3, 6 + r() * 2, CANOPY[1]);
+    ellipse(ctx, x - 5, cy - 5, 4, 3, CANOPY[2]);
+  }
+  for (let x = 60; x < w; x += 150) {
+    line(ctx, x, base, x, 118, '#34343c');
+    rect(ctx, x - 2, 116, 5, 2, '#34343c');
+    rect(ctx, x - 1, 118, 3, 2, '#f5d0a0');
+  }
+}
+
 export function buildBackdrops(scene) {
   canvasTex(scene, 'bg_sky', 320, 180, drawSky, false);
   canvasTex(scene, 'bg_far', 600, 180, drawFar);
@@ -414,6 +441,7 @@ export function buildBackdrops(scene) {
   canvasTex(scene, 'bg_mid', 900, 180, (ctx, w) => drawMid(ctx, w, signs));
   canvasTex(scene, 'bg_signs', 900 * SIGN_RES, 180 * SIGN_RES, (ctx) => drawSignText(ctx, signs));
   canvasTex(scene, 'bg_near', 900, 180, drawNear);
+  canvasTex(scene, 'bg_park', 900, 180, drawPark);
 }
 
 // Parallax factor per layer; Level1 adds these as camera-pinned TileSprites.
@@ -428,6 +456,9 @@ export const LAYERS = [
   { key: 'bg_signs', f: 0.3, tint: 0xb8b0c0, res: SIGN_RES },
   { key: 'bg_near', f: 0.55, tint: 0xc8c4d0 },
 ];
+
+// Salesforce Park: the same sky and skyline, with the park's trees as the near plane.
+export const PARK_LAYERS = [...LAYERS.filter((l) => l.key !== 'bg_near'), { key: 'bg_park', f: 0.55, tint: 0xc8c4d0 }];
 
 // Cable cars running along the Painted Ladies street (near layer plane).
 export const TROLLEYS = [

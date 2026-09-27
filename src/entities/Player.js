@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import Laptop from './Laptop.js';
 import { MAX_HP, worldText } from '../util.js';
 import { pop } from '../fx.js';
-import { touch } from '../touch.js';
+import { TOUCH, touch } from '../touch.js';
 
 const SPEED = 95;
 const FIRE_MS = 170;
@@ -22,6 +22,8 @@ const FALL_G = RISE_G * 1.6; // SMB falls ~3.5x; 1.6x keeps it readable at 3x zo
 const MAX_FALL = 280;
 const SNAP_MS = 100;
 const SNAPS = 30; // ~3s of rollback history
+const TRAP_MS = 2600; // a founder's demo runs this long before it crashes on its own
+const TRAP_MASHES = 7; // or mash your way out sooner
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -37,6 +39,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.reversedUntil = 0;
     // Reversed controls show on the player, not in the HUD: the gaslight head's <-> as a chip.
     this.reversedChip = worldText(scene, x, y, '<->', { color: '#7a4fbf', bg: '#f5f5f5', size: 6, depth: 47 }).setVisible(false);
+    // Caught in a founder's demo: the way out, shown on the player like the reversed chip.
+    this.trapChip = worldText(scene, x, y, TOUCH ? 'MASH!' : 'MASH ↑', { color: '#0d0d0d', bg: '#e3b341', size: 6, depth: 47 }).setVisible(false);
+    this.trapped = null;
+    this.launchedUntil = 0;
+    this.touchFireWas = false;
     this.coyoteUntil = 0;
     this.jumpBufferedUntil = 0;
     this.wasOnFloor = true;
@@ -73,6 +80,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   tick(time) {
     if (this.dead) return;
     const k = this.keys;
+    if (this.trapped) {
+      this.tickTrapped(time);
+      return;
+    }
     let dir = (k.right.isDown || k.d.isDown || touch.right ? 1 : 0) - (k.left.isDown || k.a.isDown || touch.left ? 1 : 0);
     const reversed = time < this.reversedUntil;
     if (reversed) dir = -dir;
@@ -99,7 +110,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.scene.sfx?.('jump', 0.4);
     }
     const vy = this.body.velocity.y;
-    if (!jumpHeld && vy < -120) this.setVelocityY(-120); // short hop on release
+    // Short hop on release (not while a fountain is launching you).
+    if (!jumpHeld && vy < -120 && time > this.launchedUntil) this.setVelocityY(-120);
     const apex = !onFloor && jumpHeld && Math.abs(vy) < APEX_VY;
     const g = onFloor ? WORLD_G : apex ? RISE_G / 2 : vy > 0 ? FALL_G : RISE_G;
     this.body.setGravityY(g - WORLD_G);
@@ -155,6 +167,62 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.laptop.follow(time);
   }
 
+  // A founder's demo: frozen in place until the demo crashes or you mash your way out.
+  trap(by) {
+    this.trapped = { by, until: this.scene.time.now + TRAP_MS, n: 0 };
+    this.touchFireWas = touch.fire; // a fire button already held doesn't count as a mash
+    this.setVelocity(0, this.body.velocity.y);
+    this.stop();
+    this.setTexture('player_idle');
+    this.trapChip.setVisible(true);
+  }
+
+  tickTrapped(time) {
+    const k = this.keys;
+    const t = this.trapped;
+    const JD = Phaser.Input.Keyboard.JustDown;
+    const touchFire = touch.fire && !this.touchFireWas;
+    this.touchFireWas = touch.fire;
+    const presses = [k.jump, k.jump2, k.jump3, k.fire, k.fire2, k.fire3].filter((key) => JD(key)).length + (touch.takeJump() ? 1 : 0) + (touchFire ? 1 : 0);
+    if (presses) {
+      t.n += presses;
+      this.pose(1.15, 0.9, 80);
+    }
+    this.setVelocityX(0);
+    this.trapChip.setPosition(this.x, this.y - 16).setVisible(Math.floor(time / 150) % 2 === 0);
+    if (t.n >= TRAP_MASHES || time > t.until) this.release(t.n >= TRAP_MASHES);
+    this.setAlpha(time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.35 : 1);
+    this.laptop.follow(time);
+  }
+
+  release(escaped = false) {
+    const t = this.trapped;
+    if (!t) return;
+    this.trapped = null;
+    this.trapChip.setVisible(false);
+    this.invulnUntil = Math.max(this.invulnUntil, this.scene.time.now + 700);
+    t.by.endDemo?.(escaped);
+  }
+
+  // Shoved aside without damage (a jogger lapping you).
+  bump(fromX) {
+    if (!this.targetable) return;
+    this.release();
+    this.knockUntil = this.scene.time.now + 260;
+    this.setVelocity((this.x < fromX ? -1 : 1) * 170, -130);
+    this.pose(0.85, 1.15);
+  }
+
+  // Thrown upward by something other than a jump (a fountain jet).
+  launch(vy) {
+    if (this.dead || this.body.velocity.y < vy) return;
+    this.release();
+    this.setVelocityY(vy);
+    this.launchedUntil = this.scene.time.now + 700;
+    this.coyoteUntil = 0;
+    this.pose(0.8, 1.3);
+  }
+
   get god() {
     return Boolean(this.scene.registry.get('god'));
   }
@@ -167,6 +235,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   hurt(dmg, fromX, force = false) {
     const t = this.scene.time.now;
     if (!this.targetable || this.god || (!force && t < this.invulnUntil)) return false;
+    this.release();
     this.hp -= dmg;
     this.invulnUntil = t + 1000;
     this.knockUntil = t + 220;
@@ -177,6 +246,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.hp <= 0) {
       this.dead = true;
       this.reversedChip.setVisible(false);
+      this.trapChip.setVisible(false);
       this.setTint(0xe5534b);
       this.scene.onPlayerDead();
     }
@@ -198,6 +268,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   rollback() {
     const snap = this.history[0];
     if (!snap) return;
+    this.release();
     const ghost = this.scene.add.image(this.x, this.y, this.texture.key).setFlipX(this.flipX).setAlpha(0.6).setTint(0xd97757);
     this.scene.tweens.add({ targets: ghost, alpha: 0, duration: 500, onComplete: () => ghost.destroy() });
     this.setPosition(snap.x, snap.y);

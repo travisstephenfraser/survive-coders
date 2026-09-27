@@ -17,6 +17,15 @@ export const PIX = {
   p: '#7a4fbf', // dark purple
   B: '#58a6ff', // blue
   O: '#f59a70', // player hoodie: a brighter Claude orange so the hero pops off orange-lit streets
+  // Salesforce Park crowd.
+  Q: '#cfc6b4', // founder's oatmeal quarter-zip
+  q: '#9d9482', // quarter-zip shade
+  k: '#a8905e', // khaki chinos
+  V: '#2f4368', // fleece vest navy
+  v: '#1f2c47', // vest shade
+  L: '#a8c8e8', // oxford-blue shirt
+  Z: '#d9b25c', // blond swoop
+  c: '#6b4226', // coffee
 };
 
 export const hex = (s) => parseInt(s.slice(1), 16);

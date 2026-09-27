@@ -89,11 +89,24 @@ car's roof across and collect the star trail.
 
 ![Riding the cable car](docs/screenshots/07-cable-car-ride.png)
 
-**8. Anthropic HQ.** The level ends at a glass tower that runs out of frame, offices lit late and
-a lobby glowing behind white pillars. Its sliding doors part as you reach them and close behind
-you as you walk in.
+**8. The Transit Center.** The level ends at the Salesforce Transit Center: its undulating
+perforated skin, the park's trees over the roof, and the gondola track climbing the side. Its
+sliding doors part as you reach them and close behind you as you walk in.
 
-![Anthropic HQ at the end of Level 1, its sliding doors opening](docs/screenshots/08-hq-entrance.png)
+![The Transit Center at the end of Level 1, the gondola up to the park on its side](docs/screenshots/08-transit-center.png)
+
+**Salesforce Park.** The gondola carries you up with a founder who has 90 seconds and a pitch.
+The park teaches one new threat at a time. Founders throw pitch-deck slides and grab you for a
+"quick demo" that you mash out of, and they leave follow-up emails behind. Vested bros are
+untouchable until their 1-year cliff ticks over their heads. Zone 2 joggers shove you aside.
+The bus fountains launch you over a wall. Then the amphitheater locks you in for demo day, with
+judges scoring each founder you take out, until you get into YC (Your Coffee). The Salesforce
+Tower's lobby waits at the end. Its three floors aren't built yet, so for now the lobby leads
+straight to the Hydra.
+
+![A founder's demo grab: "quick demo? 30 sec!", mash to get out](docs/screenshots/08a-park-founder-demo.png)
+
+![Demo day in the amphitheater, a judge holding up "pass"](docs/screenshots/08b-park-demo-day.png)
 
 **9. The Context Rot Hydra.** Inside, the office goes quiet, the terminal types
 `make one small change`, the heads answer, and the boss card lands. The body is a heap of H100s
@@ -185,8 +198,8 @@ Touch controls appear on devices whose main pointer is a finger. A thumb on the 
 On Android the tap that starts a run goes fullscreen; iPhone Safari cannot make a page
 fullscreen, but *Add to Home Screen* runs the game fullscreen from its web manifest.
 
-Four URL flags help when testing: `?boss` starts at the boss after you press Enter on the title
-screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
+Five URL flags help when testing: `?park` and `?boss` start at Salesforce Park or the boss after
+you press Enter on the title screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
 the touch controls on a desktop (they work with a mouse).
 
 ---
@@ -214,13 +227,13 @@ the touch controls on a desktop (they work with a mouse).
 ┌─ Browser ───────────────────────────────────────────────────────────────┐
 │  index.html → src/main.js   Phaser.Game 960x540, WebGL, CRT pipeline    │
 │                                                                         │
-│  Scenes: Boot → Title → Level1 ──────────→ BossHQ ──────→ End           │
+│  Scenes: Boot → Title → Level1 ──→ Park ──→ BossHQ ──────→ End          │
 │                          │ Cine overlay     │ Hydra                     │
-│                          │ (intro)          │                           │
-│                 HUD runs in parallel with both play scenes              │
+│                          │ (intros)         │                           │
+│                 HUD runs in parallel with every play scene              │
 │                                                                         │
 │  Art: drawn to canvas textures at boot (sprites.js, backdrops.js,       │
-│       hqArt.js) + public/assets (2 sprite sheets, font, audio)          │
+│       hqArt.js, parkArt.js) + public/assets (sheets, font, audio)       │
 │  Storage: one localStorage key (a demo setting)                         │
 │                                                                         │
 │  src/touch.js ── DOM buttons over the canvas ──→ Player.tick, HUD taps  │
@@ -344,9 +357,10 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   audio never leaves the machine.
 - **No automated tests.** The checks above are scripted browser runs. Next: unit tests for
   the command parsing in `src/voice.js` and a headless smoke test (title, level, boss, win) in CI.
-- **One level and one boss.** Next: more neighborhoods, one set piece at a time, and the two
-  unused enemies from the original monster sheet (a Pixel Nudger that moves platforms and a
-  Breach Wraith that leaks keys).
+- **Two levels and one boss.** Next: the three Salesforce Tower floors (CRM agents that lock
+  you into contracts, chatbot popups) and a free-fall where you type `build me a parachute`,
+  then more neighborhoods and the two unused enemies from the original monster sheet (a Pixel
+  Nudger that moves platforms and a Breach Wraith that leaks keys).
 - **No reduced-effects option.** The CRT effect, camera flashes, and screen shake cannot be
   turned off, which matters for photosensitive players and projectors. Next: a toggle on
   the title screen.

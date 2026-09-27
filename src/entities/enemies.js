@@ -49,7 +49,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.dying = true;
     this.scene.hitStop?.(45);
     this.scene.sfx?.('kill', 0.35);
-    this.scene.addStars(this.reward, this.x, this.y - 10);
+    if (this.reward) this.scene.addStars(this.reward, this.x, this.y - 10);
     this.scene.burst(this.x, this.y, 'px_orange');
     this.onDie?.();
     this.destroy();
@@ -235,4 +235,253 @@ export class FlamingSkull extends Enemy {
   }
 }
 
-export const SPAWNERS = { B: BadPromptBlob, G: KeyboardGoblin, H: H100 };
+// ---- Salesforce Park ----
+
+const PITCHES = [
+  ['TAM: $40T'],
+  ['Uber for dogs'],
+  ['AI-native!'],
+  ['hockey stick!', true],
+  ["it's Notion for Notion"],
+  ['pre-revenue, post-vibes'],
+];
+const FOLLOW_UPS = ['just circling back', 'bumping this', 'any thoughts?', 'per my last email'];
+
+// Founder: closes in for a demo, pitch deck at range. Contact is a demo grab (mash to escape,
+// or wait for it to crash) instead of damage; on death, follow-up emails home in on you.
+export class Founder extends Enemy {
+  constructor(scene, x, y) {
+    super(scene, x, y, 'founder0', 3, 4);
+    this.body.setSize(10, 15).setOffset(3, 1);
+    this.play('founder_walk');
+    this.nextPitch = scene.time.now + Phaser.Math.Between(600, 1400);
+    this.nextGrab = 0;
+    this.demo = null; // the "quick demo?" bubble while the player is caught
+  }
+
+  update(time) {
+    if (this.dying || this.demo || this.stunned) return;
+    const p = this.scene.player;
+    const dx = p.x - this.x;
+    const sees = Math.abs(dx) < 150 && Math.abs(p.y - this.y) < 32 && !p.dead;
+    if (!sees) {
+      this.patrol(26);
+      return;
+    }
+    this.dir = Math.sign(dx) || 1;
+    this.setFlipX(this.dir < 0);
+    const tooFar = Math.abs(this.x + this.dir * 2 - this.homeX) > 120; // chase leash
+    if (this.body.blocked.down) this.setVelocityX(Math.abs(dx) > 10 && this.groundAhead() && !tooFar ? this.dir * 38 : 0);
+    if (Math.abs(dx) > 44 && time > this.nextPitch) {
+      this.nextPitch = time + 2300;
+      this.pitch();
+    }
+  }
+
+  pitch() {
+    const [line, hockey] = Phaser.Utils.Array.GetRandom(PITCHES);
+    const s = this.scene;
+    floatText(s, this.x, this.y - 16, line, '#e3b341');
+    const h = s.spawnHazard(this.x + this.dir * 8, this.y - 3, hockey ? 'slide_up' : 'slide', this.dir * 105, 0);
+    h.setFlipX(this.dir < 0);
+    if (hockey) s.time.delayedCall(380, () => h.active && h.setVelocityY(-130)); // flat, then up and to the right
+  }
+
+  onTouchPlayer(pl) {
+    if (this.demo) return true; // holding you for the demo: no damage on top
+    const now = this.scene.time.now;
+    if (this.stunned || pl.trapped || now < this.nextGrab || now < pl.invulnUntil || !pl.targetable) return false;
+    this.nextGrab = now + 4500;
+    this.demo = worldText(this.scene, this.x, this.y - 30, 'quick demo? 30 sec!', { color: '#0d0d0d', bg: '#f5f5f5', depth: 46 });
+    this.setVelocityX(0);
+    this.stop();
+    this.setTexture('founder_grab').setFlipX(pl.x < this.x);
+    pl.trap(this);
+    return true;
+  }
+
+  // The player got out: mashed free, or the demo crashed on its own.
+  endDemo(escaped) {
+    if (!this.demo) return;
+    this.demo.destroy();
+    this.demo = null;
+    if (!this.active || this.dying) return;
+    floatText(this.scene, this.x, this.y - 18, escaped ? "wait, it's AI-native!" : 'it worked 5 min ago', '#e5534b');
+    // Step back to reboot the demo, so the freed player isn't hit on the spot.
+    const away = this.x < this.scene.player.x ? -1 : 1;
+    this.setVelocity(away * 90, -90);
+    this.stunUntil = this.scene.time.now + 1100;
+    this.play('founder_walk');
+  }
+
+  onDie() {
+    const s = this.scene;
+    if (this.demo) s.player.release();
+    if (this.refactored) return; // refactor clears the inbox too
+    const { x, y } = this;
+    floatText(s, x, y - 18, "I'll circle back!", '#f5f5f5');
+    s.time.delayedCall(300, () => {
+      for (const d of [-1, 1]) new FollowUp(s, x + d * 6, y - 6, d);
+    });
+  }
+}
+
+// A founder's follow-up email: drifts through walls, homing slowly, then gives up.
+export class FollowUp extends Enemy {
+  constructor(scene, x, y, dir = 1) {
+    super(scene, x, y, 'email', 1, 0);
+    this.body.setAllowGravity(false);
+    this.body.setSize(10, 7);
+    this.ghost = true;
+    this.noFlip = true;
+    this.born = scene.time.now;
+    this.setVelocity(dir * 30, -40);
+    floatText(scene, x, y - (dir > 0 ? 16 : 8), Phaser.Utils.Array.GetRandom(FOLLOW_UPS), '#8b8b8b');
+  }
+
+  update(time) {
+    if (this.dying) return;
+    if (time - this.born > 4200) {
+      this.dying = true;
+      this.scene.tweens.add({ targets: this, alpha: 0, duration: 300, onComplete: () => this.destroy() });
+      return;
+    }
+    const p = this.scene.player;
+    const a = Phaser.Math.Angle.Between(this.x, this.y, p.x, p.y);
+    const SPEED = 36;
+    this.setVelocity(
+      Phaser.Math.Linear(this.body.velocity.x, Math.cos(a) * SPEED, 0.04),
+      Phaser.Math.Linear(this.body.velocity.y, Math.sin(a) * SPEED, 0.04),
+    );
+  }
+
+  onTouchPlayer(pl) {
+    pl.hurt(1, this.x);
+    this.dying = true;
+    this.scene.burst(this.x, this.y, 'px_white', 4);
+    this.destroy();
+    return true;
+  }
+}
+
+const BRO_LINES = ['we should grab coffee', "I'd pivot to agents", 'have you tried Rust?', "I'm technically retired"];
+const MONTH_MS = 220; // a vesting "month" while he can see you
+
+// Vested bro: lobs $9 pour-overs. Untouchable until his 1-year cliff (12 months tick up over
+// his head while he watches you); refactor triggers acceleration instead of clearing him.
+export class VestedBro extends Enemy {
+  constructor(scene, x, y) {
+    super(scene, x, y, 'bro0', 3, 5);
+    this.body.setSize(10, 15).setOffset(3, 1);
+    this.play('bro_walk');
+    this.months = 0;
+    this.nextMonth = 0;
+    this.nextClink = 0;
+    this.refactorable = false;
+    this.nextThrow = scene.time.now + Phaser.Math.Between(900, 1600);
+    this.counter = worldText(scene, x, y - 14, '0/12mo', { color: '#8b8b8b', depth: 46 }).setVisible(false);
+    this.once('destroy', () => this.counter.destroy());
+  }
+
+  get vested() {
+    return this.months >= 12;
+  }
+
+  preUpdate(time, delta) {
+    super.preUpdate(time, delta);
+    this.counter.setPosition(this.x, this.y - 14);
+  }
+
+  update(time) {
+    if (this.dying || this.stunned) return;
+    const p = this.scene.player;
+    const dx = p.x - this.x;
+    const sees = Math.abs(dx) < 150 && Math.abs(p.y - this.y) < 40 && !p.dead;
+    if (sees && !this.vested) {
+      if (!this.counter.visible) {
+        this.counter.setVisible(true);
+        this.nextMonth = time + MONTH_MS;
+      }
+      if (time > this.nextMonth) {
+        this.months++;
+        this.nextMonth = time + MONTH_MS;
+        this.counter.setText(`${this.months}/12mo`);
+        if (this.vested) this.vest();
+      }
+    }
+    if (!sees) {
+      this.patrol(20);
+      return;
+    }
+    this.dir = Math.sign(dx) || 1;
+    this.setFlipX(this.dir < 0);
+    if (this.body.blocked.down) this.setVelocityX(0);
+    if (time > this.nextThrow) {
+      this.nextThrow = time + 2400;
+      const s = this.scene;
+      s.spawnHazard(this.x + this.dir * 6, this.y - 8, 'coffee', this.dir * 85, -170, true, (pl) => floatText(s, pl.x, pl.y - 16, '$9 pour-over', '#a8905e'));
+    }
+  }
+
+  vest(note = 'VESTED') {
+    this.months = 12;
+    this.counter.setVisible(false);
+    this.refactorable = true;
+    floatText(this.scene, this.x, this.y - 18, note, '#3fb950');
+    this.scene.burst(this.x, this.y - 4, 'px_green', 8);
+  }
+
+  hurt(dmg) {
+    if (this.vested) {
+      super.hurt(dmg);
+      return;
+    }
+    // Before the cliff, hits bounce off.
+    const now = this.scene.time.now;
+    this.scene.burst(this.x, this.y - 2, 'px_white', 2);
+    if (now > this.nextClink) {
+      this.nextClink = now + 600;
+      floatText(this.scene, this.x, this.y - 18, 'unvested', '#8b8b8b');
+    }
+  }
+
+  onRefactor() {
+    if (!this.vested) this.vest('acceleration clause!');
+  }
+
+  onDie() {
+    floatText(this.scene, this.x, this.y - 18, Phaser.Utils.Array.GetRandom(BRO_LINES), '#a8c8e8');
+  }
+}
+
+// Zone 2 jogger: laps a long stretch of path at speed. Contact shoves you aside, no damage.
+export class Jogger extends Enemy {
+  constructor(scene, x, y) {
+    super(scene, x, y, 'jogger0', 1, 2);
+    this.body.setSize(10, 15).setOffset(3, 1);
+    this.play('jog');
+    this.leash = 150;
+    this.nextBump = 0;
+  }
+
+  update() {
+    if (this.dying || this.stunned) return;
+    this.patrol(105);
+  }
+
+  onTouchPlayer(pl) {
+    const now = this.scene.time.now;
+    if (now > this.nextBump && pl.targetable) {
+      this.nextBump = now + 900;
+      pl.bump(this.x);
+      floatText(this.scene, this.x, this.y - 16, 'on your left!', '#f5f5f5');
+    }
+    return true;
+  }
+
+  onDie() {
+    floatText(this.scene, this.x, this.y - 18, 'my Oura score!', '#f5f5f5');
+  }
+}
+
+export const SPAWNERS = { B: BadPromptBlob, G: KeyboardGoblin, H: H100, F: Founder, V: VestedBro, J: Jogger };

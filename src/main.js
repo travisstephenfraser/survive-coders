@@ -3,6 +3,7 @@ import { inject } from '@vercel/analytics';
 import Boot from './scenes/Boot.js';
 import Title from './scenes/Title.js';
 import Level1 from './scenes/Level1.js';
+import Park from './scenes/Park.js';
 import BossHQ from './scenes/BossHQ.js';
 import HUD from './scenes/HUD.js';
 import End from './scenes/End.js';
@@ -26,7 +27,7 @@ window.game = new Phaser.Game({
   input: { activePointers: 3 }, // canvas taps (powers, talk, pause) alongside other fingers
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   pipeline: { CRTPipeline },
-  scene: [Boot, Title, Level1, BossHQ, HUD, Cine, End],
+  scene: [Boot, Title, Level1, Park, BossHQ, HUD, Cine, End],
 });
 
 // Keep the canvas fitted after a phone turns. Phaser's orientation listener refits using the

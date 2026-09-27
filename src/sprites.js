@@ -25,6 +25,53 @@ const player = {
   jump: ['....NNNNNN......', '...NN...NN......', '...hh....NN.....', '.........hhh....'],
 };
 
+const founder = {
+  head: [
+    '................',
+    '.....DDDDD......',
+    '....DDDDDDD.....',
+    '....DSSSSSS.....',
+    '....SSKSSKS.....',
+    '....SSSSSSS.....',
+    '.....SSSSS......',
+    '....QQQWQQQ.....',
+    '...QQQQWQQQQ....',
+    '..SqQQQWQQQqS...',
+    '..SqQQQQQQQqS...',
+    '...qQQQQQQQq....',
+  ],
+  walk0: ['....kkkkkkk.....', '....kk...kk.....', '....kk...kk.....', '...WWW...WWW....'],
+  walk1: ['....kkkkkkk.....', '.....kk.kk......', '.....kk.kk......', '....WWW.WWW.....'],
+  grab: [
+    '...qQQQWQQQSSSS.',
+    '...qQQQQQQQSSSS.',
+    '...qQQQQQQQq....',
+    '....kkkkkkk.....',
+    '....kk...kk.....',
+    '...kk.....kk....',
+    '..WWW.....WWW...',
+  ],
+};
+
+const bro = {
+  head: [
+    '................',
+    '....ZZZZZZ......',
+    '...ZZZZZZZZZ....',
+    '....SSSSSSZZ....',
+    '...WSKSSKSW.....',
+    '....SSSSSS......',
+    '.....SSSS.......',
+    '....LVVLVVL.....',
+    '...LVVVLVVVL.WW.',
+    '..SLVVVLVVVLSkk.',
+    '..SLVVVLVVVL.kk.',
+    '...LVVVVVVVL.cc.',
+  ],
+  walk0: ['....NNNNNNN.....', '....NN...NN.....', '....NN...NN.....', '...WWW...WWW....'],
+  walk1: ['....NNNNNNN.....', '.....NN.NN......', '.....NN.NN......', '....WWW.WWW.....'],
+};
+
 const DEFS = {
   player_idle: { rows: [...player.head, ...player.idle], swap: { H: 'O' } },
   player_run0: { rows: [...player.head, ...player.run0], swap: { H: 'O' } },
@@ -206,6 +253,98 @@ const DEFS = {
     ],
   },
 
+  // ---- Salesforce Park ----
+  // Founder: oatmeal quarter-zip, khakis, white sneakers. grab = both arms out for the demo.
+  founder0: { rows: [...founder.head, ...founder.walk0] },
+  founder1: { rows: [...founder.head, ...founder.walk1] },
+  founder_grab: { rows: [...founder.head.slice(0, 9), ...founder.grab] },
+  // Vested bro: blond swoop, AirPods, fleece vest over an oxford shirt, a $9 pour-over.
+  bro0: { rows: [...bro.head, ...bro.walk0] },
+  bro1: { rows: [...bro.head, ...bro.walk1] },
+  // Zone 2 jogger: sweatband, running vest, short shorts, neon shoes.
+  jogger0: {
+    rows: [
+      '................',
+      '.....DDDDD......',
+      '....RRRRRRR.....',
+      '....DSSSSSS.....',
+      '....SSKSSKS.....',
+      '....SSSSSSS.....',
+      '.....SSSSS......',
+      '....VVLLLVV.....',
+      '...SVVLLLVVS....',
+      '..S.VVLLLVV.S...',
+      '....VVVVVVV.....',
+      '....ggggggg.....',
+      '...SS....SS.....',
+      '..SS......SS....',
+      '.SS........SS...',
+      'BB..........BB..',
+    ],
+  },
+  jogger1: {
+    rows: [
+      '................',
+      '.....DDDDD......',
+      '....RRRRRRR.....',
+      '....DSSSSSS.....',
+      '....SSKSSKS.....',
+      '....SSSSSSS.....',
+      '.....SSSSS......',
+      '....VVLLLVV.....',
+      '...SVVLLLVVS....',
+      '...SVVLLLVVS....',
+      '....VVVVVVV.....',
+      '....ggggggg.....',
+      '.....SS.SS......',
+      '.....SS.SS......',
+      '.....SS..SS.....',
+      '....BB....BB....',
+    ],
+  },
+  // Demo-day judge, seated behind the table (only head and shoulders show).
+  judge: {
+    rows: [
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '.....GGGGG......',
+      '....GGGGGGG.....',
+      '....GSSSSSG.....',
+      '....SSKSSKS.....',
+      '....SSSSSSS.....',
+      '.....SSSSS......',
+      '....NNNWNNN.....',
+      '...NNNNWNNNN....',
+      '..NNNNNWNNNNN...',
+      '..NNNNNNNNNNN...',
+    ],
+  },
+  // Pitch-deck slide (bar chart) and the hockey-stick slide.
+  slide: {
+    w: 10,
+    h: 8,
+    rows: ['GGGGGGGGGG', 'GWWWWWWWWG', 'GWWWWWWHWG', 'GWWWWWHHWG', 'GWWHWHHHWG', 'GWHHHHHHWG', 'GWWWWWWWWG', 'GGGGGGGGGG'],
+  },
+  slide_up: {
+    w: 10,
+    h: 8,
+    rows: ['GGGGGGGGGG', 'GWWWWWWWEG', 'GWWWWWWEWG', 'GWWWWWWEWG', 'GWWWWWEWWG', 'GWEEEEWWWG', 'GWWWWWWWWG', 'GGGGGGGGGG'],
+  },
+  coffee: {
+    w: 6,
+    h: 8,
+    rows: ['.WWWW.', 'WWWWWW', '.cccc.', '.kkkk.', '.kkkk.', '.cccc.', '.cccc.', '......'],
+  },
+  email: {
+    w: 10,
+    h: 7,
+    rows: ['WWWWWWWWWW', 'WGWWWWWWGW', 'WWGWWWWGWW', 'WWWGWWGWWW', 'WWWWGGWWWW', 'WWWWWWWWWW', 'WWWWWWWWWW'],
+  },
+
   px_orange: { w: 2, h: 2, rows: ['HH', 'HH'] },
   px_white: { w: 2, h: 2, rows: ['WW', 'WW'] },
   px_cyan: { w: 2, h: 1, rows: ['CC'], swap: { C: 'B' } },
@@ -238,8 +377,9 @@ DEFS.head_spawn = { rows: HEAD_ROWS, swap: { X: 'H' } };
 export const T = {
   TOP: 0, FILL: 1, PLAT_L: 2, PLAT_M: 3, PLAT_R: 4,
   HQ_TOP: 5, HQ_FILL: 6, HQ_WALL_L: 7, HQ_WALL_R: 8, HQ_PL: 9, HQ_PM: 10, HQ_PR: 11, HQ_BLOCK: 12,
+  PARK_TOP: 13, PARK_FILL: 14, PARK_PL: 15, PARK_PM: 16, PARK_PR: 17,
 };
-const TILE_COUNT = 13;
+const TILE_COUNT = 18;
 
 function codeLines(ctx, ox, seed, colors) {
   // Deterministic "lines of code" dashes so fill tiles read as terminal text.
@@ -347,6 +487,61 @@ function shelf(ctx, ox, cap) {
 
 // Robotaxi (white SUV, roof sensor dome), side view facing right, 56x30. Built from per-row
 // spans so every edge stays pixel-crisp.
+// Salesforce Park lawn: grass blades over a lit concrete edge, lattice below.
+const GRASS = ['#6fbf5a', '#4f9a45', '#3a7a3a', '#2a5a2e'];
+function lawn(ctx, ox) {
+  lattice(ctx, ox, 6);
+  const r = (i) => (i * 37 + ox * 3) % 7;
+  for (let x = 0; x < 16; x++) {
+    const tall = r(x) < 3 ? 1 : 0;
+    ctx.fillStyle = GRASS[0];
+    ctx.fillRect(ox + x, 1 - tall, 1, 1 + tall);
+    ctx.fillStyle = GRASS[1];
+    ctx.fillRect(ox + x, 2, 1, 2);
+    ctx.fillStyle = GRASS[2];
+    ctx.fillRect(ox + x, 4, 1, 1);
+    ctx.fillStyle = r(x + 3) < 2 ? GRASS[2] : GRASS[3];
+    ctx.fillRect(ox + x, 5, 1, 1);
+  }
+  ctx.fillStyle = '#c9c4ba';
+  ctx.fillRect(ox, 6, 16, 1); // the roof's concrete lip
+}
+
+// The Transit Center's skin: pale aluminium with a perforated diamond pattern, dimmed so the
+// foreground doesn't outshine the actors.
+function lattice(ctx, ox, y0) {
+  for (let y = y0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      const d = (x + y) % 8;
+      const e = (x - y + 16) % 8;
+      let c = '#7d7a74';
+      if (d === 0 || e === 0) c = '#a7a39b';
+      else if ((d === 4 && e === 4) || (d === 3 && e === 5) || (d === 5 && e === 3)) c = '#2b2a28';
+      ctx.fillStyle = c;
+      ctx.fillRect(ox + x, y, 1, 1);
+    }
+  }
+}
+
+// Concrete planter box with a hedge on top; 12px tall like the neon slabs.
+function planter(ctx, ox, cap) {
+  ctx.fillStyle = '#8f8b83';
+  ctx.fillRect(ox, 4, 16, 8);
+  ctx.fillStyle = '#b9b4aa';
+  ctx.fillRect(ox, 4, 16, 1);
+  ctx.fillStyle = '#5f5c56';
+  ctx.fillRect(ox, 11, 16, 1);
+  for (let x = 0; x < 16; x++) {
+    ctx.fillStyle = GRASS[(x * 5 + ox) % 3];
+    ctx.fillRect(ox + x, 0, 1, 2 + ((x * 3 + ox) % 2));
+    ctx.fillStyle = GRASS[2];
+    ctx.fillRect(ox + x, 3, 1, 1);
+  }
+  ctx.fillStyle = '#5f5c56';
+  if (cap === 'L') ctx.fillRect(ox, 4, 1, 8);
+  if (cap === 'R') ctx.fillRect(ox + 15, 4, 1, 8);
+}
+
 function waymo(ctx, open) {
   const span = (y, x0, x1, c) => {
     ctx.fillStyle = c;
@@ -474,6 +669,12 @@ const DRAWN = {
       shelf(ctx, at(T.HQ_PM), '');
       shelf(ctx, at(T.HQ_PR), 'R');
       shelf(ctx, at(T.HQ_BLOCK), 'B');
+      // Salesforce Park: lawn over the Transit Center's white perforated skin, concrete planters.
+      lawn(ctx, at(T.PARK_TOP));
+      lattice(ctx, at(T.PARK_FILL), 0);
+      planter(ctx, at(T.PARK_PL), 'L');
+      planter(ctx, at(T.PARK_PM), '');
+      planter(ctx, at(T.PARK_PR), 'R');
     },
   },
 
@@ -561,7 +762,7 @@ function paintRows(ctx, rows, w, swap) {
   });
 }
 
-const OUTLINED = /^(player_|laptop|goblin|keycap|blob|head_)/;
+const OUTLINED = /^(player_|laptop|goblin|keycap|blob|head_|founder|bro|jogger|judge|slide|coffee|email)/;
 
 // Paints a row-defined sprite (colour swaps, outline) onto any 2D context. Shared with
 // scripts/make-images.mjs, which draws the favicon and link-preview art from the same pixels.
@@ -600,6 +801,9 @@ export function buildTextures(scene) {
   mk('blob', ['blob0', 'blob1'], 3);
   mk('goblin', ['goblin0', 'goblin1'], 6);
   mk('gpu_fans', ['gpu0', 'gpu1'], 12);
+  mk('founder_walk', ['founder0', 'founder1'], 5);
+  mk('bro_walk', ['bro0', 'bro1'], 4);
+  mk('jog', ['jogger0', 'jogger1'], 10);
   // Ninja Adventure sheets: 4 columns = facing down/up/left/right, rows = animation frames.
   const sheet = (key, tex, frames, rate) => {
     if (scene.textures.exists(tex) && !anims.exists(key)) {

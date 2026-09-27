@@ -3,6 +3,7 @@ import { buildTextures } from '../sprites.js';
 import { buildBackdrops } from '../backdrops.js';
 import { buildPixelFont } from '../font.js';
 import { buildHQTextures } from '../hqArt.js';
+import { buildParkTextures } from '../parkArt.js';
 
 // Asset-pack art (Ninja Adventure, CC0). Missing files are fine: code-drawn sprites cover
 // every key.
@@ -34,6 +35,7 @@ export default class Boot extends Phaser.Scene {
     buildTextures(this);
     buildBackdrops(this);
     buildHQTextures(this);
+    buildParkTextures(this);
     // Furbies: 32x16 canvases holding two 16x16 frames (open, blink).
     for (const k of ['furby_pink', 'furby_teal', 'furby_gold']) {
       const tex = this.textures.get(k);
