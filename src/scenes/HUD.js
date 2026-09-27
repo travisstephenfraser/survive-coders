@@ -227,7 +227,12 @@ export default class HUD extends Phaser.Scene {
       const w = this.toastText.width + 24;
       frame(g, 480 - w / 2, 140, w, 36, 0xd97757, 0x0d0d0d);
     }
-    const pulse = showToast && toast.power && Math.floor(time / 180) % 2 === 0 ? toast.power : null;
+    // A full context pulses refactor for as long as it lasts; its call to action is the status line.
+    const overflow = Boolean(boss?.overflow);
+    const blink = Math.floor(time / 180) % 2 === 0;
+    const pulse = blink ? (showToast && toast.power) || (overflow ? 'refactor' : null) : null;
+    const refactorLeft = voice.remaining('refactor');
+    const cta = !overflow ? null : refactorLeft > 0 ? `CONTEXT FULL → refactor ready in ${Math.ceil(refactorLeft / 1000)}s` : TOUCH ? 'CONTEXT FULL → tap "refactor"' : 'CONTEXT FULL → hold M: "refactor" (or 3)';
 
     for (const pw of this.powers) {
       const left = voice.remaining(pw.name);
@@ -259,17 +264,18 @@ export default class HUD extends Phaser.Scene {
         g.fillStyle(0xf5f5f5).fillRect(PAUSE_BTN.x + 9, PAUSE_BTN.y + 9, 6, 18).fillRect(PAUSE_BTN.x + 21, PAUSE_BTN.y + 9, 6, 18);
       }
       this.soundText.setText(this.sound.mute ? 'sound: off' : 'sound: on');
-      let line = voice.heard ? `$ heard "${voice.heard.slice(-26)}"` : voice.listening ? '$ listening... let go to run it' : this.talk ? '$ tap a power, or hold talk and say it' : '$ tap a power to run it';
+      const idle = !voice.heard && !voice.listening && !fresh;
+      let line = voice.heard ? `$ heard "${voice.heard.slice(-26)}"` : voice.listening ? '$ listening... let go to run it' : cta ? `$ ${cta}` : this.talk ? '$ tap a power, or hold talk and say it' : '$ tap a power to run it';
       if (fresh && ev.type === 'fired') line = `✓ ran: ${POWERS[ev.name].label}`;
       else if (fresh && ev.type === 'cooldown') line = `${POWERS[ev.name].label}: cooling down ${Math.ceil(ev.left / 1000)}s`;
-      this.heard.setText(line).setTint(fresh && ev.type === 'fired' ? 0x3fb950 : fresh ? 0xe3b341 : 0xf5f5f5);
+      this.heard.setText(line).setTint(fresh && ev.type === 'fired' ? 0x3fb950 : fresh ? 0xe3b341 : idle && cta ? 0xe5534b : 0xf5f5f5);
       return;
     }
 
     // Left: what the mic heard. Right: what actually happened (ran / cooling down) for ~2s,
     // otherwise the mic state. Speech recognized is not the same as a power firing.
-    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : 'hold M: "ship it"';
-    this.heard.setText(`$ ${heard}`);
+    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? 'hold M: "ship it"');
+    this.heard.setText(`$ ${heard}`).setTint(!voice.heard && !voice.listening && cta ? 0xe5534b : 0xf5f5f5);
     if (fresh && ev.type === 'fired') {
       this.mic.setText(`✓ ran: ${POWERS[ev.name].label}`);
       this.mic.setTint(0x3fb950);

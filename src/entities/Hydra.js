@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Enemy, FlamingSkull } from './enemies.js';
-import ContextOverflow from './ContextOverflow.js';
+import ContextOverflow, { DEPTH as RAIN_DEPTH } from './ContextOverflow.js';
 import { worldText, floatText } from '../util.js';
 
 const LIES = [
@@ -167,7 +167,7 @@ export default class Hydra {
       color: '#0d0d0d',
       bg: '#f5f5f5',
       size: 6,
-      depth: 30,
+      depth: this.overflow.active ? RAIN_DEPTH - 0.1 : 30, // lost in the noise while the context is full
     });
     this.bubble.owner = h;
     this.scene.time.delayedCall(1800, () => this.bubble?.owner === h && this.bubble.destroy());

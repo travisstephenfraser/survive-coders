@@ -163,11 +163,11 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   // Rollback is taught at the first real damage (a hit or a pit; god mode takes none), once per
-  // run, and waits for any other tip to clear. Using it first counts as learned.
+  // run, and waits for any other tip, or a full context, to clear. Using it first counts as learned.
   teachRollback() {
     const r = this.registry;
     const tip = r.get('toast');
-    if (r.get('rollbackTaught') || this.player.dead || this.player.hp >= MAX_HP || (tip && this.time.now < tip.until)) return;
+    if (r.get('rollbackTaught') || this.player.dead || this.player.hp >= MAX_HP || (tip && this.time.now < tip.until) || r.get('boss')?.overflow) return;
     r.set('rollbackTaught', true);
     this.toast(TOUCH ? 'Took a hit? Tap "rollback" below' : 'Took a hit? HOLD M, say "rollback" (or 2)', 'rollback');
   }
