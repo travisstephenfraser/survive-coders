@@ -25,6 +25,26 @@ const BASE_HP = 14;
 const MAX_MINIONS = 2;
 const RESPAWN_MS = 1000;
 
+// The body: a heap of H100s with their fans spinning, as [dx, dy, angle, flipX] from the floor
+// under it, back to front. Each growth turn drops another card on top ("I just need more GPUs"),
+// up to DROPS. The old body image stays as the invisible hitbox, so contact damage is unchanged.
+const PILE = [
+  [-14, -28, -28, false],
+  [14, -30, 22, true],
+  [0, -38, -78, false],
+  [-18, -15, 12, false],
+  [16, -16, -15, true],
+  [-8, -8, 0, false],
+  [18, -7, -4, true],
+];
+const DROPS = [
+  [-10, -46, 35, false],
+  [12, -47, -40, true],
+  [-24, -38, -62, false],
+  [24, -40, 68, true],
+];
+const GPU_SCALE = 0.8;
+
 // One chat-bubble head. Not refactorable: refactor only resets its growth.
 class Head extends Enemy {
   constructor(scene, hydra, role, ax, ay) {
@@ -109,10 +129,13 @@ class Head extends Enemy {
 export default class Hydra {
   constructor(scene, x, groundY) {
     this.scene = scene;
-    this.body = scene.physics.add.staticImage(x, groundY - 20, 'hydra_body');
-    this.body.setDepth(3);
+    this.body = scene.physics.add.staticImage(x, groundY - 20, 'hydra_body').setVisible(false);
+    this.floor = { x, y: groundY };
+    // A dark core behind the cards so the heap reads as one mass, not cards over the window.
+    this.core = scene.add.ellipse(x, groundY - 18, 52, 34, 0x140c12).setDepth(2.95);
+    this.gpus = PILE.map((slot, i) => this.gpu(slot, i));
     this.neck = scene.add.graphics().setDepth(2);
-    this.label = worldText(scene, x, groundY - 12, 'CONTEXT ROT', { color: '#0d0d0d', size: 5, depth: 4 });
+    this.label = worldText(scene, x, groundY - 13, 'CONTEXT ROT', { color: '#0d0d0d', bg: '#f5f5f5', size: 5, depth: 3.9 }).setAngle(-5);
     this.neckBase = { x: x - 10, y: groundY - 30 };
     this.heads = [
       new Head(scene, this, 'flood', x - 30, 50),
@@ -129,6 +152,34 @@ export default class Hydra {
     this.turnTimer = scene.time.addEvent({ delay: TURN_MS, loop: true, callback: () => this.nextTurn() });
     this.lieTimer = scene.time.addEvent({ delay: 2200, loop: true, callback: () => this.lie() });
     this.publish();
+  }
+
+  gpu([dx, dy, angle, flip], i) {
+    const card = this.scene.add.sprite(this.floor.x + dx, this.floor.y + dy, 'gpu0');
+    card.setScale(GPU_SCALE).setAngle(angle).setFlipX(flip).setDepth(3 + i * 0.01);
+    card.play({ key: 'gpu_fans', startFrame: i % 2 });
+    card.anims.timeScale = 0.7 + Math.random() * 0.6; // fans out of sync
+    return card;
+  }
+
+  addGpu() {
+    const slot = DROPS[this.gpus.length - PILE.length];
+    if (!slot) return;
+    const card = this.gpu(slot, this.gpus.length);
+    const y = card.y;
+    this.gpus.push(card);
+    card.y = -24;
+    this.scene.tweens.add({
+      targets: card,
+      y,
+      duration: 420,
+      ease: 'Quad.in',
+      onComplete: () => {
+        this.scene.cameras.main.shake(90, 0.003);
+        this.scene.dust(card.x, y + 6);
+        this.scene.sfx('hit', 0.3);
+      },
+    });
   }
 
   get alive() {
@@ -153,6 +204,7 @@ export default class Hydra {
     if (!this.alive.length || this.scene.time.now < this.dormantUntil) return;
     this.turn++;
     for (const h of this.alive) h.grow();
+    this.addGpu();
     this.scene.sfx('grow', 0.4);
     floatText(this.scene, 160, 30, `turn ${this.turn}: context +25%`, '#e5534b', 7);
     this.scene.cameras.main.shake(150, 0.004);
@@ -296,7 +348,21 @@ export default class Hydra {
         scene.burst(this.body.x + Phaser.Math.Between(-24, 24), this.body.y + Phaser.Math.Between(-16, 16), i % 2 ? 'px_orange' : 'px_white', 16),
       );
     }
-    scene.tweens.add({ targets: [this.body, this.label], alpha: 0, duration: 1200, delay: 400 });
+    // The heap comes apart: fans stop, cards tumble off (away from the wall) and fade.
+    this.gpus.forEach((card, i) => {
+      card.anims.stop();
+      scene.tweens.add({
+        targets: card,
+        x: card.x + Phaser.Math.Between(-44, 12),
+        y: this.floor.y - 5,
+        angle: card.angle + Phaser.Math.Between(-200, 200),
+        delay: 200 + i * 70,
+        duration: 650,
+        ease: 'Quad.in',
+      });
+      scene.tweens.add({ targets: card, alpha: 0, delay: 1400 + i * 40, duration: 500 });
+    });
+    scene.tweens.add({ targets: [this.core, this.label], alpha: 0, duration: 600, delay: 200 });
     scene.addStars(50, this.body.x, this.body.y - 24);
     scene.music?.stop();
     scene.sfx('win', 0.6);
