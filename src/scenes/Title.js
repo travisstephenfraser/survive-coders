@@ -17,8 +17,10 @@ export default class Title extends Phaser.Scene {
     uiText(this, left, 118, 'SURVIVE CODERS', { size: 48, color: '#d97757' });
     uiText(this, left, 184, "a vibe coder's run from Daly City to Anthropic HQ", { size: 16, color: '#f5f5f5' });
 
-    this.add.image(812, 128, 'player_idle').setScale(5);
-    this.add.image(866, 128, 'laptop').setScale(4);
+    // Key art: the hero fills the right side, the laptop floating at his hand as it does in-game.
+    this.add.image(756, 245, 'player_idle').setScale(12);
+    const laptop = this.add.image(864, 235, 'laptop').setScale(6);
+    this.tweens.add({ targets: laptop, y: 243, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     const lines = [
       '←→ move    ↑ / W / Z jump    SPACE fire prompts',
