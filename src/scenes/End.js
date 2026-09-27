@@ -3,6 +3,7 @@ import { MAX_HP, uiText } from '../util.js';
 import { voice } from '../voice.js';
 import { applyScreenFX } from '../fx.js';
 import { CREDITS, phoneCard, terminalWindow } from '../terminal.js';
+import { placeLidar } from '../sprites.js';
 
 export default class End extends Phaser.Scene {
   constructor() {
@@ -55,7 +56,7 @@ export default class End extends Phaser.Scene {
   // and #demo-day asks for one more small change.
   payoff() {
     const car = this.add.image(-140, 404, 'waymo').setScale(2).setOrigin(0.5, 1);
-    const sweep = this.add.image(0, 0, 'px_cyan').setScale(2);
+    const sweep = this.add.image(-200, 0, 'px_cyan');
     const line = uiText(this, 290, 364, '', { size: 16, color: '#39c5cf' });
     const text = 'WAYMO: This is within my service area. Welcome back.';
     this.tweens.add({
@@ -69,7 +70,7 @@ export default class End extends Phaser.Scene {
         this.time.addEvent({ delay: 28, repeat: text.length - 1, callback: () => line.setText(text.slice(0, ++n)) });
       },
     });
-    const spin = (time) => sweep.setPosition(car.x - 6 + Math.sin(time / 70) * 6, car.y - 54);
+    const spin = (time) => placeLidar(sweep, car, time);
     this.events.on('update', spin);
     this.events.once('shutdown', () => this.events.off('update', spin)); // scene emitters outlive restarts
     const phone = phoneCard(this, 580, 62, 330, 'Slack · #demo-day');

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import { LAYERS, TROLLEYS } from '../backdrops.js';
+import { placeLidar } from '../sprites.js';
 import { worldText } from '../util.js';
 
 // Legend: # ground, = neon platform, P player, * star, M MAX power-up, B Bad Prompt Blob,
@@ -153,9 +154,7 @@ export default class Level1 extends PlayScene {
   updateIntro(time) {
     // HUD launch is queued and starting a scene makes it visible again; keep it hidden.
     if (this.scene.isVisible('HUD')) this.scene.setVisible(false, 'HUD');
-    // Spinning roof sensor: a 2px light sweeping across the dome's cyan band (texture x 24-32,
-    // row 3), centred on the dome rather than the image, and never past its edges.
-    if (this.waymo?.active) this.lidar.setPosition(this.waymo.x + 0.5 + Math.sin(time / 70) * 3.5, this.waymo.y - 11.5);
+    if (this.waymo?.active) placeLidar(this.lidar, this.waymo, time);
     if (this.player.visible) this.player.laptop.follow(time);
   }
 

@@ -399,6 +399,16 @@ function waymo(ctx, open) {
   }
 }
 
+// Spinning roof lidar: a 2-texel light (px_cyan) sweeping across the dome's cyan band
+// (texture x 24-32, row 3), centred on the dome and never past its edges. Derived from the
+// car's scale and origin, so the intro (1x, centred) and the ending (2x, bottom origin) agree.
+export function placeLidar(light, car, time) {
+  const left = car.x - car.displayOriginX * car.scaleX;
+  const top = car.y - car.displayOriginY * car.scaleY;
+  light.setScale(car.scaleX, car.scaleY);
+  light.setPosition(left + (28.5 + Math.sin(time / 70) * 3.5) * car.scaleX, top + 3.5 * car.scaleY);
+}
+
 // H100: a big data-center GPU card, side view, walking on its gold PCIe fingers. 40x18.
 function h100(ctx, frame) {
   const r = (x, y, w, h, c) => {
