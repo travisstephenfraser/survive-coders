@@ -23,6 +23,25 @@ const SUBURBS = [
   '###########################...###############################...#########################...........########################',
 ];
 
+// Neighborhood signs, in travel order.
+const HOODS = [
+  [24, 'DALY CITY'],
+  [520, 'OUTER SUNSET'],
+  [1150, 'TWIN PEAKS'],
+  [1398, 'POWELL ST', '#e3b341'],
+  [1610, 'THE MISSION'],
+  [1812, 'SOMA'],
+];
+const slug = (name) => name.toLowerCase().replace(/ /g, '-');
+const DEST = slug(HOODS.at(-1)[1]);
+
+// HUD path: the last sign passed, as a cwd (rollback and pit respawns can walk it back),
+// pointing to SoMa until the player gets there.
+function routeLabel(x) {
+  const here = slug((HOODS.findLast(([hx]) => x >= hx) ?? HOODS[0])[1]);
+  return here === DEST ? `~/sf/${here}` : `~/sf/${here} → ${DEST}`;
+}
+
 export default class Level1 extends PlayScene {
   constructor() {
     super('Level1');
@@ -30,7 +49,7 @@ export default class Level1 extends PlayScene {
 
   create() {
     this.leaving = false;
-    this.registry.set('level', '~/sf/daly-city → soma');
+    this.registry.set('level', routeLabel(0));
     this.registry.set('boss', null);
     this.registry.set('maxTokens', 0); // MAX's chip is in this level; unspent tokens carry into the boss
 
@@ -60,12 +79,7 @@ export default class Level1 extends PlayScene {
     this.buildWorld(SUBURBS, 'suburbs');
 
     worldText(this, 60, 92, '$ claude "make one small change"', { color: '#d97757', size: 6, depth: 2 });
-    this.sign(24, 118, 'DALY CITY');
-    this.sign(520, 118, 'OUTER SUNSET');
-    this.sign(1150, 118, 'TWIN PEAKS');
-    this.sign(1610, 118, 'THE MISSION');
-    this.sign(1398, 118, 'POWELL ST', '#e3b341');
-    this.sign(1812, 118, 'SOMA');
+    for (const [x, name, color] of HOODS) this.sign(x, 118, name, color);
     this.buildCableCar();
     this.buildHQ(this.spawns.find((s) => s.ch === 'D'));
     this.playMusic('music_level', 0.28);
@@ -75,7 +89,6 @@ export default class Level1 extends PlayScene {
     this.beats = [
       [70, 'SPACE fires prompts at bad prompts', '>_ fires prompts at bad prompts', null],
       [640, 'Swarmed? HOLD M, say "refactor" (or press 3)', 'Swarmed? Tap "refactor" below', 'refactor'],
-      [1200, 'Low on HP? HOLD M, say "rollback" (or 2)', 'Low on HP? Tap "rollback" below', 'rollback'],
       [1372, 'Too far to jump. Hop on the cable car roof', null, null],
       [1760, 'Boss ahead. HOLD M, say "ship it" (or 1)', 'Boss ahead. Tap "ship it" below', 'ship'],
     ];
@@ -95,6 +108,8 @@ export default class Level1 extends PlayScene {
       if (!p.dead && p.x >= this.hq.x - 4) this.exit();
     }
     this.updateCableCar(time);
+    const label = routeLabel(p.x);
+    if (label !== this.registry.get('level')) this.registry.set('level', label);
     while (this.beats.length && this.player.x >= this.beats[0][0]) {
       const [, keys, taps, power] = this.beats.shift();
       this.toast(TOUCH && taps ? taps : keys, power);
@@ -126,32 +141,35 @@ export default class Level1 extends PlayScene {
     this.lidar = this.add.image(0, 0, 'px_cyan').setDepth(5);
     this.tweens.add({ targets: this.waymo, x: STOP_X, duration: 2200, ease: 'Cubic.out' });
 
+    // ~12s to control: beats overlap (the Slack buzz lands as the car pulls in, he hops out
+    // mid-line, it drives off still asking for a rating) instead of each line waiting its turn.
     const at = (ms, fn) => this.introEvents.push(this.time.delayedCall(ms, fn));
     this.introEvents = [];
-    at(2300, () => cine.phone("can you make one small change before the demo? it's literally one line"));
-    at(4800, () => cine.phone('also maybe dark mode'));
-    at(6300, () => cine.phone("demo's at 5 btw"));
-    at(7800, () => {
+    at(600, () => cine.phone("can you make one small change before the demo? it's literally one line"));
+    at(3000, () => cine.phone('also maybe dark mode'));
+    at(4200, () => {
       cine.hidePhone();
       cine.say('WAYMO', 'You have arrived at the edge of my service area.');
       this.sfx('start', 0.4);
     });
-    at(10300, () => cine.say('WAYMO', 'Anthropic HQ is 9.4 miles away. Please take your belongings.'));
-    at(13000, () => {
+    at(6400, () => cine.say('WAYMO', 'Anthropic HQ is 9.4 miles away. Please take your belongings.'));
+    at(7300, () => {
       this.waymo.setTexture('waymo_open');
       p.setPosition(this.waymo.x - 5, 150).setVisible(true);
       p.body.enable = true;
       p.setVelocityY(-120);
       p.laptop.setPosition(p.x, p.y + 6).setVisible(true);
     });
-    at(13500, () => cine.say('WAYMO', 'Rate your ride: ★★★★★?'));
-    at(15300, () => {
+    at(8800, () => cine.say('WAYMO', 'Rate your ride: ★★★★★?'));
+    at(9400, () => {
       this.waymo.setTexture('waymo');
-      cine.say(null, null);
       this.tweens.add({ targets: this.waymo, x: -80, duration: 1800, ease: 'Cubic.in' });
     });
-    at(16000, () => cine.phone('btw the office AI has been acting weird today'));
-    at(18200, () => this.endIntro());
+    at(10000, () => {
+      cine.say(null, null);
+      cine.phone('btw the office AI has been acting weird today');
+    });
+    at(11900, () => this.endIntro());
 
     this.skipIntro = () => this.endIntro();
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.once(k, this.skipIntro);

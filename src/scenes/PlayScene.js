@@ -3,7 +3,7 @@ import Player from '../entities/Player.js';
 import { SPAWNERS } from '../entities/enemies.js';
 import { T } from '../sprites.js';
 import { voice } from '../voice.js';
-import { MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
+import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
 import { TOUCH } from '../touch.js';
 
@@ -162,6 +162,16 @@ export default class PlayScene extends Phaser.Scene {
     this.registry.set('toast', { text, power, until: this.time.now + ms, at: this.time.now });
   }
 
+  // Rollback is taught at the first real damage (a hit or a pit; god mode takes none), once per
+  // run, and waits for any other tip to clear. Using it first counts as learned.
+  teachRollback() {
+    const r = this.registry;
+    const tip = r.get('toast');
+    if (r.get('rollbackTaught') || this.player.dead || this.player.hp >= MAX_HP || (tip && this.time.now < tip.until)) return;
+    r.set('rollbackTaught', true);
+    this.toast(TOUCH ? 'Took a hit? Tap "rollback" below' : 'Took a hit? HOLD M, say "rollback" (or 2)', 'rollback');
+  }
+
   sfx(key, volume = 0.5) {
     // One play per key per 60ms, so a MAX stream's hits don't stack into noise.
     this.lastSfx ??= {};
@@ -179,6 +189,7 @@ export default class PlayScene extends Phaser.Scene {
   update(time) {
     if (this.cutscene) return; // intro owns the player until it ends
     this.player.tick(time);
+    this.teachRollback();
     // Camera lookahead: show more of what's ahead of the player (Itay Keren, "Scroll Back").
     this.lookahead = Phaser.Math.Linear(this.lookahead, -this.player.facing * 48, 0.04);
     this.cameras.main.setFollowOffset(this.lookahead, 0);
@@ -374,6 +385,7 @@ export default class PlayScene extends Phaser.Scene {
       this.cameras.main.shake(200, 0.008);
     } else if (name === 'rollback') {
       this.shout('rollback', '#58a6ff');
+      this.registry.set('rollbackTaught', true);
       this.sfx('rollback', 0.6);
       pl.rollback();
       this.cameras.main.flash(200, 88, 166, 255);
