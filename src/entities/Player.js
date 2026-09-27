@@ -46,8 +46,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       fire: 'SPACE', fire2: 'X', fire3: 'J',
     });
     this.laptop = new Laptop(scene, this);
-    pop(this, 1.25);
-    pop(this.laptop, 1.25);
+    // Saturation and contrast pop only, no brightness lift.
+    pop(this, 1);
+    pop(this.laptop, 1);
   }
 
   // Squash & stretch around the sprite center (sy > 1 = stretch).
