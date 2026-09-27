@@ -45,11 +45,10 @@ export function applyScreenFX(cam) {
 }
 
 // Make gameplay sprites (player, enemies, heads) pop against the busy neon background:
-// brighter, more saturated, a touch more contrast. WebGL only; no-op on canvas.
-export function pop(sprite, brightness = 1.2) {
+// more saturated, a touch more contrast. WebGL only; no-op on canvas.
+export function pop(sprite) {
   if (!sprite.preFX || sprite.scene.game.renderer.type !== Phaser.WEBGL) return;
   const cm = sprite.preFX.addColorMatrix();
-  cm.brightness(brightness);
-  cm.saturate(0.25, true);
+  cm.saturate(0.25);
   cm.contrast(0.12, true);
 }
