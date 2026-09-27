@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { floatText, worldText } from '../util.js';
 
-// Context overflow: once the Hydra's context window is full, matrix rain pours over the whole
+// Context overflow: once the Hydra's context window is full, terminal text rains over the whole
 // arena and the player takes context rot until a refactor compacts it.
 const GLYPHS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
 const COLS = 40; // one column every 8px across the 320px arena
@@ -12,6 +12,7 @@ const GRACE_MS = 3000; // warning time before the first context rot
 const ROT_MS = 3000; // then 1 damage per tick while full
 const DEPTH = 45; // over the whole fight (speech bubbles are 30), under float text (50)
 const ARENA_H = 192;
+const TIP = 'Context full! HOLD M, say "refactor" (or press 3)';
 
 const glyphs = (n) => Array.from({ length: n }, () => Phaser.Utils.Array.GetRandom(GLYPHS));
 
@@ -33,30 +34,34 @@ export default class ContextOverflow {
     floatText(s, 160, 70, 'CONTEXT WINDOW FULL', '#e5534b');
     s.cameras.main.shake(250, 0.006);
     s.sfx('grow', 0.5);
+    // The call to action lives in the HUD's boxed tip (readable over the rain) and pulses slot 3.
+    s.toast(TIP, 'refactor', 10 * 60 * 1000);
   }
 
   stop(compacted = true) {
     if (!this.active) return;
     this.active = false;
-    if (compacted) floatText(this.scene, 160, 70, 'context compacted', '#3fb950');
+    const s = this.scene;
+    if (s.registry.get('toast')?.text === TIP) s.registry.set('toast', null);
+    if (compacted) floatText(s, 160, 70, 'context compacted', '#3fb950');
   }
 
   build() {
     const s = this.scene;
-    this.wash = s.add.rectangle(0, 0, 320, ARENA_H, 0x02140a).setOrigin(0).setDepth(DEPTH - 1).setAlpha(0);
+    this.wash = s.add.rectangle(0, 0, 320, ARENA_H, 0x0d0d0d).setOrigin(0).setDepth(DEPTH - 1).setAlpha(0);
     return Array.from({ length: COLS }, (_, i) => {
       const x = 4 + i * 8;
       const opts = (color) => ({ color, ox: 0.5, oy: 1, depth: DEPTH });
       const c = {
         near: glyphs(NEAR),
         far: glyphs(FAR),
-        head: worldText(s, x, 0, glyphs(1)[0], opts('#d2ffd9')),
+        head: worldText(s, x, 0, glyphs(1)[0], opts('#ffffff')),
         y: -Phaser.Math.Between(0, ARENA_H),
         speed: Phaser.Math.Between(50, 120),
         threshold: Math.random(), // the column joins once density passes this
       };
-      c.nearText = worldText(s, x, 0, c.near.join('\n'), opts('#3fb950'));
-      c.farText = worldText(s, x, 0, c.far.join('\n'), opts('#238636')).setAlpha(0.6);
+      c.nearText = worldText(s, x, 0, c.near.join('\n'), opts('#c9c9c9'));
+      c.farText = worldText(s, x, 0, c.far.join('\n'), opts('#6e6e6e')).setAlpha(0.6);
       return c;
     });
   }
