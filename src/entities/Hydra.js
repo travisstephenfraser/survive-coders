@@ -45,6 +45,12 @@ const DROPS = [
 ];
 const GPU_SCALE = 0.8;
 
+// Necks are pipes feeding each head: letters and numbers stream up from the GPUs, faster as
+// the head grows.
+const TOKEN_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
+const TOKENS_PER_NECK = 9;
+const token = () => Phaser.Utils.Array.GetRandom(TOKEN_CHARS);
+
 // One chat-bubble head. Not refactorable: refactor only resets its growth.
 class Head extends Enemy {
   constructor(scene, hydra, role, ax, ay) {
@@ -122,6 +128,7 @@ class Head extends Enemy {
     this.hydra.cancelPlan(this.plan);
     this.plan = null;
     this.icon.destroy();
+    for (const t of this.tokens) t.destroy();
     this.hydra.headDied(this);
   }
 }
@@ -142,6 +149,9 @@ export default class Hydra {
       new Head(scene, this, 'gaslight', x - 52, 92),
       new Head(scene, this, 'spawn', x - 40, 132),
     ];
+    for (const h of this.heads) {
+      h.tokens = Array.from({ length: TOKENS_PER_NECK }, () => worldText(scene, 0, 0, token(), { color: '#ffb199', depth: 2.5 }));
+    }
     this.turn = 1;
     this.dormantUntil = 0;
     this.bubble = null;
@@ -372,17 +382,28 @@ export default class Hydra {
   update() {
     const g = this.neck;
     g.clear();
+    const now = this.scene.time.now;
     for (const h of this.alive) {
-      const pts = new Phaser.Curves.QuadraticBezier(
+      const curve = new Phaser.Curves.QuadraticBezier(
         new Phaser.Math.Vector2(this.neckBase.x, this.neckBase.y),
         new Phaser.Math.Vector2((this.neckBase.x + h.x) / 2 + 10, Math.max(this.neckBase.y, h.y) + 6),
         new Phaser.Math.Vector2(h.x + 4, h.y + 4),
-      ).getPoints(14);
-      g.fillStyle(0xa8553a);
-      const r = 3 + h.g * 0.6;
+      );
+      const pts = curve.getPoints(14);
+      const r = 4 + h.g * 0.8;
+      g.fillStyle(0xa8553a); // orange rim
       for (const p of pts) g.fillCircle(p.x, p.y, r);
-      g.fillStyle(0xd97757);
-      for (const p of pts) g.fillCircle(p.x - 1, p.y - 1, r * 0.45);
+      g.fillStyle(0x1e1418); // dark bore the tokens travel through
+      for (const p of pts) g.fillCircle(p.x, p.y, r - 1);
+      // The pile and the head cover the pipe's ends, so tokens appear and vanish inside them.
+      const rate = (0.35 + h.g * 0.15) / 1000;
+      h.tokens.forEach((t, i) => {
+        const u = (i / TOKENS_PER_NECK + now * rate) % 1;
+        if (u < (t.u ?? 1)) t.setText(token()); // wrapped round: a fresh token
+        t.u = u;
+        const p = curve.getPoint(u);
+        t.setPosition(p.x, p.y).setScale(1 + h.g * 0.2);
+      });
     }
     if (this.bubble?.active && this.bubble.owner?.active) {
       this.bubble.setPosition(Phaser.Math.Clamp(this.bubble.owner.x, 70, 250), this.bubbleY(this.bubble.owner));
