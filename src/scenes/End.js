@@ -4,6 +4,7 @@ import { voice } from '../voice.js';
 import { applyScreenFX } from '../fx.js';
 import { CREDITS, phoneCard, terminalWindow } from '../terminal.js';
 import { placeLidar } from '../sprites.js';
+import { playVictorySong } from '../victorySong.js';
 
 export default class End extends Phaser.Scene {
   constructor() {
@@ -34,7 +35,11 @@ export default class End extends Phaser.Scene {
     const again = uiText(this, left, 430, `$ ENTER ${retryLabel}   T title_`, { size: 24, color: '#d97757' });
     this.tweens.add({ targets: again, alpha: 0.35, duration: 600, yoyo: true, repeat: -1 });
     uiText(this, 480, 530, CREDITS, { size: 8, color: '#555555', ox: 0.5, oy: 1 });
-    if (win) this.payoff();
+    if (win) {
+      this.payoff();
+      const song = playVictorySong(this);
+      this.events.once('shutdown', () => song?.stop());
+    }
     // Fast retry (Team Meat: short respawns). Boss deaths restart at the HQ checkpoint.
     this.input.keyboard.once('keydown-ENTER', () => {
       const atBoss = !win && retry === 'BossHQ';
