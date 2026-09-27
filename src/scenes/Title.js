@@ -79,6 +79,7 @@ export default class Title extends Phaser.Scene {
     const prompt = uiText(this, left, 446, TOUCH ? '$ tap to start_' : '$ press ENTER to start_', { size: 24, color: '#3fb950' });
     this.tweens.add({ targets: prompt, alpha: 0.35, duration: 600, yoyo: true, repeat: -1 });
     uiText(this, 480, 530, CREDITS, { size: 8, color: '#555555', ox: 0.5, oy: 1 });
+    uiText(this, win.x + win.w - 16, win.y + win.h - 12, 'travisfraser.com', { size: 16, color: '#8b8b8b', ox: 1, oy: 1 });
 
     let started = false;
     const go = () => {
