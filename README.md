@@ -9,8 +9,9 @@ real vibe-coding pain (Bad Prompt Blobs, Keyboard Goblins, overheating H100 GPUs
 against the Context Rot Hydra, a three-headed boss whose chat-bubble heads grow every turn and
 lie to you. The idea that shaped it is that your voice is a weapon: hold **M**, say *ship it*,
 *rollback*, or *refactor*, and the power fires when you let go. Speech is never required;
-every voice power has a keyboard key, and ordinary talking during a demo fires nothing,
-because `src/voice.js` only acts on release and only on a recognized command.
+every voice power has a keyboard key and a tap target on phones, and ordinary talking during a
+demo fires nothing, because `src/voice.js` only acts on release and only on a recognized
+command. It plays with a keyboard or, on phones and tablets, with touch controls.
 
 Status: hackathon demo, one level and one boss. Built with Claude Code (Claude Opus 5.5) as a
 pair programmer; commits carry `Co-Authored-By` trailers.
@@ -19,7 +20,8 @@ pair programmer; commits carry `Co-Authored-By` trailers.
 
 ```
 Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel (static)
-Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 as fallback
+Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
+Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
 Tests      0 automated; scripted browser checks recorded in docs/review/
 ```
 
@@ -45,6 +47,9 @@ Live URL checked 2026-09-26: HTTP 200.
 
 ## Product walkthrough
 
+Desktop, 960x540 at 2x. Every frame is the running game, staged by script and frozen on the
+frame shown.
+
 **1. Title screen.** A terminal window with the controls, the vibe coder as key art, and `V` to
 set up the microphone.
 
@@ -55,44 +60,73 @@ mode, then reminds you the demo is at 5 (the last ping is shown).
 
 ![Slack ping during the intro](docs/screenshots/02-intro-slack-ping.png)
 
-**3. The drop-off.** The car stops at the edge of its service area; Anthropic HQ is 9.4 miles
-away. Enter skips the whole intro.
+**3. The drop-off.** The car stops at the edge of its service area, roof lidar sweeping; Anthropic
+HQ is 9.4 miles away. Enter, or a tap, skips the whole intro.
 
 ![Waymo dialogue: edge of the service area](docs/screenshots/03-intro-edge-of-service-area.png)
 
-**4. Powers are taught at the moment of need.** When a cluster of Bad Prompt Blobs appears, a
-tip explains `refactor` and the matching slot in the HUD flashes.
+**4. Powers are taught at the moment of need.** When a cluster of Bad Prompt Blobs comes into
+view, a tip explains `refactor` and the matching slot in the terminal bar flashes.
 
 ![Contextual tip for the refactor power](docs/screenshots/04-voice-power-tip.png)
 
-**5. Street combat.** Prompt bolts from the laptop against a Bad Prompt Blob, with Sutro Tower,
-Coit Tower, and the Painted Ladies behind. The HUD shows the pixel health bar and the GitHub
-star counter.
+**5. Street combat.** Prompt bolts from the laptop against a Bad Prompt Blob, under the first
+tip, with Sutro Tower, Coit Tower, and the Painted Ladies behind. The HUD shows the pixel health
+bar and the GitHub star counter.
 
 ![Street combat in Daly City](docs/screenshots/05-street-combat.png)
 
-**6. The Powell St cable car.** A gap too wide to jump; ride the car's roof across and collect
-the star trail.
+**6. MAX.** Past the second pit, the MAX chip turns held fire into a stream of characters, 25 a
+second from a 160-token budget that the HUD counts down; an H100 has just run out of memory.
 
-![Riding the cable car](docs/screenshots/06-cable-car-ride.png)
+![Streaming MAX tokens at the enemies](docs/screenshots/06-max-token-stream.png)
 
-**7. Anthropic HQ.** The office goes quiet, the terminal types `make one small change`, the
-heads answer, and the boss card lands.
+**7. The Powell St cable car.** A gap too wide to jump, over a pit that glows `404`; ride the
+car's roof across and collect the star trail.
 
-![Context Rot Hydra title card](docs/screenshots/07-boss-title-card.png)
+![Riding the cable car](docs/screenshots/07-cable-car-ride.png)
 
-**8. Readable boss attacks.** Every attack has a 600 ms wind-up. The image-flood head marks its
-drop lanes (the image icons along the top) before the tiles fall, and always leaves three
-adjacent lanes clear. The HUD separates boss health from context growth; here the context
-meter reads FULL, the cue to say *refactor*, while a head insists your laptop is the bug and
-the spawner has dropped two flaming skulls.
+**8. Anthropic HQ.** The office goes quiet, the terminal types `make one small change`, the
+heads answer, and the boss card lands. The HUD shows boss health and, separately, context growth.
 
-![Flood lanes marked before they drop](docs/screenshots/08-boss-telegraphed-flood.png)
+![Context Rot Hydra title card](docs/screenshots/08-boss-title-card.png)
 
-**9. The payoff.** The robotaxi comes back (HQ is inside its service area) and `#demo-day`
-asks for one more small change.
+**9. A full context window.** Every attack has a 600 ms wind-up: the image-flood head flashes
+and marks its drop lanes on the floor before the tiles fall, always leaving three adjacent lanes
+clear. The heads here are fully grown, so the context overflows: terminal rain starts falling,
+context rot will deal damage until you refactor, the meter reads OVERFLOW, and the refactor tip
+stays up with its slot flashing. A notification skull hunts from the Hydra's base.
 
-![Win screen with the robotaxi and the last Slack ping](docs/screenshots/09-win-payoff.png)
+![Hydra at full context: flood lanes marked, overflow starting](docs/screenshots/09-boss-context-overflow.png)
+
+**10. The payoff.** The robotaxi comes back (HQ is inside its service area), `#demo-day` asks
+for one more small change, and an original chiptune victory song plays.
+
+![Win screen with the robotaxi and the last Slack ping](docs/screenshots/10-win-payoff.png)
+
+### On a phone
+
+iPhone-size landscape (844x390) at 2x, in Chrome's device emulation.
+
+**11. Touch title.** The same terminal, with touch instructions; a tap starts the run, and on
+Android it goes fullscreen.
+
+![Title screen on a phone](docs/screenshots/11-phone-title.png)
+
+**12. Touch controls.** The D-pad and the fire (`>_`) and jump buttons sit at the screen's
+corners, the outer ones in the letterbox bars rather than over the game; here right and fire
+are held. Powers are taps on the terminal bar, beside a hold-to-talk slot, and the tips say tap.
+
+![Level 1 on a phone with the touch controls](docs/screenshots/12-phone-level.png)
+
+**13. The Hydra on a phone.** A jump-shot with fire and jump held together, a pause button
+beside the star badge, and a head lying to you.
+
+![Boss fight on a phone](docs/screenshots/13-phone-boss.png)
+
+**14. Portrait.** Turned upright, the game pauses behind a prompt to turn the phone sideways.
+
+<img src="docs/screenshots/14-phone-portrait.png" alt="Rotate-your-phone prompt in portrait" width="240">
 
 A dated design review with before and after screenshots is in
 [`docs/review/design-review.md`](docs/review/design-review.md).
@@ -106,7 +140,7 @@ A dated design review with before and after screenshots is in
 - Three enemy types: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat)
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
 - The Context Rot Hydra boss: three heads with distinct roles (image flood, gaslighting orb that reverses your controls, a spawner whose notification skulls hunt you and respawn until that head dies), growth every 8 seconds that floods the arena with matrix rain and context rot once the context window is full, until you refactor, lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
-- Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
+- Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard and tap equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
@@ -237,8 +271,8 @@ dist/assets/index-BPN3vGc9.js  1,299.00 kB │ gzip: 355.54 kB
 That output is from a fresh clone of `5f16806` into a clean directory (`npm ci` then
 `npm run build`); Vite's large-chunk warning is trimmed.
 
-Gameplay was verified with scripted browser runs that drive real keyboard events against the
-running game, recorded with screenshots in
+Gameplay was verified with scripted browser runs that drive keyboard, touch, and pointer events
+against the running game, recorded with screenshots in
 [`docs/review/design-review.md`](docs/review/design-review.md). These are not in CI:
 
 | Check | Result |
@@ -316,7 +350,8 @@ No license chosen yet; all rights reserved by default.
 
 Third-party assets: the slime and skull sprite sheets, the 8x8 font, the sound effects, and both
 music tracks come from the [Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
-by Pixel-boy and AAA, released under CC0. All other art is drawn in code in this repository.
+by Pixel-boy and AAA, released under CC0. All other art is drawn in code in this repository, and the victory song is original, written as
+note data in `src/victorySong.js`.
 
 This is an unofficial hackathon project. It is not affiliated with or endorsed by Anthropic,
 Waymo, NVIDIA, Slack, or GitHub; their names are used descriptively.
