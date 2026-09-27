@@ -108,7 +108,7 @@ A dated design review with before and after screenshots is in
 - The Context Rot Hydra boss: three heads with distinct roles (image flood, gaslighting orb that reverses your controls, minion spawner), growth every 8 seconds, lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
 - Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
-- Every piece of text rendered in an 8x8 pixel font; a CRT scanline and bloom post-effect
+- Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
 - Pause, mute, god mode, and a boss checkpoint that restores your star total on retry
 
 ## Controls
@@ -125,8 +125,8 @@ A dated design review with before and after screenshots is in
 | Intro | Enter, Space, or Esc skips |
 | End screen | Enter retry (from the boss if you died there), T title |
 
-Two URL flags help when testing: `?boss` starts at the boss after you press Enter on the title
-screen, and `?debug` draws the physics bodies.
+Three URL flags help when testing: `?boss` starts at the boss after you press Enter on the title
+screen, `?debug` draws the physics bodies, and `?fx=off` turns off the CRT effect.
 
 ---
 
@@ -139,7 +139,7 @@ screen, and `?debug` draws the physics bodies.
 | Language | Plain JavaScript modules | Speed during a timeboxed build; no compile step beyond Vite. |
 | Art | Sprites and backgrounds drawn in code at boot, plus two sprite sheets from the Ninja Adventure pack | Code-drawn pixel art needs no asset pipeline and every texture is keyed, so pack art can replace a sprite without touching game logic. |
 | Text | An 8x8 bitmap font (Ninja Adventure) parsed with Phaser's RetroFont, with proportional spacing measured from each glyph | Keeps every string pixel-art, including symbols the sheet lacks (drawn into unused cells). |
-| Look | A custom CRT post-pipeline (scanlines, slight RGB split, vignette) plus bloom | Ties mismatched art sources into one terminal aesthetic. |
+| Look | A custom CRT post-pipeline (scanlines, slight RGB split, vignette); no bloom, because Phaser's bloom halves the frame before adding glow | Ties mismatched art sources into one terminal aesthetic. |
 | Voice | The browser's Web Speech API, push-to-talk | No API key, no server, and no cost; the browser handles recognition. Keyboard keys cover browsers without it. |
 | Audio | Ninja Adventure sound effects, two music tracks converted to MP3 | CC0 licensed; MP3 plays in every major browser. |
 | Hosting | Vercel, static, Git-linked | Every push to `master` builds and deploys; no server code to run. |

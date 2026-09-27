@@ -126,7 +126,7 @@ export default class PlayScene extends Phaser.Scene {
     this.lookahead = 0;
     this.markPits(data, W, H);
     if (!hq) this.outlineBlocks(at, W, H);
-    applyScreenFX(cam, { bloom: true });
+    applyScreenFX(cam);
 
     this.onPower = (name) => this.usePower(name);
     voice.on('power', this.onPower);
