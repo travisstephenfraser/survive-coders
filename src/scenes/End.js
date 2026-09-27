@@ -55,7 +55,6 @@ export default class End extends Phaser.Scene {
       const atBoss = !win && retry === 'BossHQ';
       this.registry.set({
         hp: MAX_HP,
-        reversed: false,
         boss: null,
         toast: null,
         stars: atBoss ? (this.registry.get('checkpointStars') ?? 0) : 0,

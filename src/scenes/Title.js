@@ -87,7 +87,7 @@ export default class Title extends Phaser.Scene {
       started = true;
       voice.resetCooldowns();
       if (this.cache.audio.exists('start')) this.sound.play('start', { volume: 0.5 });
-      this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, reversed: false, boss: null, god, bossIntroSeen: false, introSeen: false, rollbackTaught: false, cutscene: false, toast: null });
+      this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, rollbackTaught: false, cutscene: false, toast: null });
       this.scene.start(params.has('boss') ? 'BossHQ' : 'Level1');
     };
     this.input.keyboard.once('keydown-ENTER', go);

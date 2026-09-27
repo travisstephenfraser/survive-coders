@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import Laptop from './Laptop.js';
-import { MAX_HP } from '../util.js';
+import { MAX_HP, worldText } from '../util.js';
 import { pop } from '../fx.js';
 import { touch } from '../touch.js';
 
@@ -35,6 +35,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.invulnUntil = 0;
     this.knockUntil = 0;
     this.reversedUntil = 0;
+    // Reversed controls show on the player, not in the HUD: the gaslight head's <-> as a chip.
+    this.reversedChip = worldText(scene, x, y, '<->', { color: '#7a4fbf', bg: '#f5f5f5', size: 6, depth: 47 }).setVisible(false);
     this.coyoteUntil = 0;
     this.jumpBufferedUntil = 0;
     this.wasOnFloor = true;
@@ -73,8 +75,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     const k = this.keys;
     let dir = (k.right.isDown || k.d.isDown || touch.right ? 1 : 0) - (k.left.isDown || k.a.isDown || touch.left ? 1 : 0);
     const reversed = time < this.reversedUntil;
-    if (this.scene.registry.get('reversed') !== reversed) this.scene.registry.set('reversed', reversed);
     if (reversed) dir = -dir;
+    const left = this.reversedUntil - time; // the chip blinks through its last 0.6s
+    this.reversedChip.setVisible(reversed && (left > 600 || Math.floor(time / 100) % 2 === 0)).setPosition(this.x, this.y - 16);
 
     const onFloor = this.body.blocked.down;
     if (time > this.knockUntil) this.setVelocityX(dir * SPEED);
@@ -173,6 +176,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.sfx?.('hurt', 0.5);
     if (this.hp <= 0) {
       this.dead = true;
+      this.reversedChip.setVisible(false);
       this.setTint(0xe5534b);
       this.scene.onPlayerDead();
     }

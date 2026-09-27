@@ -62,8 +62,6 @@ export default class HUD extends Phaser.Scene {
     // Context growth is labeled separately from boss health (Astra review item 5).
     this.ctxLabel = uiText(this, 330, 94, 'CONTEXT', { size: 8, color: '#58a6ff', oy: 0.5 });
     this.ctxText = uiText(this, 470, 94, '', { size: 8, color: '#58a6ff', oy: 0.5 });
-    // White box so the warning reads over the busy office; sits above the toast frame (y 140).
-    this.reversed = uiText(this, 480, 104, '<-> CONTROLS REVERSED', { size: 16, color: '#7a4fbf', ox: 0.5, bg: '#f5f5f5' }).setVisible(false);
 
     // Bottom terminal strip. On touch the corners belong to the D-pad and FIRE/JUMP, so the
     // slots centre up as tap targets, plus a hold-to-talk slot when speech is available.
@@ -194,7 +192,6 @@ export default class HUD extends Phaser.Scene {
     this.maxCount.setVisible(tokens > 0).setText(`${tokens} token${tokens === 1 ? '' : 's'}`);
     if (tokens > 0) segBar(g, 93, 64, 8, Math.ceil((8 * tokens) / MAX_TOKENS), [0xffc3a6, 0xf59a70, 0xa8553a, 0x2a1a14], 4);
     this.level.setText(r.get('level') ?? '');
-    this.reversed.setVisible(Boolean(r.get('reversed')));
 
     const boss = r.get('boss');
     this.bossText.setVisible(Boolean(boss));
