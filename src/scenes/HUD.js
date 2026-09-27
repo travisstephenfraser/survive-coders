@@ -60,8 +60,8 @@ export default class HUD extends Phaser.Scene {
     this.maxCount = uiText(this, 234, 76, '', { size: 16, color: '#f59a70', oy: 0.5 });
     this.bossText = uiText(this, 480, 64, 'CONTEXT ROT HYDRA', { size: 16, color: '#e5534b', ox: 0.5 });
     // Context growth is labeled separately from boss health (Astra review item 5).
-    this.ctxLabel = uiText(this, 330, 94, 'CONTEXT', { size: 8, color: '#58a6ff', oy: 0.5 });
-    this.ctxText = uiText(this, 470, 94, '', { size: 8, color: '#58a6ff', oy: 0.5 });
+    this.ctxLabel = uiText(this, 0, 94, 'CONTEXT', { size: 8, color: '#58a6ff', ox: 1, oy: 0.5 });
+    this.ctxText = uiText(this, 0, 94, '', { size: 8, color: '#58a6ff', oy: 0.5 });
 
     // Bottom terminal strip. On touch the corners belong to the D-pad and FIRE/JUMP, so the
     // slots centre up as tap targets, plus a hold-to-talk slot when speech is available.
@@ -202,13 +202,19 @@ export default class HUD extends Phaser.Scene {
       const filled = Math.ceil(cells * Phaser.Math.Clamp(boss.hp / Math.max(1, boss.max), 0, 1));
       segBar(g, 480 - ((cells * 8 + 3) * P) / 2, 36, cells, filled, [0xffb199, 0xd97757, 0x8a4a36, 0x2a1a14]);
       if (boss.heads) {
-        // Growth meter: one cell per growth step, then time to the next growth (the real timer).
+        // Growth meter centered under the boss bar, one cell per growth step: the label to its
+        // left, the time to the next growth (the real timer) to its right.
+        const w = boss.maxGrowth * 24 - 3;
+        const x0 = Math.round(480 - w / 2);
         for (let i = 0; i < boss.maxGrowth; i++) {
-          g.fillStyle(i < boss.growth ? 0x58a6ff : 0x1c2a3a).fillRect(390 + i * 24, 88, 21, 12);
+          g.fillStyle(i < boss.growth ? 0x58a6ff : 0x1c2a3a).fillRect(x0 + i * 24, 88, 21, 12);
         }
+        this.ctxLabel.setX(x0 - 12);
+        this.ctxText.setX(x0 + w + 12);
         const full = boss.growth >= boss.maxGrowth;
-        // The call to action during an overflow is a boxed toast; this line just states it.
-        this.ctxText.setText(boss.overflow ? 'OVERFLOW' : full ? 'FULL  (refactor it!)' : `next growth ${Math.ceil(boss.nextMs / 1000)}s`);
+        // The call to action during an overflow is the power bar's status line; this just states it.
+        // Short enough to balance "CONTEXT" on the other side, and to clear the top head.
+        this.ctxText.setText(boss.overflow ? 'OVERFLOW' : full ? 'FULL' : `next ${Math.ceil(boss.nextMs / 1000)}s`);
         this.ctxText.setTint(boss.overflow ? 0xe5534b : 0x58a6ff);
       }
     }

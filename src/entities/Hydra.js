@@ -114,6 +114,8 @@ class Head extends Enemy {
     this.maxHp = BASE_HP + this.g * 3;
     this.hp = Math.min(this.maxHp, this.hp + 3);
     this.scene.tweens.add({ targets: this, scale: 1 + this.g * 0.3, duration: 400, ease: 'Back.out' });
+    // Said by the head that grew; kept low enough that its rise stays under the HUD's top band.
+    floatText(this.scene, this.x, Math.max(40, this.hydra.bubbleY(this)), 'context +25%', '#e5534b');
   }
 
   onRefactor() {
@@ -216,7 +218,6 @@ export default class Hydra {
     for (const h of this.alive) h.grow();
     this.addGpu();
     this.scene.sfx('grow', 0.4);
-    floatText(this.scene, 160, 30, `turn ${this.turn}: context +25%`, '#e5534b', 7);
     this.scene.cameras.main.shake(150, 0.004);
   }
 
