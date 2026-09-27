@@ -10,7 +10,7 @@ import { params } from './util.js';
 import { CRTPipeline } from './fx.js';
 import { voice } from './voice.js';
 
-// 960x540 canvas; world scenes zoom 3x onto a 320x180 NES-style view.
+// 960x540 canvas; world scenes zoom 3x onto a 320x180 16-bit-style view.
 window.game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',

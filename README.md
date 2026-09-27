@@ -1,6 +1,6 @@
 # Survive Coders
 
-**An 8-bit platformer where a vibe coder fights vibe-coding failure modes across San Francisco, armed with a floating laptop and their voice.**
+**A 16-bit platformer where a vibe coder fights vibe-coding failure modes across San Francisco, armed with a floating laptop and their voice.**
 
 Survive Coders is a browser game built for a hackathon demo. A robotaxi drops the player at the
 edge of its service area in Daly City with one request from `#demo-day`: *make one small
