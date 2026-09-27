@@ -129,7 +129,8 @@ export default class HUD extends Phaser.Scene {
           g.fillStyle(i < boss.growth ? 0x58a6ff : 0x1c2a3a).fillRect(390 + i * 24, 88, 21, 12);
         }
         const full = boss.growth >= boss.maxGrowth;
-        this.ctxText.setText(full ? 'FULL  (refactor it!)' : `next growth ${Math.ceil(boss.nextMs / 1000)}s`);
+        this.ctxText.setText(boss.overflow ? 'OVERFLOW: refactor now!' : full ? 'FULL  (refactor it!)' : `next growth ${Math.ceil(boss.nextMs / 1000)}s`);
+        this.ctxText.setTint(boss.overflow && Math.floor(time / 200) % 2 ? 0xe5534b : 0x58a6ff);
       }
     }
 

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Enemy, FlamingSkull } from './enemies.js';
+import ContextOverflow from './ContextOverflow.js';
 import { worldText, floatText } from '../util.js';
 
 const LIES = [
@@ -21,6 +22,8 @@ const TELEGRAPH_MS = 600; // wind-up before every attack: shake, flash, and a ro
 const MAX_GROWTH = 3;
 const STAGGER = { flood: 0, gaslight: 1100, spawn: 2200 };
 const BASE_HP = 14;
+const MAX_MINIONS = 2;
+const RESPAWN_MS = 1000;
 
 // One chat-bubble head. Not refactorable: refactor only resets its growth.
 class Head extends Enemy {
@@ -120,6 +123,7 @@ export default class Hydra {
     this.dormantUntil = 0;
     this.bubble = null;
     this.minions = [];
+    this.overflow = new ContextOverflow(scene);
     this.contact = scene.physics.add.overlap(scene.player, this.body, () => scene.player.hurt(1, this.body.x));
 
     this.turnTimer = scene.time.addEvent({ delay: TURN_MS, loop: true, callback: () => this.nextTurn() });
@@ -140,6 +144,7 @@ export default class Hydra {
       turn: this.turn,
       growth: alive.reduce((g, h) => Math.max(g, h.g), 0),
       maxGrowth: MAX_GROWTH,
+      overflow: this.overflow.active,
       nextMs: this.turnTimer && !this.turnTimer.hasDispatched ? this.turnTimer.getRemaining() : 0,
     });
   }
@@ -232,17 +237,32 @@ export default class Hydra {
       });
       // As this head grows it drifts onto the middle platform; a solid orb broke on it at launch.
       orb.ghost = true;
-    } else if (head.role === 'spawn') {
-      this.minions = this.minions.filter((m) => m.active);
-      if (this.minions.length >= 3) return;
-      const m = new FlamingSkull(scene, head.x - 8, head.y);
-      m.dir = -1;
-      this.minions.push(m);
-    }
+    } else if (head.role === 'spawn') this.spawnMinion(head);
+  }
+
+  // Notifications: skulls that hunt the player across the arena. Each one killed is replaced
+  // about a second later for as long as the spawn head lives, and they all die with it.
+  spawnMinion(head) {
+    const scene = this.scene;
+    this.minions = this.minions.filter((m) => m.active);
+    if (this.minions.length >= MAX_MINIONS || !head.active || head.dying || scene.outcome) return;
+    const m = new FlamingSkull(scene, head.x - 8, head.y);
+    m.onDie = () =>
+      scene.time.delayedCall(RESPAWN_MS, () => {
+        if (!head.active || head.dying || scene.outcome) return;
+        floatText(scene, head.x, head.y - 14, 'new notification', '#d97757');
+        this.spawnMinion(head);
+      });
+    this.minions.push(m);
   }
 
   headDied(head) {
     floatText(this.scene, head.x, head.y - 10, 'head -1', '#e5534b', 7);
+    if (head.role === 'spawn') {
+      const left = this.minions.filter((m) => m.active && !m.dying);
+      if (left.length) floatText(this.scene, head.x, head.y + 6, 'notifications cleared', '#3fb950');
+      for (const m of left) m.die();
+    }
     this.scene.hitStop(180);
     this.scene.sfx('headkill', 0.5);
     this.scene.cameras.main.shake(200, 0.01);
@@ -265,6 +285,7 @@ export default class Hydra {
       h.plan = null;
     }
     for (const h of [...scene.hazards.getChildren()]) h.destroy();
+    this.overflow.stop(false);
     this.turnTimer.remove();
     this.lieTimer.remove();
     this.bubble?.destroy();
@@ -300,6 +321,11 @@ export default class Hydra {
     if (this.bubble?.active && this.bubble.owner?.active) {
       this.bubble.setPosition(Phaser.Math.Clamp(this.bubble.owner.x, 70, 250), this.bubbleY(this.bubble.owner));
     }
+    // A full context window overflows until a refactor shrinks the heads back down.
+    const full = this.alive.some((h) => h.g >= MAX_GROWTH);
+    if (full && !this.scene.outcome) this.overflow.start();
+    else if (!full) this.overflow.stop();
+    this.overflow.update(this.scene.time.now, this.scene.game.loop.delta);
     this.publish();
   }
 }

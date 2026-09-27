@@ -225,9 +225,13 @@ export class FlamingSkull extends Enemy {
     }
   }
 
+  // The Hydra's notifications: they run straight at you along the floor, arena-wide.
   update() {
-    if (this.dying || this.stunned) return;
-    this.patrol(26);
+    if (this.dying || this.stunned || !this.body.blocked.down) return;
+    const dx = this.scene.player.x - this.x;
+    if (Math.abs(dx) > 4) this.dir = Math.sign(dx);
+    this.setVelocityX(this.dir * 50);
+    this.setFlipX(this.dir < 0);
   }
 }
 

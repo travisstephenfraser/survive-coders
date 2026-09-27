@@ -105,7 +105,7 @@ A dated design review with before and after screenshots is in
 - One side-scrolling level from Daly City to SoMa over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars)
 - Three enemy types: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat)
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
-- The Context Rot Hydra boss: three heads with distinct roles (image flood, gaslighting orb that reverses your controls, minion spawner), growth every 8 seconds, lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
+- The Context Rot Hydra boss: three heads with distinct roles (image flood, gaslighting orb that reverses your controls, a spawner whose notification skulls hunt you and respawn until that head dies), growth every 8 seconds that floods the arena with matrix rain and context rot once the context window is full, until you refactor, lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
 - Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
