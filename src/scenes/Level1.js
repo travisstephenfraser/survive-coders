@@ -31,15 +31,16 @@ export default class Level1 extends PlayScene {
     this.registry.set('boss', null);
 
     // Camera-pinned parallax layers; with a 3x zoom, (320,180) is the view's top-left.
-    this.parallax = LAYERS.map((l) => ({
-      ...l,
-      ts: this.add
+    this.parallax = LAYERS.map((l) => {
+      const ts = this.add
         .tileSprite(320, 180 + (l.y ?? 0), 320, l.h ?? 180, l.key)
         .setOrigin(0)
         .setScrollFactor(0)
         .setAlpha(l.alpha ?? 1)
-        .setDepth(-10),
-    }));
+        .setDepth(-10);
+      if (l.haze) this.add.rectangle(320, 180, 320, 180, 0x000000, l.haze).setOrigin(0).setScrollFactor(0).setDepth(-10);
+      return { ...l, ts };
+    });
 
     // Trolleys ride the near-layer street; they share its parallax plus their own motion.
     const near = LAYERS.find((l) => l.key === 'bg_near');

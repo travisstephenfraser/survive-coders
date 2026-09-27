@@ -354,12 +354,14 @@ export function buildBackdrops(scene) {
 }
 
 // Parallax factor per layer; Level1 adds these as camera-pinned TileSprites.
-// Opacity climbs toward the viewer so each depth reads as its own plane.
+// Opacity climbs toward the viewer so each depth reads as its own plane. `haze` lays black
+// over that plane and everything behind it, so the skyline recedes as a whole; lowering the
+// far/mid alpha instead turns their silhouettes see-through and the sun behind them pops.
 export const LAYERS = [
   { key: 'bg_sky', f: 0 },
   { key: 'bg_far', f: 0.15, alpha: 0.4 },
   { key: 'bg_fog', f: 0.2, y: 96, h: 40, drift: 0.004 },
-  { key: 'bg_mid', f: 0.3, alpha: 0.65 },
+  { key: 'bg_mid', f: 0.3, alpha: 0.65, haze: 0.3 },
   { key: 'bg_near', f: 0.55, alpha: 0.9 },
 ];
 
