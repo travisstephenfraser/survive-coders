@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { inject } from '@vercel/analytics';
 import Boot from './scenes/Boot.js';
 import Title from './scenes/Title.js';
 import Level1 from './scenes/Level1.js';
@@ -9,6 +10,8 @@ import Cine from './scenes/Cine.js';
 import { params } from './util.js';
 import { CRTPipeline } from './fx.js';
 import { voice } from './voice.js';
+
+inject();
 
 // 960x540 canvas; world scenes zoom 3x onto a 320x180 16-bit-style view.
 window.game = new Phaser.Game({

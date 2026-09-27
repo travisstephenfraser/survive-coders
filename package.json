@@ -11,6 +11,7 @@
     "images": "node scripts/make-images.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
