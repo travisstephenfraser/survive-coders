@@ -25,4 +25,18 @@ window.game = new Phaser.Game({
   scene: [Boot, Title, Level1, BossHQ, HUD, Cine, End],
 });
 
+// Keep the canvas fitted after a phone turns. Phaser's orientation listener refits using the
+// parent size from before the turn, then records the new size inside that same refresh
+// (ScaleManager.updateScale re-reads the parent), so its own poll never sees a change and
+// the canvas stays fitted to the old orientation. Reproduced in iPhone emulation with a
+// landscape-portrait-landscape round trip. Refit whenever the canvas no longer fits.
+setInterval(() => {
+  const s = window.game.scale;
+  s.getParentBounds();
+  const { width: pw, height: ph } = s.parentSize;
+  if (!pw || !ph) return;
+  const fit = Math.min(pw / s.gameSize.width, ph / s.gameSize.height);
+  if (Math.abs(s.displaySize.width - s.gameSize.width * fit) >= 1) s.refresh();
+}, 250);
+
 if (import.meta.env.DEV) window.voice = voice; // debugging hook for dev builds only
