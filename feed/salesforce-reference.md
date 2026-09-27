@@ -1,8 +1,9 @@
 # Salesforce Park and Tower: reference notes
 
 Gathered from web search on 2026-09-27 for the Park and Tower levels. Photo downloads were
-blocked by the session's network policy, so these are written facts only. Swap in real photos
-for the art pass when you have them.
+blocked by the session's network policy, so these are written facts only. Travis's reference
+photos (and park layouts) are in `feed/SF Park/`, `feed/SF Tower/` and `feed/SF Ohana/` on the
+laptop: gitignored by `feed/*/`, so local only. They beat these notes where they disagree.
 
 ## Salesforce Transit Center (Level 1's exit)
 - Pearlescent white exterior wall: 3,992 perforated white aluminum panels.
