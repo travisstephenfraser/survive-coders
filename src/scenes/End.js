@@ -37,7 +37,14 @@ export default class End extends Phaser.Scene {
     // Fast retry (Team Meat: short respawns). Boss deaths restart at the HQ checkpoint.
     this.input.keyboard.once('keydown-ENTER', () => {
       const atBoss = !win && retry === 'BossHQ';
-      this.registry.set({ hp: MAX_HP, reversed: false, boss: null, toast: null, stars: atBoss ? (this.registry.get('checkpointStars') ?? 0) : 0 });
+      this.registry.set({
+        hp: MAX_HP,
+        reversed: false,
+        boss: null,
+        toast: null,
+        stars: atBoss ? (this.registry.get('checkpointStars') ?? 0) : 0,
+        maxTokens: atBoss ? (this.registry.get('checkpointTokens') ?? 0) : 0,
+      });
       voice.resetCooldowns();
       this.scene.start(atBoss ? 'BossHQ' : 'Level1');
     });

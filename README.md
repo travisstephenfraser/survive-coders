@@ -107,7 +107,7 @@ A dated design review with before and after screenshots is in
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
 - The Context Rot Hydra boss: three heads with distinct roles (image flood, gaslighting orb that reverses your controls, a spawner whose notification skulls hunt you and respawn until that head dies), growth every 8 seconds that floods the arena with matrix rain and context rot once the context window is full, until you refactor, lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
 - Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
-- A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits
+- A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
 - Pause, mute, and a boss checkpoint that restores your star total on retry

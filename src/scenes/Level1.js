@@ -29,6 +29,7 @@ export default class Level1 extends PlayScene {
     this.leaving = false;
     this.registry.set('level', '~/sf/daly-city → soma');
     this.registry.set('boss', null);
+    this.registry.set('maxTokens', 0); // MAX's chip is in this level; unspent tokens carry into the boss
 
     // Camera-pinned parallax layers; with a 3x zoom, (320,180) is the view's top-left.
     this.parallax = LAYERS.map((l) => {

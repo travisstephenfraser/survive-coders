@@ -22,7 +22,6 @@ export default class PlayScene extends Phaser.Scene {
     this.cutscene = false;
     this.stopping = false;
     this.physics.world.resume(); // a shutdown mid hit-stop would otherwise leave physics paused
-    this.registry.set('maxTokens', 0); // MAX never carries between scenes
     const H = rows.length;
     const W = Math.max(...rows.map((r) => r.length));
     const hq = theme === 'hq';

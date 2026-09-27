@@ -29,6 +29,7 @@ export default class BossHQ extends PlayScene {
     this.registry.set('hp', MAX_HP); // checkpoint heal before the boss
     if (this.registry.get('stars') === undefined) this.registry.set('stars', 0);
     this.registry.set('checkpointStars', this.registry.get('stars')); // retry restores this
+    this.registry.set('checkpointTokens', this.registry.get('maxTokens') ?? 0); // and the MAX carried in
 
     this.buildWorld(ARENA, 'hq');
     this.decorate();

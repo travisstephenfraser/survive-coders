@@ -110,7 +110,7 @@ export default class HUD extends Phaser.Scene {
 
     const tokens = r.get('maxTokens') ?? 0;
     this.maxIcon.setVisible(tokens > 0);
-    this.maxCount.setVisible(tokens > 0).setText(`${tokens}`);
+    this.maxCount.setVisible(tokens > 0).setText(`${tokens} token${tokens === 1 ? '' : 's'}`);
     if (tokens > 0) segBar(g, 93, 64, 8, Math.ceil((8 * tokens) / MAX_TOKENS), [0xffc3a6, 0xf59a70, 0xa8553a, 0x2a1a14], 4);
     this.level.setText(r.get('level') ?? '');
     this.reversed.setVisible(Boolean(r.get('reversed')));
