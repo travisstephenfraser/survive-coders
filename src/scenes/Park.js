@@ -23,9 +23,11 @@ const PARK = [
   '####################################################...###############################...###########################################',
 ];
 
-// Fountain jets: the real ones fire when a bus passes through the terminal underneath.
+// Bus fountain: the real one (Ned Kahn's, 247 geysers in a line) fires as buses pass through
+// the terminal underneath, so each bus sets the jets off in a wave along the path.
 const JET_H = 92;
 const JET_LAUNCH = -440; // ~6 tiles up, more than a jump
+const BUS_STEP_MS = 400; // the wave's pace: one jet to the next as the bus drives under
 
 // Demo day: waves of [column, enemy] (dropped in clear of the judges' stage), and what the judges think of each one you take out.
 const WAVES = [
@@ -50,6 +52,7 @@ export default class Park extends PlayScene {
     this.sign(88, 112, 'SALESFORCE PARK', '#3fb950');
     this.sign(12 * TILE, 118, 'NO PITCHING', '#e5534b');
     this.sign(38 * TILE, 118, 'OAT MILK ONLY', '#a8905e');
+    this.sign(29 * TILE, 118, 'GARDEN ZONE 4: SERIES A FERNS', '#3fb950');
     this.sign(69 * TILE, 110, 'NEXT BUS: 2 MIN (PROBABLY)', '#e3b341');
     this.buildJets();
     this.buildArena();
@@ -94,13 +97,22 @@ export default class Park extends PlayScene {
         grate.fillStyle(0x1a1a1e).fillRect(s.x - 7, ground - 1, 14, 3);
         grate.fillStyle(0x5a5a62);
         for (let x = -6; x < 7; x += 3) grate.fillRect(s.x + x, ground - 1, 1, 3);
-        return { x: s.x, ground, g: this.add.graphics().setDepth(3), state: 'idle', until: this.time.now + 1200 + i * 700, since: 0 };
-      });
+        return { x: s.x, ground, g: this.add.graphics().setDepth(3), state: 'idle', until: Infinity, since: 0 };
+      })
+      .sort((a, b) => a.x - b.x);
+    this.nextBus = this.time.now + 1200;
   }
 
   updateJets(time) {
     const p = this.player;
     const cam = this.cameras.main;
+    if (time > this.nextBus) {
+      this.jets.forEach((j, i) => {
+        j.state = 'idle';
+        j.until = time + i * BUS_STEP_MS;
+      });
+      this.nextBus = time + Phaser.Math.Between(4800, 6800); // the schedule is a suggestion
+    }
     for (const j of this.jets) {
       if (time > j.until) {
         j.since = time;
@@ -113,7 +125,7 @@ export default class Park extends PlayScene {
           if (Math.abs(j.x - cam.midPoint.x) < 200) this.sfx('flood', 0.25);
         } else {
           j.state = 'idle';
-          j.until = time + Phaser.Math.Between(2000, 4200); // the bus schedule is a suggestion
+          j.until = Infinity; // until the next bus
         }
       }
       const g = j.g.clear();

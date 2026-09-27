@@ -99,7 +99,7 @@ sliding doors part as you reach them and close behind you as you walk in.
 The park teaches one new threat at a time. Founders throw pitch-deck slides and grab you for a
 "quick demo" that you mash out of, and they leave follow-up emails behind. Vested bros are
 untouchable until their 1-year cliff ticks over their heads. Zone 2 joggers shove you aside.
-The bus fountains launch you over a wall. Then the amphitheater locks you in for demo day, with
+Buses driving through the terminal underneath set off the fountain's geysers in a wave, and one launches you over a wall. Then the amphitheater locks you in for demo day, with
 judges scoring each founder you take out, until you get into YC (Your Coffee). The Salesforce
 Tower's lobby waits at the end. Its three floors aren't built yet, so for now the lobby leads
 straight to the Hydra.
