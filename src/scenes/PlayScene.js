@@ -98,7 +98,8 @@ export default class PlayScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.layer);
     this.physics.add.collider(this.enemies, this.layer);
     this.physics.add.collider(this.bolts, this.layer, (b) => b.destroy());
-    this.physics.add.collider(this.hazards, this.layer, (h) => h.destroy());
+    // Ghost hazards (the gaslight orb) pass through platforms instead of breaking on them.
+    this.physics.add.collider(this.hazards, this.layer, (h) => h.destroy(), (h) => !h.ghost);
     this.physics.add.overlap(this.bolts, this.enemies, (b, e) => {
       if (!b.active || e.dying) return;
       const dmg = b.dmg ?? 1; // MAX stream characters carry 0.5
@@ -116,7 +117,9 @@ export default class PlayScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.player, this.hazards, (pl, h) => {
       if (!h.active) return;
-      if (pl.hurt(1, h.x)) h.onHitPlayer?.(pl);
+      pl.hurt(1, h.x);
+      // A hit's effect (the gaslight reversal) lands even when god mode or i-frames block the damage.
+      if (pl.targetable) h.onHitPlayer?.(pl);
       h.destroy();
     });
     this.physics.add.overlap(this.player, this.stars, (pl, s) => {

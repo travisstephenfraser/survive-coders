@@ -154,9 +154,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     return Boolean(this.scene.registry.get('god'));
   }
 
+  // Whether attacks can reach the player at all. God mode and i-frames only protect HP.
+  get targetable() {
+    return !this.dead && !this.scene.outcome && !this.scene.cutscene;
+  }
+
   hurt(dmg, fromX, force = false) {
     const t = this.scene.time.now;
-    if (this.dead || this.scene.outcome || this.scene.cutscene || this.god || (!force && t < this.invulnUntil)) return false;
+    if (!this.targetable || this.god || (!force && t < this.invulnUntil)) return false;
     this.hp -= dmg;
     this.invulnUntil = t + 1000;
     this.knockUntil = t + 220;

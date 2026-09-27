@@ -225,11 +225,13 @@ export default class Hydra {
       const oy = plan?.orb?.y ?? head.y;
       const a = Phaser.Math.Angle.Between(ox, oy, pl.x, pl.y);
       const v = 75 + head.g * 15;
-      scene.spawnHazard(ox, oy, 'orb', Math.cos(a) * v, Math.sin(a) * v, false, (p) => {
+      const orb = scene.spawnHazard(ox, oy, 'orb', Math.cos(a) * v, Math.sin(a) * v, false, (p) => {
         p.reverseControls(3000);
         scene.sfx('gaslight', 0.5);
         floatText(scene, p.x, p.y - 20, 'controls? what controls?', '#bc8cff', 6);
       });
+      // As this head grows it drifts onto the middle platform; a solid orb broke on it at launch.
+      orb.ghost = true;
     } else if (head.role === 'spawn') {
       this.minions = this.minions.filter((m) => m.active);
       if (this.minions.length >= 3) return;
