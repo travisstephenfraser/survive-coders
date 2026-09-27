@@ -23,7 +23,7 @@ Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 as fallbac
 Tests      0 automated; scripted browser checks recorded in docs/review/
 ```
 
-Live URL checked 2026-09-26: HTTP 200, deployed from `master` at `1d9b806`.
+Live URL checked 2026-09-26: HTTP 200.
 
 ---
 
@@ -111,24 +111,33 @@ A dated design review with before and after screenshots is in
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
 - Pause, mute, and a boss checkpoint that restores your star total on retry
+- Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
+- An original chiptune victory song on the win screen, written as MIDI note data and synthesized in the browser
+- Link previews and a favicon drawn from the game's own pixels
 
 ## Controls
 
-| Action | Keys |
-|---|---|
-| Move | Arrow keys or A / D |
-| Jump | Up, W, or Z |
-| Fire prompts | Space, X, or J |
-| Stream tokens (after grabbing MAX) | Hold Space, X, or J |
-| Voice power | Hold M, say the command, release |
-| Powers without voice | 1 ship it, 2 rollback, 3 refactor |
-| Pause / mute | P or Esc / N |
-| Title screen | Enter start, V set up microphone |
-| Intro | Enter, Space, or Esc skips |
-| End screen | Enter retry (from the boss if you died there), T title |
+| Action | Keyboard | Touch |
+|---|---|---|
+| Move | Arrow keys or A / D | ← → bottom left; slide between them |
+| Jump | Up, W, or Z | ↑ bottom right; hold for a higher jump |
+| Fire prompts | Space, X, or J | `>_` next to jump; hold to keep firing |
+| Stream tokens (after grabbing MAX) | Hold Space, X, or J | Hold `>_` |
+| Voice power | Hold M, say the command, release | Hold *talk* in the terminal bar, say it, release |
+| Powers without voice | 1 ship it, 2 rollback, 3 refactor | Tap the power in the terminal bar |
+| Pause / mute | P or Esc / N | Pause button at the top; sound toggle on the pause screen |
+| Title screen | Enter start, V set up microphone | Tap to start, tap *set up mic* |
+| Intro | Enter, Space, or Esc skips | Tap skips |
+| End screen | Enter retry (from the boss if you died there), T title | Tap retries; *title* button |
 
-Three URL flags help when testing: `?boss` starts at the boss after you press Enter on the title
-screen, `?debug` draws the physics bodies, and `?fx=off` turns off the CRT effect.
+Touch controls appear on devices whose main pointer is a finger. A thumb on the seam between
+`>_` and ↑ presses both. The game plays in landscape and pauses if the phone turns portrait.
+On Android the tap that starts a run goes fullscreen; iPhone Safari cannot make a page
+fullscreen, but *Add to Home Screen* runs the game fullscreen from its web manifest.
+
+Four URL flags help when testing: `?boss` starts at the boss after you press Enter on the title
+screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
+the touch controls on a desktop (they work with a mouse).
 
 ---
 
@@ -143,7 +152,8 @@ screen, `?debug` draws the physics bodies, and `?fx=off` turns off the CRT effec
 | Text | An 8x8 bitmap font (Ninja Adventure) parsed with Phaser's RetroFont, with proportional spacing measured from each glyph | Keeps every string pixel-art, including symbols the sheet lacks (drawn into unused cells). |
 | Look | A custom CRT post-pipeline (scanlines, slight RGB split, vignette); no bloom, because Phaser's bloom halves the frame before adding glow | Ties mismatched art sources into one terminal aesthetic. |
 | Voice | The browser's Web Speech API, push-to-talk | No API key, no server, and no cost; the browser handles recognition. Keyboard keys cover browsers without it. |
-| Audio | Ninja Adventure sound effects, two music tracks converted to MP3 | CC0 licensed; MP3 plays in every major browser. |
+| Input | Phaser keyboard input; touch buttons as DOM elements over the canvas (pointer events) | The canvas is letterboxed at 16:9, so buttons anchored to the screen's corners sit partly in the side bars on wide phones instead of over the game. |
+| Audio | Ninja Adventure sound effects, two music tracks converted to MP3, and a victory song synthesized with WebAudio | CC0 licensed; MP3 plays in every major browser. The song is MIDI note data on a small NES-style synth, so it ships as code, not a file. |
 | Hosting | Vercel, static, Git-linked | Every push to `master` builds and deploys; no server code to run. |
 
 ---
@@ -163,6 +173,8 @@ screen, `?debug` draws the physics bodies, and `?fx=off` turns off the CRT effec
 │       hqArt.js) + public/assets (2 sprite sheets, font, audio)          │
 │  Storage: one localStorage key (a demo setting)                         │
 │                                                                         │
+│  src/touch.js ── DOM buttons over the canvas ──→ Player.tick, HUD taps  │
+│  src/victorySong.js ── MIDI note data ──→ WebAudio synth (win screen)   │
 │  src/voice.js ── hold M ──→ Web Speech API                              │
 └──────────────────────────────┼──────────────────────────────────────────┘
           trust boundary: in Chrome, microphone audio is sent to the
@@ -194,18 +206,18 @@ Not in this project: backend, database, authentication, environment variables, s
 
 ## Local setup
 
-Requires Node.js `^20.19.0` or `>=22.12.0` (Vite 8's floor) and npm. The repository is private,
-so cloning needs access.
+Requires Node.js `^20.19.0` or `>=22.12.0` (Vite 8's floor) and npm. The repository is public.
 
 ```bash
-git clone git@github.com:travisstephenfraser/survive-coders.git
+git clone https://github.com/travisstephenfraser/survive-coders.git
 cd survive-coders
 npm ci
 npm run dev        # Vite prints the local URL (default http://localhost:5173)
 ```
 
-Other scripts: `npm run build` writes the static site to `dist/`, and `npm run preview` serves
-that build locally. The microphone only works in a secure context, so use `localhost` (not a
+Other scripts: `npm run build` writes the static site to `dist/`, `npm run preview` serves
+that build locally, and `npm run images` redraws the favicon, home-screen icons, and link-preview
+card in `public/` from the game's sprites (`scripts/make-images.mjs`, no dependencies). The microphone only works in a secure context, so use `localhost` (not a
 LAN IP over plain HTTP) when testing voice.
 
 ---
@@ -217,12 +229,12 @@ files. The production build is the only command-line check:
 
 ```console
 $ npm run build
-dist/index.html                    0.51 kB │ gzip:   0.34 kB
-dist/assets/index-DAmxq0RT.js  1,279.57 kB │ gzip: 348.45 kB
-✓ built in 328ms
+dist/index.html                    2.22 kB │ gzip:   0.96 kB
+dist/assets/index-BPN3vGc9.js  1,299.00 kB │ gzip: 355.54 kB
+✓ built in 334ms
 ```
 
-That output is from a fresh clone of `1d9b806` into a clean directory (`npm ci` then
+That output is from a fresh clone of `5f16806` into a clean directory (`npm ci` then
 `npm run build`); Vite's large-chunk warning is trimmed.
 
 Gameplay was verified with scripted browser runs that drive real keyboard events against the
@@ -239,6 +251,10 @@ running game, recorded with screenshots in
 | Context meter is truthful | The HUD countdown matches the real growth timer, including after `refactor` |
 | Push-to-talk parsing | The four cases in [Architecture](#the-design-decision-worth-explaining) pass with a simulated recognizer |
 | Production build | Loads with no failed requests and no console errors or warnings, locally and on the live URL |
+| Touch controls (iPhone landscape emulation, synthetic touch and pointer events) | The D-pad moves at full speed and slides between directions; a tapped jump peaks at 24 px and a held one at 70 px; holding jump jumps once, as the keyboard does; each power fires from its slot; pause, resume, the sound toggle, and auto-pause on a hidden tab or a portrait turn all work |
+| Touch-only playthrough | A scripted run using only the touch controls finished Level 1, cable car included, and the Hydra; it checks the controls, not the difficulty |
+| Canvas refits after rotation | Landscape, portrait, landscape: back to 693x390 within 300 ms; Phaser alone stayed fitted to the portrait size |
+| Victory song | Offline render at -27.4 dB RMS against -27.9 dB for the level music; silent within 0.8 s of leaving the win screen |
 
 Not verified by automation: real spoken commands through a microphone, the audio mix, and
 difficulty with first-time players.
@@ -254,6 +270,11 @@ difficulty with first-time players.
    Vercel CLI installed and logged in.
 3. Verify with `curl -sI https://survive-coders.vercel.app/ | head -1` (expect `HTTP/2 200`),
    then open the URL in Chrome, press V on the title screen, hold M, and say *ship it*.
+
+**Link previews** (Slack, iMessage, X, LinkedIn) come from the Open Graph tags in
+`index.html`, not from a Vercel setting; they point at `public/og.png` by absolute URL because
+crawlers do not run JavaScript. Apps cache a preview once fetched: LinkedIn's Post Inspector
+refetches on demand, and elsewhere a new query string (`?v=2`) forces a fresh one.
 
 **The step that is easy to miss.** Share the production alias, not the per-deployment URL
 Vercel prints: per-deployment URLs sit behind Vercel's deployment protection and redirect to a
@@ -276,10 +297,13 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   turned off, which matters for photosensitive players and projectors. Next: a toggle on
   the title screen.
 - **One mute for everything.** Next: separate music and sound-effect volumes.
-- **Keyboard only.** There are no touch controls, so phones cannot play.
+- **Touch is verified in emulation only.** Level 1 and the Hydra were finished touch-only in
+  Chrome's iPhone emulation, driven by synthetic touch and pointer events; nobody has played it
+  on a real phone yet. iPhone Safari keeps its toolbar unless the game is added to the home
+  screen. Next: a real-device pass on iOS Safari and Android Chrome.
 - **Two platforming rough edges.** Clipping a platform corner on the way up stops the jump
   dead, and platforms are solid from below. Next: corner correction and one-way platforms.
-- **A 1.28 MB JavaScript bundle**, mostly Phaser, triggers Vite's chunk-size warning. It loads
+- **A 1.3 MB JavaScript bundle**, mostly Phaser, triggers Vite's chunk-size warning. It loads
   once and is cached. Next: split Phaser into its own vendor chunk.
 - **No sign-in or leaderboard.** Stars reset each session; accounts and a shared leaderboard were
   deferred past the demo.
