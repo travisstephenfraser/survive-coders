@@ -6,6 +6,7 @@ import { hex } from './palette.js';
 export const ZOOM = 3;
 export const TILE = 16;
 export const MAX_HP = 5;
+export const MAX_TOKENS = 160; // MAX power-up budget: one token per streamed character
 export const FONT_KEY = 'pixel';
 
 const WORLD_SMALL = 16 / ZOOM; // 2 screen px per font pixel

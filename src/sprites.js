@@ -189,6 +189,23 @@ const DEFS = {
     rows: ['.RRRR.', 'RHYYHR', 'RYWWYR', 'RYWWYR', 'RHYYHR', '.RRRR.'],
   },
 
+  // MAX power-up chip.
+  max_chip: {
+    w: 22,
+    h: 9,
+    rows: [
+      '.hhhhhhhhhhhhhhhhhhhh.',
+      'hOOOOOOOOOOOOOOOOOOOOh',
+      'hHHWHHHWHHWWHHWHHHWHHh',
+      'hHHWWHWWHWHHWHHWHWHHHh',
+      'hHHWHWHWHWWWWHHHWHHHHh',
+      'hHHWHHHWHWHHWHHWHWHHHh',
+      'hHHWHHHWHWHHWHWHHHWHHh',
+      'hHHHHHHHHHHHHHHHHHHHHh',
+      '.hhhhhhhhhhhhhhhhhhhh.',
+    ],
+  },
+
   px_orange: { w: 2, h: 2, rows: ['HH', 'HH'] },
   px_white: { w: 2, h: 2, rows: ['WW', 'WW'] },
   px_cyan: { w: 2, h: 1, rows: ['CC'], swap: { C: 'B' } },

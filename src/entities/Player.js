@@ -5,6 +5,7 @@ import { pop } from '../fx.js';
 
 const SPEED = 95;
 const FIRE_MS = 170;
+const STREAM_MS = 40; // MAX: 25 characters a second
 // Jump designed from height + time-to-apex (Pittman, "Building a Better Jump", GDC 2016):
 // v0 = 2h/t, g = 2h/t². h = 70px (4.4 tiles), t = 0.38s. Then Celeste-style forgiveness:
 // coyote time, jump buffer, half gravity at the apex while held, heavier fall, capped fall.
@@ -37,6 +38,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpBufferedUntil = 0;
     this.wasOnFloor = true;
     this.nextFire = 0;
+    this.streamed = 0;
     this.lastSnap = 0;
     this.history = [];
     this.safe = { x, y };
@@ -113,7 +115,21 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.setTexture('player_idle');
     }
 
-    if ((k.fire.isDown || k.fire2.isDown || k.fire3.isDown) && time > this.nextFire) {
+    const firing = k.fire.isDown || k.fire2.isDown || k.fire3.isDown;
+    const tokens = () => this.scene.registry.get('maxTokens') > 0;
+    if (firing && tokens()) {
+      // MAX streams in fixed steps and catches up within a frame, so the rate is the same at
+      // 60 and 120 FPS. A stale timer (not streaming last frame) restarts from now, no burst.
+      if (time - this.nextFire > STREAM_MS) this.nextFire = time;
+      while (time >= this.nextFire && tokens()) {
+        this.nextFire += STREAM_MS;
+        this.scene.fireStream(this.laptop.x, this.laptop.y, this.facing);
+        if (++this.streamed % 4 === 0) {
+          this.laptop.kick();
+          this.scene.sfx?.('shoot', 0.15);
+        }
+      }
+    } else if (firing && time > this.nextFire) {
       this.nextFire = time + FIRE_MS;
       this.scene.firePrompt(this.laptop.x, this.laptop.y, this.facing);
       this.laptop.kick();

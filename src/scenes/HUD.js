@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
-import { MAX_HP, uiText } from '../util.js';
+import { MAX_HP, MAX_TOKENS, uiText } from '../util.js';
 
 // Screen-space overlay. Everything sits on a 3px grid (one world pixel at 3x zoom) so the
 // bars and frames read as the same pixel art as the game.
@@ -48,6 +48,9 @@ export default class HUD extends Phaser.Scene {
 
     this.level = uiText(this, 480, 14, '', { size: 16, color: '#d97757', ox: 0.5 });
     this.godBadge = uiText(this, 48, 52, 'GOD MODE', { size: 8, color: '#3fb950' });
+    // MAX token meter under the health bar (bar drawn in update); hidden until MAX is picked up.
+    this.maxIcon = this.add.image(18, 63, 'max_chip').setOrigin(0).setScale(P);
+    this.maxCount = uiText(this, 234, 76, '', { size: 16, color: '#f59a70', oy: 0.5 });
     this.bossText = uiText(this, 480, 64, '', { size: 16, color: '#e5534b', ox: 0.5 });
     // Context growth is labeled separately from boss health (Astra review item 5).
     this.ctxLabel = uiText(this, 330, 94, 'CONTEXT', { size: 8, color: '#58a6ff', oy: 0.5 });
@@ -103,6 +106,11 @@ export default class HUD extends Phaser.Scene {
 
     this.stars.setText(`${r.get('stars') ?? 0}`);
     this.godBadge.setVisible(Boolean(r.get('god')));
+
+    const tokens = r.get('maxTokens') ?? 0;
+    this.maxIcon.setVisible(tokens > 0);
+    this.maxCount.setVisible(tokens > 0).setText(`${tokens}`);
+    if (tokens > 0) segBar(g, 93, 64, 8, Math.ceil((8 * tokens) / MAX_TOKENS), [0xffc3a6, 0xf59a70, 0xa8553a, 0x2a1a14], 4);
     this.level.setText(r.get('level') ?? '');
     this.reversed.setVisible(Boolean(r.get('reversed')) && Math.floor(time / 200) % 2 === 0);
 

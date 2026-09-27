@@ -3,8 +3,12 @@ import Player from '../entities/Player.js';
 import { SPAWNERS } from '../entities/enemies.js';
 import { T } from '../sprites.js';
 import { voice } from '../voice.js';
-import { TILE, ZOOM, floatText, worldText } from '../util.js';
+import { MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
+
+// MAX stream: random alphanumerics, mostly white with syntax-highlight accents.
+const STREAM_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
+const STREAM_COLORS = ['#f5f5f5', '#f5f5f5', '#f5f5f5', '#d97757', '#3fb950'];
 
 // Shared plumbing for playable scenes: tilemap from ASCII, player, bolts, enemies, hazards,
 // stars, voice powers, HUD. Subclasses call buildWorld() and add their own content.
@@ -18,6 +22,7 @@ export default class PlayScene extends Phaser.Scene {
     this.cutscene = false;
     this.stopping = false;
     this.physics.world.resume(); // a shutdown mid hit-stop would otherwise leave physics paused
+    this.registry.set('maxTokens', 0); // MAX never carries between scenes
     const H = rows.length;
     const W = Math.max(...rows.map((r) => r.length));
     const hq = theme === 'hq';
@@ -78,6 +83,7 @@ export default class PlayScene extends Phaser.Scene {
     };
     this.hazards = this.physics.add.group({ allowGravity: false });
     this.stars = this.physics.add.group({ allowGravity: false });
+    this.maxChips = this.physics.add.group({ allowGravity: false });
 
     const p = spawns.find((s) => s.ch === 'P') ?? { x: 32, y: 32 };
     this.player = new Player(this, p.x, p.y);
@@ -85,6 +91,7 @@ export default class PlayScene extends Phaser.Scene {
     for (const s of spawns) {
       if (SPAWNERS[s.ch]) new SPAWNERS[s.ch](this, s.x, s.y);
       else if (s.ch === '*') this.placeStar(s.x, s.y);
+      else if (s.ch === 'M') this.placeMax(s.x, s.y);
     }
     this.spawns = spawns;
 
@@ -94,9 +101,10 @@ export default class PlayScene extends Phaser.Scene {
     this.physics.add.collider(this.hazards, this.layer, (h) => h.destroy());
     this.physics.add.overlap(this.bolts, this.enemies, (b, e) => {
       if (!b.active || e.dying) return;
-      this.burst(b.x, b.y, 'px_white', 4);
+      const dmg = b.dmg ?? 1; // MAX stream characters carry 0.5
+      this.burst(b.x, b.y, 'px_white', dmg < 1 ? 2 : 4);
       b.destroy();
-      e.hurt(1);
+      e.hurt(dmg);
     });
     this.physics.add.overlap(this.blasts, this.enemies, (bl, e) => {
       if (e.dying || bl.hit.has(e)) return;
@@ -116,6 +124,11 @@ export default class PlayScene extends Phaser.Scene {
       s.destroy();
       this.addStars(1, s.x, s.y - 6);
       this.sfx('star', 0.35);
+    });
+    this.physics.add.overlap(this.player, this.maxChips, (pl, c) => {
+      if (!c.active) return;
+      c.destroy();
+      this.grantMax(c.x, c.y);
     });
 
     const cam = this.cameras.main;
@@ -147,6 +160,10 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   sfx(key, volume = 0.5) {
+    // One play per key per 60ms, so a MAX stream's hits don't stack into noise.
+    this.lastSfx ??= {};
+    if (this.time.now - (this.lastSfx[key] ?? -Infinity) < 60) return;
+    this.lastSfx[key] = this.time.now;
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
   }
 
@@ -249,6 +266,37 @@ export default class PlayScene extends Phaser.Scene {
   addStars(n, x, y) {
     this.registry.set('stars', (this.registry.get('stars') ?? 0) + n);
     floatText(this, x, y, `+${n}★`, '#e3b341');
+  }
+
+  // MAX power-up: a token budget that turns held fire into a character stream.
+  placeMax(x, y) {
+    const c = this.maxChips.create(x, y, 'max_chip');
+    if (c.preFX && this.game.renderer.type === Phaser.WEBGL) c.preFX.addGlow(0xf59a70, 2, 0, false, 0.1, 8);
+    this.tweens.add({ targets: c, y: y - 3, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  }
+
+  grantMax(x, y) {
+    this.registry.set('maxTokens', MAX_TOKENS);
+    floatText(this, x, y - 10, 'MAX', '#f59a70');
+    this.burst(x, y, 'px_orange', 14);
+    this.sfx('start', 0.5);
+    this.toast('MAX: hold SPACE to stream tokens');
+  }
+
+  // Spend one MAX token on one character.
+  fireStream(x, y, dir) {
+    const left = this.registry.get('maxTokens') - 1;
+    this.registry.set('maxTokens', left);
+    const ch = Phaser.Utils.Array.GetRandom(STREAM_CHARS);
+    const t = worldText(this, x + dir * 6, y + Phaser.Math.Between(-3, 3), ch, {
+      color: Phaser.Utils.Array.GetRandom(STREAM_COLORS),
+      depth: 7,
+    });
+    this.bolts.add(t);
+    t.dmg = 0.5;
+    t.body.setVelocity(dir * 260, Phaser.Math.Between(-14, 14));
+    this.time.delayedCall(600, () => t.destroy());
+    if (left === 0) this.toast('Usage limit reached. Resets in 5 hours.');
   }
 
   burst(x, y, tex = 'px_orange', count = 10) {
