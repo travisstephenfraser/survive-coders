@@ -1,20 +1,10 @@
 import Phaser from 'phaser';
 import { FONT_KEY } from './util.js';
+import { ASCII, EXTRA, GLYPHS_PER_ROW } from './glyphs.js';
 
-// 8x8 pixel font from the Ninja Adventure sheet (CP437 order, 15 glyphs per row). Glyphs are
-// whitened so BitmapText tint can color them. Extra symbols the game needs are drawn into
-// the unused cells right after '~'.
-const ASCII = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
-const EXTRA = {
-  '★': ['...#....', '...#....', '#######.', '.#####..', '..###...', '.##.##..', '.#...#..', '........'],
-  '←': ['........', '..#.....', '.##.....', '#######.', '.##.....', '..#.....', '........', '........'],
-  '→': ['........', '....#...', '....##..', '#######.', '....##..', '....#...', '........', '........'],
-  '↑': ['...#....', '..###...', '.#####..', '...#....', '...#....', '...#....', '...#....', '........'],
-  '●': ['........', '..###...', '.#####..', '.#####..', '.#####..', '..###...', '........', '........'],
-  '○': ['........', '..###...', '.#...#..', '.#...#..', '.#...#..', '..###...', '........', '........'],
-  '✓': ['........', '......#.', '.....##.', '#...##..', '##.##...', '.###....', '..#.....', '........'],
-  '·': ['........', '........', '........', '...##...', '...##...', '........', '........', '........'],
-};
+// 8x8 pixel font from the Ninja Adventure sheet (layout in glyphs.js). Glyphs are whitened so
+// BitmapText tint can color them. Extra symbols the game needs are drawn into the unused
+// cells right after '~'.
 
 export function buildPixelFont(scene) {
   if (scene.cache.bitmapFont.exists(FONT_KEY)) return;
@@ -34,8 +24,8 @@ export function buildPixelFont(scene) {
   ctx.fillStyle = '#ffffff';
   extras.forEach(([, rows], k) => {
     const cell = ASCII.length + k;
-    const cx = (cell % 15) * 8;
-    const cy = Math.floor(cell / 15) * 8;
+    const cx = (cell % GLYPHS_PER_ROW) * 8;
+    const cy = Math.floor(cell / GLYPHS_PER_ROW) * 8;
     ctx.clearRect(cx, cy, 8, 8);
     rows.forEach((row, y) => [...row].forEach((ch, x) => ch === '#' && ctx.fillRect(cx + x, cy + y, 1, 1)));
   });
@@ -46,7 +36,7 @@ export function buildPixelFont(scene) {
     width: 8,
     height: 8,
     chars,
-    charsPerRow: 15,
+    charsPerRow: GLYPHS_PER_ROW,
     spacing: { x: 0, y: 0 },
     offset: { x: 0, y: 0 },
     lineSpacing: 3,
@@ -56,8 +46,8 @@ export function buildPixelFont(scene) {
   [...chars].forEach((ch, cell) => {
     const glyph = font.data.chars[ch.charCodeAt(0)];
     if (!glyph) return;
-    const cx = (cell % 15) * 8;
-    const cy = Math.floor(cell / 15) * 8;
+    const cx = (cell % GLYPHS_PER_ROW) * 8;
+    const cy = Math.floor(cell / GLYPHS_PER_ROW) * 8;
     let min = 8;
     let max = -1;
     for (let y = 0; y < 8; y++) {

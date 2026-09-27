@@ -585,14 +585,25 @@ function paintRows(ctx, rows, w, swap) {
 
 const OUTLINED = /^(player_|laptop|goblin|keycap|blob|head_)/;
 
+// Paints a row-defined sprite (colour swaps, outline) onto any 2D context. Shared with
+// scripts/make-images.mjs, which draws the favicon and link-preview art from the same pixels.
+export function spriteSize(key) {
+  return { w: DEFS[key].w ?? 16, h: DEFS[key].h ?? 16 };
+}
+
+export function paintSprite(ctx, key) {
+  const def = DEFS[key];
+  const { w, h } = spriteSize(key);
+  paintRows(ctx, def.rows, w, def.swap);
+  if (OUTLINED.test(key)) outline(ctx, w, h);
+}
+
 export function buildTextures(scene) {
-  for (const [key, def] of Object.entries(DEFS)) {
+  for (const key of Object.keys(DEFS)) {
     if (scene.textures.exists(key)) continue;
-    const w = def.w ?? 16;
-    const h = def.h ?? 16;
+    const { w, h } = spriteSize(key);
     const tex = scene.textures.createCanvas(key, w, h);
-    paintRows(tex.getContext(), def.rows, w, def.swap);
-    if (OUTLINED.test(key)) outline(tex.getContext(), w, h);
+    paintSprite(tex.getContext(), key);
     tex.refresh();
   }
   for (const [key, def] of Object.entries(DRAWN)) {

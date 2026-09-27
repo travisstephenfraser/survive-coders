@@ -4,7 +4,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Survive Coders</title>
-    <link rel="icon" href="data:," />
+    <meta name="description" content="An 8-bit platformer where a vibe coder fights vibe-coding failure modes from Daly City to Anthropic HQ, armed with a floating laptop and their voice." />
+    <meta name="theme-color" content="#0d0d0d" />
+    <!-- Icons and the preview card come from scripts/make-images.mjs (the game's own pixels). -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Link previews (Slack, iMessage, X, LinkedIn). Crawlers don't run JS and need absolute URLs. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Survive Coders" />
+    <meta property="og:title" content="Survive Coders" />
+    <meta property="og:description" content="A vibe coder's run from Daly City to Anthropic HQ. An 8-bit platformer with voice powers, in your browser." />
+    <meta property="og:url" content="https://survive-coders.vercel.app/" />
+    <meta property="og:image" content="https://survive-coders.vercel.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Survive Coders title card: a pixel-art vibe coder in an orange hoodie beside a floating laptop, in a terminal window." />
+    <meta name="twitter:card" content="summary_large_image" />
     <style>
       html, body { margin: 0; height: 100%; background: #0d0d0d; overflow: hidden; }
       #game { width: 100%; height: 100%; }
