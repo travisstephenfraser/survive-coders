@@ -45,8 +45,8 @@ Live URL checked 2026-09-26: HTTP 200, deployed from `master` at `1d9b806`.
 
 ## Product walkthrough
 
-**1. Title screen.** A terminal window with the controls, `V` to set up the microphone, and `G`
-to toggle god mode for live demos (shown on).
+**1. Title screen.** A terminal window with the controls, the vibe coder as key art, and `V` to
+set up the microphone.
 
 ![Title screen](docs/screenshots/01-title.png)
 
@@ -110,7 +110,7 @@ A dated design review with before and after screenshots is in
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
-- Pause, mute, god mode, and a boss checkpoint that restores your star total on retry
+- Pause, mute, and a boss checkpoint that restores your star total on retry
 
 ## Controls
 
@@ -123,7 +123,7 @@ A dated design review with before and after screenshots is in
 | Voice power | Hold M, say the command, release |
 | Powers without voice | 1 ship it, 2 rollback, 3 refactor |
 | Pause / mute | P or Esc / N |
-| Title screen | Enter start, V set up microphone, G god mode |
+| Title screen | Enter start, V set up microphone |
 | Intro | Enter, Space, or Esc skips |
 | End screen | Enter retry (from the boss if you died there), T title |
 
@@ -161,7 +161,7 @@ screen, `?debug` draws the physics bodies, and `?fx=off` turns off the CRT effec
 │                                                                         │
 │  Art: drawn to canvas textures at boot (sprites.js, backdrops.js,       │
 │       hqArt.js) + public/assets (2 sprite sheets, font, audio)          │
-│  Storage: localStorage key sc_god only (god mode toggle)                │
+│  Storage: one localStorage key (a demo setting)                         │
 │                                                                         │
 │  src/voice.js ── hold M ──→ Web Speech API                              │
 └──────────────────────────────┼──────────────────────────────────────────┘

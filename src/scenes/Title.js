@@ -38,7 +38,8 @@ export default class Title extends Phaser.Scene {
     uiText(this, left + 230, 296, '1\n2\n3', { size: 16, color: '#8b8b8b' });
     uiText(this, left + 280, 296, 'big forward blast\nrewind 3s, heal\nclear enemies; shrink the Hydra', { size: 16, color: '#f5f5f5' });
 
-    // Demo god mode: no damage (pits still respawn you). Remembered across reloads.
+    // Demo god mode: no damage (pits still respawn you). Remembered across reloads. Deliberately
+    // unlisted: typing GOD here toggles it, and only the in-game HUD badge shows it's on.
     let god = false;
     try {
       god = localStorage.getItem('sc_god') === '1';
@@ -56,20 +57,19 @@ export default class Title extends Phaser.Scene {
       await voice.prime();
       showMic();
     });
-    const godText = uiText(this, left + 520, 452, '', { size: 16 });
-    const showGod = () => {
-      godText.setText(`G  god mode: ${god ? 'ON' : 'off'}`);
-      godText.setTint(god ? 0x3fb950 : 0x8b8b8b);
-    };
-    showGod();
-    this.input.keyboard.on('keydown-G', () => {
+    const godNote = uiText(this, left + 520, 452, '', { size: 16, color: '#3fb950' }).setAlpha(0);
+    this.input.keyboard.createCombo('GOD', { resetOnMatch: true });
+    this.input.keyboard.on('keycombomatch', () => {
       god = !god;
       try {
         localStorage.setItem('sc_god', god ? '1' : '0');
       } catch {
         /* ignore */
       }
-      showGod();
+      // Brief confirmation for whoever typed it, then gone.
+      godNote.setText(`god mode ${god ? 'on' : 'off'}`).setAlpha(1);
+      this.tweens.killTweensOf(godNote);
+      this.tweens.add({ targets: godNote, alpha: 0, delay: 900, duration: 400 });
     });
 
     const prompt = uiText(this, left, 446, '$ press ENTER to start_', { size: 24, color: '#3fb950' });
