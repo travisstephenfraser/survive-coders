@@ -131,8 +131,7 @@ function windows(ctx, x, y, w, h, r, density = 0.28) {
 // Neon billboards on the mid skyline. Their frames are painted into bg_mid; the lettering is
 // its own layer, bg_signs, with the same parallax. That layer is drawn at 3x the world's
 // resolution in the game's 8x8 pixel font, so a font pixel is 2 screen pixels (as on the
-// street signs) instead of a 3-pixel world block, and it sits above the skyline haze, so
-// the neon reads. (It was an 8px system font thresholded onto the world grid: mush.)
+// street signs) instead of a 3-pixel world block, and the neon reads. (It was an 8px system font thresholded onto the world grid: mush.)
 const SIGNS = [
   { x: 196, y: 70, text: 'AGI SOON', border: CYAN, fg: ORANGE },
   { x: 300, y: 60, text: 'SERIES A', border: MAGENTA, fg: WARM },
@@ -199,17 +198,20 @@ function drawSignText(ctx, signs) {
 }
 
 function drawSky(ctx, w, h) {
+  // Sunset: dusk indigo overhead warming to a rose-orange glow at the bay's horizon (y 126).
   const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#0b0a0f');
-  g.addColorStop(0.5, '#150c14');
-  g.addColorStop(0.68, '#2a1219');
-  g.addColorStop(0.7, '#0e1117');
-  g.addColorStop(1, '#0b0d12');
+  g.addColorStop(0, '#120c22');
+  g.addColorStop(0.3, '#2a1535');
+  g.addColorStop(0.5, '#4a1d3a');
+  g.addColorStop(0.62, '#7a2e38');
+  g.addColorStop(0.69, '#9c4632');
+  g.addColorStop(0.7, '#2a1a24');
+  g.addColorStop(1, '#130f18');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
   const r = rng(42);
-  for (let i = 0; i < 55; i++) rect(ctx, r() * w, r() * 90, 1, 1, r() < 0.8 ? '#6a6a78' : ORANGE_DIM);
+  for (let i = 0; i < 40; i++) rect(ctx, r() * w, r() * 60, 1, 1, r() < 0.8 ? '#6a6a78' : ORANGE_DIM);
 
   // Synthwave sun sinking into the bay, with scanline gaps.
   const cx = 168;
@@ -415,16 +417,16 @@ export function buildBackdrops(scene) {
 }
 
 // Parallax factor per layer; Level1 adds these as camera-pinned TileSprites.
-// Opacity climbs toward the viewer so each depth reads as its own plane. `haze` lays black
-// over that plane and everything behind it, so the skyline recedes as a whole; lowering the
-// far/mid alpha instead turns their silhouettes see-through and the sun behind them pops.
+// Every plane is opaque (nothing behind shows through a silhouette); depth comes from `tint`,
+// which dims each plane more the farther back it sits, so the street is brightest and the
+// headlands dimmest against the sunset.
 export const LAYERS = [
   { key: 'bg_sky', f: 0 },
-  { key: 'bg_far', f: 0.15, alpha: 0.4 },
+  { key: 'bg_far', f: 0.15, tint: 0x80788c },
   { key: 'bg_fog', f: 0.2, y: 96, h: 40, drift: 0.004 },
-  { key: 'bg_mid', f: 0.3, alpha: 0.65, haze: 0.3 },
-  { key: 'bg_signs', f: 0.3, alpha: 0.9, res: SIGN_RES }, // above the haze: neon glows
-  { key: 'bg_near', f: 0.55, alpha: 0.9 },
+  { key: 'bg_mid', f: 0.3, tint: 0x9c94a8 },
+  { key: 'bg_signs', f: 0.3, tint: 0xb8b0c0, res: SIGN_RES },
+  { key: 'bg_near', f: 0.55, tint: 0xc8c4d0 },
 ];
 
 // Cable cars running along the Painted Ladies street (near layer plane).

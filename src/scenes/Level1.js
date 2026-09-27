@@ -40,10 +40,9 @@ export default class Level1 extends PlayScene {
         .tileSprite(320, 180 + (l.y ?? 0), 320, l.h ?? 180, l.key)
         .setOrigin(0)
         .setScrollFactor(0)
-        .setAlpha(l.alpha ?? 1)
+        .setTint(l.tint ?? 0xffffff)
         .setTileScale(1 / (l.res ?? 1)) // a hi-res layer's texels are 1/res of a world pixel
         .setDepth(-10);
-      if (l.haze) this.add.rectangle(320, 180, 320, 180, 0x000000, l.haze).setOrigin(0).setScrollFactor(0).setDepth(-10);
       return { ...l, ts };
     });
 
@@ -53,8 +52,8 @@ export default class Level1 extends PlayScene {
       ? TROLLEYS.map((t) => ({
           ...t,
           f: near.f,
-          // Background trolleys sit back (dimmer, cooler) so the rideable car reads as foreground.
-          img: this.add.image(0, 180 + 150, 'trolley').setOrigin(0.5, 1).setScrollFactor(0).setDepth(-10).setAlpha(0.6).setTint(0x8f8aa8).setFlipX(t.dir < 0),
+          // Background trolleys take the street's tint (solid, dimmed) so the rideable car reads as foreground.
+          img: this.add.image(0, 180 + 150, 'trolley').setOrigin(0.5, 1).setScrollFactor(0).setDepth(-10).setTint(near.tint).setFlipX(t.dir < 0),
         }))
       : [];
 
