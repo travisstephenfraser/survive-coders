@@ -25,7 +25,7 @@ Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as
 Tests      0 automated; scripted browser checks recorded in docs/review/
 ```
 
-Live URL checked 2026-09-26: HTTP 200.
+Live URL checked 2026-09-27: HTTP 200.
 
 ---
 
@@ -55,24 +55,27 @@ set up the microphone.
 
 ![Title screen](docs/screenshots/01-title.png)
 
-**2. The hook.** The robotaxi pulls up and `#demo-day` asks for one small change, then dark
-mode, then reminds you the demo is at 5 (the last ping is shown).
+**2. The hook.** The robotaxi pulls up as `#demo-day` asks for one small change, then dark
+mode (the first ping is shown).
 
 ![Slack ping during the intro](docs/screenshots/02-intro-slack-ping.png)
 
 **3. The drop-off.** The car stops at the edge of its service area, roof lidar sweeping; Anthropic
-HQ is 9.4 miles away. Enter, or a tap, skips the whole intro.
+HQ is 9.4 miles away. The intro hands over control after about 12 seconds; Enter, or a tap,
+skips it.
 
 ![Waymo dialogue: edge of the service area](docs/screenshots/03-intro-edge-of-service-area.png)
 
 **4. Powers are taught at the moment of need.** When a cluster of Bad Prompt Blobs comes into
-view, a tip explains `refactor` and the matching slot in the terminal bar flashes.
+view, a tip explains `refactor` and the matching slot in the terminal bar flashes. `rollback`
+is taught the first time you actually lose health, not at a fixed spot.
 
 ![Contextual tip for the refactor power](docs/screenshots/04-voice-power-tip.png)
 
 **5. Street combat.** Prompt bolts from the laptop against a Bad Prompt Blob, under the first
 tip, with Sutro Tower, Coit Tower, and the Painted Ladies behind. The HUD shows the pixel health
-bar and the GitHub star counter.
+bar, the GitHub star counter, and the neighborhood you are in as a path, which changes at each
+street sign on the way to SoMa.
 
 ![Street combat in Daly City](docs/screenshots/05-street-combat.png)
 
@@ -93,18 +96,23 @@ you as you walk in.
 ![Anthropic HQ at the end of Level 1, its sliding doors opening](docs/screenshots/08-hq-entrance.png)
 
 **9. The Context Rot Hydra.** Inside, the office goes quiet, the terminal types
-`make one small change`, the heads answer, and the boss card lands. The HUD shows boss health
-and, separately, context growth.
+`make one small change`, the heads answer, and the boss card lands. The body is a heap of H100s
+with their fans spinning, and the necks are pipes streaming tokens up into the heads; every
+growth turn drops another card on the heap. The HUD shows boss health and, separately, context
+growth.
 
 ![Context Rot Hydra title card](docs/screenshots/09-boss-title-card.png)
 
 **10. A full context window.** Every attack has a 600 ms wind-up: the image-flood head flashes
 and marks its drop lanes on the floor before the tiles fall, always leaving three adjacent lanes
-clear. The heads here are fully grown, so the context overflows: terminal rain starts falling,
-context rot will deal damage until you refactor, the meter reads OVERFLOW, and the refactor tip
-stays up with its slot flashing. A notification skull hunts from the Hydra's base.
+clear. The heads here are fully grown, so the context overflows: terminal rain buries the office
+and the platforms, and a lie sinks into the noise. Everything that can hurt you still draws above
+the rain, the lane markers included, and the player keeps a small pool of clear sight. Context rot
+deals damage every 3 seconds until you refactor; the meter reads OVERFLOW, the terminal bar's
+status line turns red with the command, and slot 3 flashes. A notification skull hunts from the
+Hydra's base.
 
-![Hydra at full context: flood lanes marked, overflow starting](docs/screenshots/10-boss-context-overflow.png)
+![Hydra at full context: rain over the arena, flood lanes marked, refactor called out in the terminal bar](docs/screenshots/10-boss-context-overflow.png)
 
 **11. The payoff.** The robotaxi comes back (HQ is inside its service area), `#demo-day` asks
 for one more small change, and an original chiptune victory song plays.
@@ -127,7 +135,8 @@ are held. Powers are taps on the terminal bar, beside a hold-to-talk slot, and t
 ![Level 1 on a phone with the touch controls](docs/screenshots/13-phone-level.png)
 
 **14. The Hydra on a phone.** A jump-shot with fire and jump held together, a pause button
-beside the star badge, and a head lying to you.
+beside the star badge, and a head lying to you. The `<->` chip over the player means a gaslight
+orb has just reversed the controls; it blinks out when they come back.
 
 ![Boss fight on a phone](docs/screenshots/14-phone-boss.png)
 
@@ -142,11 +151,11 @@ A dated design review with before and after screenshots is in
 
 ## Features
 
-- A skippable robotaxi intro cutscene with Slack `#demo-day` messages, and a matching payoff on the win screen
-- One side-scrolling level from Daly City to SoMa over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at Anthropic HQ's glass tower, whose sliding doors let you into the lobby
+- A skippable, 12-second robotaxi intro cutscene with Slack `#demo-day` messages, and a matching payoff on the win screen
+- One side-scrolling level from Daly City to SoMa, with the HUD path following the neighborhood signs, over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at Anthropic HQ's glass tower, whose sliding doors let you into the lobby
 - Three enemy types: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat)
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
-- The Context Rot Hydra boss: three heads with distinct roles (image flood, gaslighting orb that reverses your controls, a spawner whose notification skulls hunt you and respawn until that head dies), growth every 8 seconds that floods the arena with matrix rain and context rot once the context window is full, until you refactor, lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
+- The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies); growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
 - Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard and tap equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
@@ -290,6 +299,9 @@ against the running game, recorded with screenshots in
 | Winning while taking damage | Exactly one outcome: the final head dies with the player at 1 HP against the boss, and the game ends in victory |
 | Three consecutive boss retries | One music track, one voice listener, one pause listener each time; stars restored to the checkpoint |
 | Flood warnings are honest | Tiles land exactly on the marked lanes, leaving a clear gap |
+| Overflow stays readable (2026-09-27) | At full rain, the flood lane markers, hazards, heads, and the player draw above it; context rot still ticks at 3, 6, and 9 s after the overflow starts; refactor clears it and the terminal bar's normal hint returns |
+| Intro length and skip (2026-09-27) | Control returns at 11.9 s (was 18.2 s); a skip partway through leaves the player visible with physics on, the HUD shown, and no intro events pending |
+| Rollback tip on real damage (2026-09-27) | Shown after the first hit that lands, waiting out any other tip; not in god mode, not once rollback has been used, and reset by a new run |
 | Context meter is truthful | The HUD countdown matches the real growth timer, including after `refactor` |
 | Push-to-talk parsing | The four cases in [Architecture](#the-design-decision-worth-explaining) pass with a simulated recognizer |
 | Production build | Loads with no failed requests and no console errors or warnings, locally and on the live URL |
