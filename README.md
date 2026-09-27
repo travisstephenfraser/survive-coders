@@ -346,7 +346,9 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
 
 ## License and credits
 
-No license chosen yet; all rights reserved by default.
+Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Travis Fraser. The license
+covers this repository's code, art, and music; the third-party assets below keep their CC0
+dedication.
 
 Third-party assets: the slime and skull sprite sheets, the 8x8 font, the sound effects, and both
 music tracks come from the [Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
