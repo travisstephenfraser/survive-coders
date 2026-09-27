@@ -477,28 +477,6 @@ const DRAWN = {
     },
   },
 
-  door: {
-    w: 16,
-    h: 32,
-    draw(ctx) {
-      ctx.fillStyle = PIX.E;
-      ctx.fillRect(0, 0, 16, 32);
-      ctx.fillStyle = PIX.e;
-      ctx.fillRect(2, 2, 12, 30);
-      // merge icon
-      ctx.fillStyle = PIX.W;
-      ctx.fillRect(5, 8, 2, 12);
-      ctx.fillRect(4, 6, 4, 3);
-      ctx.fillRect(4, 19, 4, 3);
-      ctx.fillRect(10, 17, 2, 3);
-      ctx.fillRect(9, 20, 4, 3);
-      ctx.fillRect(7, 11, 2, 2);
-      ctx.fillRect(9, 13, 2, 4);
-      ctx.fillStyle = PIX.Y;
-      ctx.fillRect(11, 24, 2, 2);
-    },
-  },
-
   house: {
     w: 48,
     h: 44,

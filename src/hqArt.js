@@ -1,5 +1,6 @@
 // Procedural pixel art for the Anthropic HQ arena (warm wood slats, the white fluted
-// ANTHROPIC wall, SF window views, Dario's Furbies) plus the Powell St cable car.
+// ANTHROPIC wall, SF window views, Dario's Furbies), the building's street facade at the end
+// of Level 1, and the Powell St cable car.
 // Everything is integer fillRects so it stays crisp under pixelArt scaling.
 
 function rng(seed) {
@@ -473,6 +474,165 @@ export function drawSconce(ctx) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Anthropic HQ from the street (Level 1's exit), 144x160, bottom row on the pavement: a stone
+// corner pier, a teal glass curtain wall with lit offices and the ANTHROPIC sign, a soffit with
+// downlights, then a double-height lobby behind white pillars. The doorway is centred on
+// x = FACADE.door; Level 1 lines it up with the map's exit and slides two hq_door panels (10x30)
+// across its 20px opening. The top and right edges lie past the camera bounds, so the building
+// never ends on screen.
+
+export const FACADE = { w: 144, h: 160, door: 88 };
+const PIER = 14; // stone corner, x 0..13
+const STOREY = 13; // curtain wall floor pitch: a 3px slab band, then 10px of glass
+const BAY = 8; // curtain wall mullion pitch
+const SOFFIT = 104; // slab edge over the lobby, y 104..111
+const LOBBY = 112; // double-height lobby, y 112..159
+const COLUMNS = [40, 64, 112, 136];
+const SIGN_Y = 30; // letters fill the third storey's glass band (y 29..38), clear of the HUD's star counter
+const SILHOUETTE = '#4a3020';
+
+function glassPane(ctx, x, y, w, storey, r) {
+  const tone = mix('#2e5d5e', '#193332', step(storey / 7, 7)); // darker toward the street
+  const j = (r() - 0.5) * 0.16; // no two panes reflect quite alike
+  const c = j > 0 ? mix(tone, '#6fa7a0', j) : mix(tone, '#0a1414', -j);
+  rect(ctx, x, y, w, 10, c);
+  rect(ctx, x, y, w, 2, mix(c, '#8cc4bc', 0.18)); // sky caught in the top of the pane
+}
+
+function litPane(ctx, x, y, w, r) {
+  const [ceiling, room, desks] = r() < 0.18 ? ['#f2f7f2', '#c8dcd6', '#8aa5a0'] : ['#fff0c4', '#e9b56b', '#b27b3e'];
+  const dim = r() < 0.3 ? 0.25 : 0; // a desk lamp rather than the ceiling lights
+  rect(ctx, x, y, w, 10, mix(room, '#3a2a1c', dim));
+  rect(ctx, x, y, w, 1, mix(ceiling, '#3a2a1c', dim));
+  rect(ctx, x, y + 8, w, 2, mix(desks, '#3a2a1c', dim));
+  if (w >= 5 && r() < 0.15) {
+    const px = x + 1 + Math.floor(r() * (w - 3)); // someone working late
+    rect(ctx, px, y + 3, 2, 2, SILHOUETTE);
+    rect(ctx, px - 1, y + 5, 4, 5, SILHOUETTE);
+  }
+}
+
+export function drawFacade(ctx) {
+  const { w: W, h: H, door: D } = FACADE;
+  const r = rng(500);
+  const tw = textWidth('ANTHROPIC');
+  const tx = Math.round((PIER + W) / 2 - tw / 2);
+
+  // Curtain wall: offices lit in runs, more of them toward the street; panes behind the sign
+  // stay dark so the letters read.
+  for (let f = 0; f * STOREY < SOFFIT; f++) {
+    const y = f * STOREY + 3;
+    let run = 0;
+    for (let x = PIER + 1; x < W; x += BAY) {
+      const w = Math.min(BAY - 1, W - x);
+      if (!run && r() < 0.05 + 0.025 * f) run = 1 + Math.floor(r() * 4);
+      const behindSign = y + 10 > SIGN_Y - 1 && y < SIGN_Y + 9 && x + w > tx - 2 && x < tx + tw + 2;
+      if (run && !behindSign) litPane(ctx, x, y, w, r);
+      else glassPane(ctx, x, y, w, f, r);
+      if (run) run--;
+    }
+  }
+  for (let x = PIER; x < W; x += BAY) rect(ctx, x, 0, 1, SOFFIT, '#4b746f');
+  for (let y = 0; y < SOFFIT; y += STOREY) {
+    rect(ctx, PIER, y, W - PIER, 1, '#83a59e');
+    rect(ctx, PIER, y + 1, W - PIER, 2, '#142627');
+  }
+  light(ctx, PIER, 0, W, SOFFIT, '#b4e0d8', (x, y) => {
+    if (y % STOREY < 3) return 0;
+    const d = (x + Math.floor(y / 2)) % 57; // diagonal glints across the glass
+    return d < 2 ? 0.2 : d < 5 ? 0.08 : 0;
+  });
+  // ANTHROPIC in white on the glass, with a dark rim so it holds up over the grid.
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) blockText(ctx, 'ANTHROPIC', tx + dx, SIGN_Y + dy, '#0b1616');
+  blockText(ctx, 'ANTHROPIC', tx, SIGN_Y, '#f5f5f5');
+
+  // Stone corner pier: one smooth panel per storey (coursed blocks read as brick), each a shade
+  // off its neighbours, with a lit outer edge, shadow where it meets the glass, and warm spill
+  // from the lobby at its foot.
+  for (let y = 0; y < H; y++) {
+    const shade = ((Math.floor(y / STOREY) * 5) % 3) * 0.05;
+    for (let x = 0; x < PIER; x++) {
+      let c = ['#a0907a', '#8f806b'][x] ?? (x === PIER - 1 ? '#453c33' : x === PIER - 2 ? '#62564a' : '#7f715f');
+      c = y % STOREY === 0 ? mix(c, '#3e362e', 0.6) : mix(c, '#3e362e', shade);
+      rect(ctx, x, y, 1, 1, c);
+    }
+  }
+  light(ctx, 0, LOBBY, PIER, H - 5, WARM, (x, y) => step(0.35 * ((y - LOBBY) / (H - 5 - LOBBY)) ** 2));
+  rect(ctx, 0, H - 5, PIER, 5, '#4d443a');
+  rect(ctx, 0, H - 5, PIER, 1, '#6c6152');
+
+  // Soffit: lit concrete face, dark underside, a row of downlights.
+  rect(ctx, PIER, SOFFIT, W - PIER, 1, '#ece5d7');
+  rect(ctx, PIER, SOFFIT + 1, W - PIER, 4, '#d2cab9');
+  rect(ctx, PIER, SOFFIT + 5, W - PIER, 1, '#aca391');
+  rect(ctx, PIER, SOFFIT + 6, W - PIER, 2, '#2e2923');
+  for (let x = PIER + 5; x < W; x += 12) rect(ctx, x, SOFFIT + 7, 2, 1, '#fff2cc');
+
+  // Lobby: ceiling lights, warm glow, a white fluted wall facing the entrance (the arena's
+  // feature wall, seen from outside), a fig tree, a visitor, the front desk.
+  rect(ctx, PIER, LOBBY, W - PIER, 4, '#3a2a1d');
+  for (let x = PIER + 3; x < W; x += 10) rect(ctx, x, LOBBY + 3, 2, 1, '#ffdca0');
+  for (let y = LOBBY + 4; y < H - 2; y++) {
+    rect(ctx, PIER, y, W - PIER, 1, mix('#f3c886', '#c7874b', step((y - LOBBY - 4) / (H - LOBBY - 6), 6)));
+  }
+  const PLEAT = ['#f1e9da', '#ded4c2', '#ded4c2', '#c9bfab', '#b4a994'];
+  for (let x = D - 20; x < D + 20; x++) rect(ctx, x, LOBBY + 6, 1, H - LOBBY - 8, PLEAT[(x - D + 20) % 5]);
+  light(ctx, D - 20, H - 20, D + 20, H - 2, WARM, (x, y) => step(0.5 * ((y - (H - 20)) / 18) ** 1.5));
+  ctx.save();
+  ctx.translate(20, H - 34);
+  drawPlant(ctx);
+  ctx.restore();
+  rect(ctx, 51, 145, 2, 2, SILHOUETTE);
+  rect(ctx, 50, 147, 4, 6, SILHOUETTE);
+  rect(ctx, 50, 153, 1, 5, SILHOUETTE);
+  rect(ctx, 53, 153, 1, 5, SILHOUETTE);
+  rect(ctx, 118, 144, 2, 2, SILHOUETTE);
+  rect(ctx, 117, 146, 4, 2, SILHOUETTE);
+  rect(ctx, 115, 148, 17, 1, '#a8703e');
+  rect(ctx, 115, 149, 17, 9, '#5e3b21');
+
+  // The lobby's glass: faint glints, mullions mid-bay, a transom, a bronze base rail.
+  light(ctx, PIER, LOBBY + 4, W, H - 2, '#9fc9c2', (x, y) => ((x + y) % 41 < 2 ? 0.16 : 0));
+  for (const x of [PIER, 28, 52, 124]) rect(ctx, x, LOBBY + 4, 1, H - LOBBY - 4, '#3a2c20');
+  rect(ctx, PIER, 127, W - PIER, 1, '#3a2c20');
+  rect(ctx, PIER, H - 2, W - PIER, 2, '#2a2119');
+
+  // Entrance: the door operator's header with its motion sensor, fixed sidelights either side
+  // of the opening (x D-10..D+9), and a threshold. The sliding panels are hq_door sprites.
+  rect(ctx, D - 22, 124, 44, 6, '#2c241d');
+  rect(ctx, D - 22, 124, 44, 1, '#54473b');
+  rect(ctx, D - 1, 126, 2, 1, '#58a6ff');
+  for (const x of [D - 22, D - 11, D + 10, D + 21]) rect(ctx, x, 130, 1, H - 132, '#3a2c20');
+  rect(ctx, D - 10, H - 2, 20, 1, '#6b4a2f');
+  rect(ctx, D - 10, H - 1, 20, 1, '#a39684');
+
+  // White pillars in front of the glass, dimming toward the pavement, each shadowing the glass.
+  for (const c of COLUMNS) {
+    light(ctx, c + 2, LOBBY, c + 3, H - 2, '#000000', () => 0.3);
+    for (let y = LOBBY; y < H - 2; y++) {
+      const t = step(((y - LOBBY) / (H - LOBBY)) * 0.25, 20);
+      ['#fbf6ec', '#e9e2d3', '#d3cab8', '#a59b89'].forEach((col, i) => rect(ctx, c - 2 + i, y, 1, 1, mix(col, '#6e6456', t)));
+    }
+    rect(ctx, c - 3, H - 2, 6, 2, '#5a5349');
+    rect(ctx, c - 3, H - 2, 6, 1, '#7a7264');
+  }
+}
+
+// One sliding glass door panel, handle on the meeting edge (x 9); Level 1 flips the right one
+// and draws both translucent.
+export function drawHQDoor(ctx) {
+  rect(ctx, 0, 0, 10, 30, '#5f9a91');
+  for (let i = 0; i < 5; i++) rect(ctx, 2 + i, 12 - i * 2, 1, 2, '#bfe6df');
+  rect(ctx, 0, 0, 10, 2, '#7d918c');
+  rect(ctx, 0, 27, 10, 3, '#7d918c');
+  rect(ctx, 0, 0, 10, 1, '#b4c6c1');
+  rect(ctx, 0, 27, 10, 1, '#b4c6c1');
+  rect(ctx, 0, 2, 1, 25, '#7d918c');
+  rect(ctx, 9, 2, 1, 25, '#7d918c');
+  rect(ctx, 7, 11, 1, 9, '#eef4f2');
+}
+
+// ---------------------------------------------------------------------------------------------
 // Powell St cable car, side view facing right; wheels touch row 31.
 
 export function drawTrolley(ctx) {
@@ -537,6 +697,8 @@ export const HQ_ART = {
   round_table: { w: 48, h: 24, draw: drawRoundTable },
   rug: { w: 96, h: 8, draw: drawRug },
   sconce: { w: 4, h: 16, draw: drawSconce },
+  hq_facade: { w: FACADE.w, h: FACADE.h, draw: drawFacade },
+  hq_door: { w: 10, h: 30, draw: drawHQDoor },
   trolley: { w: 56, h: 32, draw: drawTrolley },
 };
 

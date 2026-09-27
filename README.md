@@ -86,8 +86,9 @@ car's roof across and collect the star trail.
 
 ![Riding the cable car](docs/screenshots/07-cable-car-ride.png)
 
-**8. Anthropic HQ.** The office goes quiet, the terminal types `make one small change`, the
-heads answer, and the boss card lands. The HUD shows boss health and, separately, context growth.
+**8. Anthropic HQ.** The tower's sliding glass doors part and let you in. The office goes quiet,
+the terminal types `make one small change`, the heads answer, and the boss card lands. The HUD
+shows boss health and, separately, context growth.
 
 ![Context Rot Hydra title card](docs/screenshots/08-boss-title-card.png)
 
@@ -136,7 +137,7 @@ A dated design review with before and after screenshots is in
 ## Features
 
 - A skippable robotaxi intro cutscene with Slack `#demo-day` messages, and a matching payoff on the win screen
-- One side-scrolling level from Daly City to SoMa over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars)
+- One side-scrolling level from Daly City to SoMa over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at Anthropic HQ's glass tower, whose sliding doors let you into the lobby
 - Three enemy types: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat)
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
 - The Context Rot Hydra boss: three heads with distinct roles (image flood, gaslighting orb that reverses your controls, a spawner whose notification skulls hunt you and respawn until that head dies), growth every 8 seconds that floods the arena with matrix rain and context rot once the context window is full, until you refactor, lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars

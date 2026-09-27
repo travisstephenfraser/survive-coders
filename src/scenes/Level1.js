@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import { LAYERS, TROLLEYS } from '../backdrops.js';
+import { FACADE } from '../hqArt.js';
 import { placeLidar } from '../sprites.js';
-import { worldText } from '../util.js';
+import { TILE, worldText } from '../util.js';
 import { TOUCH } from '../touch.js';
 
 // Legend: # ground, = neon platform, P player, * star, M MAX power-up, B Bad Prompt Blob,
-// G Keyboard Goblin, H H100 GPU, D exit door to Anthropic HQ.
+// G Keyboard Goblin, H H100 GPU, D the doors into Anthropic HQ (the facade is built around them).
 const SUBURBS = [
   '............................................................................................................................',
   '............................................................................................................................',
@@ -65,12 +66,9 @@ export default class Level1 extends PlayScene {
     this.sign(1150, 118, 'TWIN PEAKS');
     this.sign(1610, 118, 'THE MISSION');
     this.sign(1398, 118, 'POWELL ST', '#e3b341');
+    this.sign(1812, 118, 'SOMA');
     this.buildCableCar();
-
-    const d = this.spawns.find((s) => s.ch === 'D');
-    // Exit triggers on crossing the door's x at any height, so hopping over it still counts.
-    this.door = this.add.image(d.x, d.y - 8, 'door');
-    worldText(this, d.x, d.y - 32, 'SOMA: Anthropic HQ →', { color: '#3fb950', bg: '#0d0d0d', size: 6, depth: 2 });
+    this.buildHQ(this.spawns.find((s) => s.ch === 'D'));
     this.playMusic('music_level', 0.28);
     this.registry.set('toast', null);
     if (!this.registry.get('introSeen')) this.playIntro();
@@ -85,12 +83,18 @@ export default class Level1 extends PlayScene {
   }
 
   update(time, delta) {
-    super.update(time, delta);
+    if (!this.leaving) super.update(time, delta); // on the way in, the walk-in tweens own the player
     if (this.cutscene) {
       this.updateIntro(time);
       return;
     }
-    if (!this.leaving && !this.player.dead && this.player.x >= this.door.x - 4) this.exit();
+    const p = this.player;
+    if (!this.leaving) {
+      // The doors open within 40px. The exit is crossing the threshold at any height, so
+      // hopping over it still counts.
+      this.setDoors(!p.dead && Math.abs(p.x - this.hq.x) < 40);
+      if (!p.dead && p.x >= this.hq.x - 4) this.exit();
+    }
     this.updateCableCar(time);
     while (this.beats.length && this.player.x >= this.beats[0][0]) {
       const [, keys, taps, power] = this.beats.shift();
@@ -224,11 +228,54 @@ export default class Level1 extends PlayScene {
     if (c.state === 'waitL' || c.state === 'waitR') c.img.x = Phaser.Math.Clamp(c.img.x, c.xL, c.xR);
   }
 
+  // Anthropic HQ, lined up on the map's exit (D). The facade runs past the camera's top and
+  // right edges; two glass panels slide open as the player nears.
+  buildHQ(d) {
+    const ground = d.y + TILE / 2;
+    this.add.image(d.x - FACADE.door, ground, 'hq_facade').setOrigin(0, 1).setDepth(-1);
+    // Behind everyone on the pavement; the walk-in brings them in front.
+    const panels = [-1, 1].map((side) =>
+      this.add.image(d.x + side * 5, ground, 'hq_door').setOrigin(0.5, 1).setFlipX(side > 0).setAlpha(0.6).setDepth(-0.5),
+    );
+    this.hq = { x: d.x, ground, panels, open: false };
+  }
+
+  setDoors(open) {
+    const hq = this.hq;
+    if (hq.open === open) return;
+    hq.open = open;
+    hq.panels.forEach((panel, i) => {
+      const x = hq.x + (i ? 1 : -1) * (open ? 15 : 5);
+      this.tweens.killTweensOf(panel);
+      this.tweens.add({ targets: panel, x, duration: Math.max(16, 26 * Math.abs(x - panel.x)), ease: 'Sine.inOut' });
+    });
+  }
+
+  // Walk in: into the doorway, the doors slide shut in front, then the player shrinks and fades
+  // into the lobby light (walking away from the camera) before the fade to the boss.
   exit() {
     if (this.leaving) return;
     this.leaving = true;
-    this.player.body.enable = false;
-    this.cameras.main.fadeOut(500);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('BossHQ'));
+    const p = this.player;
+    const { x, ground, panels } = this.hq;
+    p.body.enable = false;
+    this.tweens.killTweensOf([p, p.laptop]); // a landing squash would fight the walk-in's scale
+    p.facing = 1;
+    p.setFlipX(false).setScale(1).setAlpha(1).play('run', true);
+    p.laptop.setFlipX(false);
+    for (const panel of panels) panel.setDepth(6.5); // over the player (5) and laptop (6)
+    this.setDoors(true);
+    this.tweens.add({ targets: p, x: x - 1, y: ground - 8, duration: 220, ease: 'Sine.out' });
+    this.tweens.add({ targets: p.laptop, x: x + 2, y: ground - 9, duration: 220, ease: 'Sine.out' });
+    this.time.delayedCall(220, () => this.setDoors(false));
+    this.tweens.add({ targets: [p, p.laptop], alpha: 0, scale: 0.8, y: ground - 11, delay: 220, duration: 480, ease: 'Sine.in' });
+    this.time.delayedCall(620, () => {
+      this.cameras.main.fadeOut(500);
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('BossHQ'));
+    });
+  }
+
+  usePower(name) {
+    if (!this.leaving) super.usePower(name); // a rollback mid walk-in would teleport the player
   }
 }
