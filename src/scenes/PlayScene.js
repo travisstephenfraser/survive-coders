@@ -125,7 +125,7 @@ export default class PlayScene extends Phaser.Scene {
     cam.setBackgroundColor('#0d0d0d');
     this.lookahead = 0;
     this.markPits(data, W, H);
-    if (!hq) this.outlineBlocks(at, W, H);
+    if (!hq) this.markBlocks(at, W, H);
     applyScreenFX(cam);
 
     this.onPower = (name) => this.usePower(name);
@@ -189,13 +189,25 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
-  // Exposed side faces of ground blocks get a dim neon edge so steps read against the city.
-  outlineBlocks(at, W, H) {
+  // Blocks read as foreground against the equally dark city: a warm orange wash over all
+  // terrain, then a dim neon edge on the exposed side faces of ground blocks.
+  markBlocks(at, W, H) {
     const g = this.add.graphics().setDepth(1);
+    g.fillStyle(0xd97757, 0.3);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; ) {
+        const ch = at(x, y);
+        let end = x + 1;
+        while (end < W && at(end, y) === ch) end++;
+        // Neon slabs only fill their top 12px (see slab() in sprites.js).
+        if (ch === '#' || ch === '=') g.fillRect(x * TILE, y * TILE, (end - x) * TILE, ch === '=' ? 12 : TILE);
+        x = end;
+      }
+    }
+    g.fillStyle(0xb8603f);
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         if (at(x, y) !== '#') continue;
-        g.fillStyle(0xb8603f);
         if (at(x - 1, y) !== '#' && x > 0) g.fillRect(x * TILE, y * TILE, 1, TILE);
         if (at(x + 1, y) !== '#' && x < W - 1) g.fillRect(x * TILE + TILE - 1, y * TILE, 1, TILE);
       }
