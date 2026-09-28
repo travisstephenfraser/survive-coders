@@ -13,8 +13,9 @@ every voice power has a keyboard key and a tap target on phones, and ordinary ta
 demo fires nothing, because `src/voice.js` only acts on release and only on a recognized
 command. It plays with a keyboard or, on phones and tablets, with touch controls.
 
-Status: hackathon demo, one level and one boss. Built with Claude Code (Claude Opus 5.5) as a
-pair programmer; commits carry `Co-Authored-By` trailers.
+Status: hackathon demo: the city, Salesforce Park, three floors of the Salesforce Tower, and one
+boss. Built with Claude Code (Claude Opus 5.5) as a pair programmer; commits carry
+`Co-Authored-By` trailers.
 
 **Live app: <https://survive-coders.vercel.app>**
 
@@ -89,24 +90,48 @@ car's roof across and collect the star trail.
 
 ![Riding the cable car](docs/screenshots/07-cable-car-ride.png)
 
-**8. The Transit Center.** The level ends at the Salesforce Transit Center: its undulating
-perforated skin, the park's trees over the roof, and the gondola track climbing the side. Its
-sliding doors part as you reach them and close behind you as you walk in.
+**8. The Transit Center.** The level ends at the Salesforce Transit Center, drawn from
+photos: a pearl-white skin punched in five-fold rosettes like the building's Penrose
+perforations, its hem arching over the entrance on white struts, the park's trees over the
+roof, and the gondola's cable climbing the side, with the Salesforce Tower rising behind it.
+Its sliding doors part as you reach them and close behind you as you walk in.
 
-![The Transit Center at the end of Level 1, the gondola up to the park on its side](docs/screenshots/08-transit-center.png)
+![The Transit Center at the end of Level 1, the Salesforce Tower behind it](docs/screenshots/08-transit-center.png)
 
-**Salesforce Park.** The gondola carries you up with a founder who has 90 seconds and a pitch.
-The park teaches one new threat at a time. Founders throw pitch-deck slides and grab you for a
-"quick demo" that you mash out of, and they leave follow-up emails behind. Vested bros are
-untouchable until their 1-year cliff ticks over their heads. Zone 2 joggers shove you aside.
-Buses driving through the terminal underneath set off the fountain's geysers in a wave, and one launches you over a wall. Then the amphitheater locks you in for demo day, with
-judges scoring each founder you take out, until you get into YC (Your Coffee). The Salesforce
-Tower's lobby waits at the end. Its three floors aren't built yet, so for now the lobby leads
-straight to the Hydra.
+**Salesforce Park.** The gondola carries you up from Mission and Fremont with a founder who has
+90 seconds and a pitch. The level follows the real park's map, walking west from the gondola:
+the Oculus on its glass floor, the Main Plaza and its cafe, the children's play area, picnics
+on the Central Lawn, the bus fountain, and the amphitheater at the far end. It teaches one new
+threat at a time. Founders throw pitch-deck slides and grab you for a "quick demo" that you
+mash out of, and they leave follow-up emails behind. Vested bros are untouchable until their
+1-year cliff ticks over their heads. Zone 2 joggers shove you aside. Buses driving through the
+terminal underneath set off the fountain's geysers in a wave, and one launches you over a
+wall. Then the amphitheater locks you in for demo day, with judges scoring each founder you
+take out, until you get into YC (Your Coffee). The Salesforce Tower's lobby waits at the end,
+the one liberty taken with the map (the real tower stands mid-park).
 
-![A founder's demo grab: "quick demo? 30 sec!", mash to get out](docs/screenshots/08a-park-founder-demo.png)
+![A founder's demo grab on the Main Plaza: "quick demo? 30 sec!", mash to get out](docs/screenshots/08a-park-founder-demo.png)
 
-![Demo day in the amphitheater, a judge holding up "pass"](docs/screenshots/08b-park-demo-day.png)
+![Demo day in the amphitheater: a judge asks "is it AI?" as the Salesforce Tower's crown lights up the skyline](docs/screenshots/08b-park-demo-day.png)
+
+**Salesforce Tower.** Three floors, each a checkpoint. Floor 59 is the SDR bullpen: CRM agents
+hold a sales distance and throw contracts that don't hurt but lock you in, so you can't fire
+until the contract lapses or `refactor` voids it (it *auto-renews annually*), and a gong rings
+on every signing. The elevator up is a six-second ride with an account executive who pitches
+until the ding cuts him off mid-sentence. Floor 60 is the Dreamfarce demo center, where
+chatbots hover beside you and open popups you have to shoot closed, each followed by *Was this
+helpful?* Floor 61 is the Ohana Floor, after the real one: living green columns, blue sofas,
+glass to the ceiling over the bay. Two waves come for you, then the sales team walks in,
+unhurtable and flexible on pricing, and the only way out is through the glass. For now the fall
+lands at HQ; a parachute you type while falling is next.
+
+![Floor 59: locked into a contract, the leaderboard reading "1. CHAD 2. CHAD 3. YOU?"](docs/screenshots/08c-tower-contract-lock.png)
+
+![The elevator ride, cut off mid-pitch](docs/screenshots/08d-tower-elevator.png)
+
+![Floor 60: a chatbot's popups over the demo center](docs/screenshots/08e-tower-popups.png)
+
+![Floor 61: out through the Ohana Floor's glass](docs/screenshots/08f-ohana-leap.png)
 
 **9. The Context Rot Hydra.** Inside, the office goes quiet, the terminal types
 `make one small change`, the heads answer, and the boss card lands. The body is a heap of H100s
@@ -165,15 +190,17 @@ A dated design review with before and after screenshots is in
 ## Features
 
 - A skippable, 12-second robotaxi intro cutscene with Slack `#demo-day` messages, and a matching payoff on the win screen
-- One side-scrolling level from Daly City to SoMa, with the HUD path following the neighborhood signs, over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at Anthropic HQ's glass tower, whose sliding doors let you into the lobby
-- Three enemy types: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat)
+- A side-scrolling run from Daly City to SoMa, with the HUD path following the neighborhood signs, over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at the Salesforce Transit Center
+- Salesforce Park on the Transit Center's roof, laid out like the real one, with the bus fountain's geysers, a gondola intro, and a demo-day arena
+- Three floors of the Salesforce Tower, joined by elevator rides, ending in a leap through the Ohana Floor's glass
+- Enemies by district: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat) in the city; founders, vested bros, and Zone 2 joggers in the park; CRM agents (contracts that lock your fire) and chatbots (popups you shoot closed) in the tower
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
 - The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies); growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
 - Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard and tap equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
-- Pause, mute, and a boss checkpoint that restores your star total on retry
+- Pause, mute, and a checkpoint at every level after the first (the park, each tower floor, the boss) that restores your star total on retry
 - Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
 - An original chiptune victory song on the win screen, written as MIDI note data and synthesized in the browser
 - Link previews and a favicon drawn from the game's own pixels
@@ -191,16 +218,17 @@ A dated design review with before and after screenshots is in
 | Pause / mute | P or Esc / N | Pause button at the top; sound toggle on the pause screen |
 | Title screen | Enter start, V set up microphone | Tap to start, tap *set up mic* |
 | Intro | Enter, Space, or Esc skips | Tap skips |
-| End screen | Enter retry (from the boss if you died there), T title | Tap retries; *title* button |
+| End screen | Enter retry (from the park, the floor, or the boss you died on), T title | Tap retries; *title* button |
 
 Touch controls appear on devices whose main pointer is a finger. A thumb on the seam between
 `>_` and ↑ presses both. The game plays in landscape and pauses if the phone turns portrait.
 On Android the tap that starts a run goes fullscreen; iPhone Safari cannot make a page
 fullscreen, but *Add to Home Screen* runs the game fullscreen from its web manifest.
 
-Five URL flags help when testing: `?park` and `?boss` start at Salesforce Park or the boss after
-you press Enter on the title screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
-the touch controls on a desktop (they work with a mouse).
+Six URL flags help when testing: `?park`, `?tower=59` (or `60`, `61`), and `?boss` start at
+Salesforce Park, a tower floor, or the boss after you press Enter on the title screen, `?debug`
+draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows the touch
+controls on a desktop (they work with a mouse).
 
 ---
 
@@ -227,13 +255,13 @@ the touch controls on a desktop (they work with a mouse).
 ┌─ Browser ───────────────────────────────────────────────────────────────┐
 │  index.html → src/main.js   Phaser.Game 960x540, WebGL, CRT pipeline    │
 │                                                                         │
-│  Scenes: Boot → Title → Level1 ──→ Park ──→ BossHQ ──────→ End          │
-│                          │ Cine overlay     │ Hydra                     │
-│                          │ (intros)         │                           │
+│  Scenes: Boot → Title → Level1 → Park → Tower ⇄ Elevator → BossHQ → End │
+│                         │ Cine overlay                     │ Hydra      │
+│                         │ (intros, the elevator)           │            │
 │                 HUD runs in parallel with every play scene              │
 │                                                                         │
 │  Art: drawn to canvas textures at boot (sprites.js, backdrops.js,       │
-│       hqArt.js, parkArt.js) + public/assets (sheets, font, audio)       │
+│       hqArt.js, parkArt.js, towerArt.js) + public/assets                │
 │  Storage: one localStorage key (a demo setting)                         │
 │                                                                         │
 │  src/touch.js ── DOM buttons over the canvas ──→ Player.tick, HUD taps  │
@@ -316,6 +344,8 @@ against the running game, recorded with screenshots in
 | Intro length and skip (2026-09-27) | Control returns at 11.9 s (was 18.2 s); a skip partway through leaves the player visible with physics on, the HUD shown, and no intro events pending |
 | Rollback tip on real damage (2026-09-27) | Shown after the first hit that lands, waiting out any other tip; not in god mode, not once rollback has been used, and reset by a new run |
 | Context meter is truthful | The HUD countdown matches the real growth timer, including after `refactor` |
+| Tower flow (2026-09-27) | The park's exit starts floor 59; each elevator ride starts the next floor at full health; a death on floor 60 retries floor 60; the leap from floor 61 lands at HQ; no console errors |
+| Contracts and popups (2026-09-27) | A contract locks fire without damage, `refactor` voids it, and a new lock waits out a 1 s grace; a popup shot closed asks *Was this helpful?* once; `refactor` clears popups and on-screen chatbots |
 | Push-to-talk parsing | The four cases in [Architecture](#the-design-decision-worth-explaining) pass with a simulated recognizer |
 | Production build | Loads with no failed requests and no console errors or warnings, locally and on the live URL |
 | Touch controls (iPhone landscape emulation, synthetic touch and pointer events) | The D-pad moves at full speed and slides between directions; a tapped jump peaks at 24 px and a held one at 70 px; holding jump jumps once, as the keyboard does; each power fires from its slot; pause, resume, the sound toggle, and auto-pause on a hidden tab or a portrait turn all work |
@@ -357,8 +387,8 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   audio never leaves the machine.
 - **No automated tests.** The checks above are scripted browser runs. Next: unit tests for
   the command parsing in `src/voice.js` and a headless smoke test (title, level, boss, win) in CI.
-- **Two levels and one boss.** Next: the three Salesforce Tower floors (CRM agents that lock
-  you into contracts, chatbot popups) and a free-fall where you type `build me a parachute`,
+- **The leap out of the tower lands straight at HQ.** Next: the free-fall between them, where
+  you type `build me a parachute` while an altimeter counts down and land on a Waymo's roof;
   then more neighborhoods and the two unused enemies from the original monster sheet (a Pixel
   Nudger that moves platforms and a Breach Wraith that leaks keys).
 - **No reduced-effects option.** The CRT effect, camera flashes, and screen shake cannot be

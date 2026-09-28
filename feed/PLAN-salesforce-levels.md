@@ -9,8 +9,8 @@ Title → Level 1 (Daly City → SoMa, ends at the Salesforce Transit Center) �
 **Tower F59 → F60 → F61 Ohana** → **Chute** (free fall, typing) → Waymo ride → BossHQ (Hydra) →
 End.
 
-Phase status: **1 Park: shipped on the branch** · 2 Tower: specced below, sprites committed ·
-3 Chute: specced below · 4 Art pass from the reference photos: next.
+Phase status: **1 Park, 4 art pass, 2 Tower: shipped on the branch** · 3 Chute: specced below,
+next.
 
 ## Decisions from the brainstorm (Travis's picks)
 
@@ -30,13 +30,27 @@ Phase status: **1 Park: shipped on the branch** · 2 Tower: specced below, sprit
 - **Mobile:** every tap types the next character ("mash to vibe"), plus voice.
 - **Landing:** on a Waymo roof. The Waymo says "Rider detected on roof. Adjusting route." and
   drives you to HQ.
+- **The Park follows the real map, walking west from the gondola** (picked 2026-09-27 from
+  `feed/sfpark/layout.webp`): gondola, Oculus, Main Plaza, play area, Central Lawn, bus
+  fountain, West Skylight, restaurant, amphitheater. The one liberty is the tower lobby after
+  the amphitheater; the real tower stands mid-park. ("Layouts to help with logo design" meant
+  level design.)
 
 ## Phase 1: Park (shipped)
 
 The implementation is `src/scenes/Park.js`, the enemies in `src/entities/enemies.js` (Founder,
 FollowUp, VestedBro, Jogger) and the art in `src/parkArt.js`. See the handoff for its numbers.
 
-## Phase 2: Tower (next after the art pass)
+## Phase 2: Tower (shipped)
+
+Built as specced in `src/scenes/Tower.js`, `src/scenes/Elevator.js`, `src/towerArt.js`, and the
+CRM agent, chatbot and popup in `src/entities/enemies.js`. Where it differs from the spec below:
+
+- Popups use two slots at most, so a fight never hides behind three windows.
+- The leap lands at `BossHQ` until the Chute exists (`AFTER_LEAP` in `Tower.js`); the camera
+  follows the player out past the glass.
+- The finale's closing sales team only bumps and talks; it doesn't throw contracts.
+- The agent in the elevator is "CHAD, AE", after the leaderboard.
 
 Scene `Tower` (a PlayScene) with `create(data)`:
 
