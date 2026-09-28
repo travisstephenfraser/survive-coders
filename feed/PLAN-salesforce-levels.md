@@ -9,8 +9,7 @@ Title → Level 1 (Daly City → SoMa, ends at the Salesforce Transit Center) �
 **Tower F59 → F60 → F61 Ohana** → **Chute** (free fall, typing) → Waymo ride → BossHQ (Hydra) →
 End.
 
-Phase status: **1 Park, 4 art pass, 2 Tower: shipped on the branch** · 3 Chute: specced below,
-next.
+Phase status: **1 Park, 4 art pass, 2 Tower, 3 Chute: shipped on the branch.**
 
 ## Decisions from the brainstorm (Travis's picks)
 
@@ -47,9 +46,17 @@ Built as specced in `src/scenes/Tower.js`, `src/scenes/Elevator.js`, `src/towerA
 CRM agent, chatbot and popup in `src/entities/enemies.js`. Where it differs from the spec below:
 
 - Popups use two slots at most, so a fight never hides behind three windows.
-- The leap lands at `BossHQ` until the Chute exists (`AFTER_LEAP` in `Tower.js`); the camera
-  follows the player out past the glass.
-- The finale's closing sales team only bumps and talks; it doesn't throw contracts.
+- The leap goes into the Chute (`AFTER_LEAP` in `Tower.js`); the camera follows the player out
+  past the glass.
+- **The finale, reworked 2026-09-27 after Travis played it.** A skipped wave enemy stranded at the
+  far wall softlocked the exit (the close-in waited on every foe), and five agents walking in
+  from the far left put no pressure on. Now the waves don't gate anything. Reaching the last 8
+  tiles, or clearing the lounge, drops 18 closers through the ceiling right behind you, with 3
+  more every 2.6 s up to 30. Leftover wave agents join them; chatbots log off. Closers surge at
+  50-76 px/s and hold a gap that shrinks while they stand, so they shove you toward the glass.
+  They lob contracts at your feet, which lock you and pile up on the carpet. One throw in three
+  goes over your head at the window: two hits web it, the third breaks it, and that's the exit
+  (the mechanism Travis asked for, instead of a timed crack).
 - The agent in the elevator is "CHAD, AE", after the leaderboard.
 
 Scene `Tower` (a PlayScene) with `create(data)`:
@@ -139,7 +146,26 @@ Floors: 12-row grids, 64–72 columns (61 is a ~44-column arena), no pits (you'r
 - A new tile theme `tower`: charcoal carpet, a slab fill, and standing-desk platforms.
 - The Ohana wall is floor-to-ceiling glass. **Match the reference photos in `feed/SF Ohana/`.**
 
-## Phase 3: Chute (the parachute)
+## Phase 3: Chute (the parachute) (shipped)
+
+Built in `src/scenes/Chute.js` (the fall), `src/scenes/Terminal.js` (the typing overlay, and the
+altimeter), `src/scenes/Landing.js` (the canopy, the Waymo, the walk-in) and `src/chuteArt.js`.
+Where it differs from the spec below:
+
+- The landing is its own scene. "ship it" opens the chute beside the tower, the music drops, and
+  a white flash cuts to the canopy over SoMa, so the landing is the same length whatever
+  altitude the chute opened at.
+- The fall is 24 s (48 s in god mode), speeding up from 60% to 140% of its average; the camera
+  opens on the crown and settles as you drop into frame.
+- Claude opens with "Free fall detected. How can I help?", thinks before each reply, answers a
+  miss with "You're absolutely right! Could you say that again?", and meets "ship it" with
+  "Deploying anyway. ✓". A line sent while it's still answering waits its turn.
+- The CRM dashboard canopy charts your altitude trending down, then its cords let go; Parachute
+  Pro is a padlocked pack on your back with the chatbots' popup as the paywall.
+- The Waymo lines up under you as you come down (and picks you up if you miss its roof); it says
+  "Rider detected on roof. Adjusting route." and "Please keep your laptop inside the vehicle."
+- The stars are three arcs laid on lines the canopy can fly; a simulation of the drift collects
+  4 with no steering, 8 with a mid-course steer, and all 12 on a chasing route.
 
 A standalone scene, not a PlayScene, with no HUD.
 
@@ -175,6 +201,18 @@ retry restarts the fall. God mode slows the altimeter.
 - Steer left and right over SoMa rooftops to collect stars.
 - Land on the Waymo, which drives to the HQ facade. The walk-in moves here from Level 1: use
   `buildExit('hq_facade', 'BossHQ')`, or tween it the same way.
+
+## Next: a song per level (roadmap, from Travis 2026-09-27)
+
+Today the city, the park, the tower and the landing share `music_level`; the Hydra has
+`music_boss`, and the win screen its synthesized song.
+
+- **Salesforce Park:** energetic, for the runners and everyone working out.
+- **Salesforce Tower:** more serious and corporate, with actual elevator music on the elevator
+  rides (the Elevator scene is the place for it).
+- **The free fall:** its own track under the fall (today it's only wind until the chute opens).
+- **After the parachute opens:** a different song for the canopy and the Waymo ride, up to
+  Anthropic HQ. The drop at "ship it" would cut from the fall's track into this one.
 
 ## Verification (every phase)
 

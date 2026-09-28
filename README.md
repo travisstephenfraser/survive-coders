@@ -13,9 +13,9 @@ every voice power has a keyboard key and a tap target on phones, and ordinary ta
 demo fires nothing, because `src/voice.js` only acts on release and only on a recognized
 command. It plays with a keyboard or, on phones and tablets, with touch controls.
 
-Status: hackathon demo: the city, Salesforce Park, three floors of the Salesforce Tower, and one
-boss. Built with Claude Code (Claude Opus 5.5) as a pair programmer; commits carry
-`Co-Authored-By` trailers.
+Status: hackathon demo: the city, Salesforce Park, three floors of the Salesforce Tower, the fall
+from its top, and one boss. Built with Claude Code (Claude Opus 5.5) as a pair programmer;
+commits carry `Co-Authored-By` trailers.
 
 **Live app: <https://survive-coders.vercel.app>**
 
@@ -121,9 +121,11 @@ on every signing. The elevator up is a six-second ride with an account executive
 until the ding cuts him off mid-sentence. Floor 60 is the Dreamfarce demo center, where
 chatbots hover beside you and open popups you have to shoot closed, each followed by *Was this
 helpful?* Floor 61 is the Ohana Floor, after the real one: living green columns, blue sofas,
-glass to the ceiling over the bay. Two waves come for you, then the sales team walks in,
-unhurtable and flexible on pricing, and the only way out is through the glass. For now the fall
-lands at HQ; a parachute you type while falling is next.
+glass to the ceiling over the bay. Two waves come for you, but the way out doesn't wait on
+them: reach the glass, or clear the lounge, and the whole sales team drops through the ceiling
+right behind you, unhurtable and flexible on pricing. They crowd you toward the window and lob
+contracts that lock you in and pile up at your feet. The ones that sail over your head hit the
+glass: two leave webs of cracks, the third goes through, and that's the only way out.
 
 ![Floor 59: locked into a contract, the leaderboard reading "1. CHAD 2. CHAD 3. YOU?"](docs/screenshots/08c-tower-contract-lock.png)
 
@@ -131,7 +133,33 @@ lands at HQ; a parachute you type while falling is next.
 
 ![Floor 60: a chatbot's popups over the demo center](docs/screenshots/08e-tower-popups.png)
 
-![Floor 61: out through the Ohana Floor's glass](docs/screenshots/08f-ohana-leap.png)
+![Floor 61: the whole sales team drops in behind you, and their contracts crack the window](docs/screenshots/08f-ohana-swarm.png)
+
+**The fall.** Out through the glass, you tumble down the Salesforce Tower's face, past the lit
+lattice of its crown, the braced floors under it and the Ohana Floor's broken pane, while an
+altimeter counts down from 1,070 feet in 24 seconds. The laptop tumbling beside you runs Claude
+Code, and the way down alive is three lines typed into it. `build me a parachute` gets a CRM
+dashboard in the shape of a canopy, charting your altitude as it trends down. `no, a real one`
+gets Parachute Pro, strapped to your back behind a paywall at $150 a seat a month, Enterprise
+tier only. `ship it` deploys it anyway: the paywall shatters, the canopy opens, and the music
+drops. Case, spacing and small typos don't matter, Tab fills in the line (*that's vibe coding*),
+and typing never fires a power. On a phone every tap types the next letter, or you hold *talk*
+and say the line. Run out of altitude and you meet the Transit Center's roof, `404: parachute
+not found`, and a retry restarts the fall.
+
+![The fall: the crown, the Ohana Floor's broken pane, and "build me a" typed into Claude's terminal](docs/screenshots/08g-chute-fall.png)
+
+![Claude's first parachute: a CRM dashboard, charting your altitude as it trends down](docs/screenshots/08h-chute-dashboard.png)
+
+![Parachute Pro: $150/seat/month, Enterprise tier only](docs/screenshots/08i-chute-paywall.png)
+
+**The landing.** The canopy carries you east over SoMa's rooftops, the Salesforce Tower lit up
+behind you. Steer through three arcs of stars, each laid on a line the canopy can actually fly,
+and come down on a Waymo that has lined up under you: *Rider detected on roof. Adjusting route.*
+It drives you to Anthropic HQ, and you walk in through its sliding doors. Miss the roof and it
+pulls up beside you on the street.
+
+![On the Waymo's roof over SoMa: "Rider detected on roof. Adjusting route."](docs/screenshots/08j-chute-waymo.png)
 
 **9. The Context Rot Hydra.** Inside, the office goes quiet, the terminal types
 `make one small change`, the heads answer, and the boss card lands. The body is a heap of H100s
@@ -192,7 +220,8 @@ A dated design review with before and after screenshots is in
 - A skippable, 12-second robotaxi intro cutscene with Slack `#demo-day` messages, and a matching payoff on the win screen
 - A side-scrolling run from Daly City to SoMa, with the HUD path following the neighborhood signs, over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at the Salesforce Transit Center
 - Salesforce Park on the Transit Center's roof, laid out like the real one, with the bus fountain's geysers, a gondola intro, and a demo-day arena
-- Three floors of the Salesforce Tower, joined by elevator rides, ending in a leap through the Ohana Floor's glass
+- Three floors of the Salesforce Tower, joined by elevator rides, ending when the whole sales team drops in on the Ohana Floor and their contracts crack the window you leap through
+- A free fall down the tower's face against an altimeter, where you type three lines into Claude Code for a parachute (it gets it wrong twice), then a canopy ride over SoMa through arcs of stars onto a Waymo's roof
 - Enemies by district: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat) in the city; founders, vested bros, and Zone 2 joggers in the park; CRM agents (contracts that lock your fire) and chatbots (popups you shoot closed) in the tower
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
 - The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies); growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
@@ -200,7 +229,7 @@ A dated design review with before and after screenshots is in
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
-- Pause, mute, and a checkpoint at every level after the first (the park, each tower floor, the boss) that restores your star total on retry
+- Pause, mute, and a checkpoint at every level after the first (the park, each tower floor, the fall, the boss) that restores your star total on retry
 - Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
 - An original chiptune victory song on the win screen, written as MIDI note data and synthesized in the browser
 - Link previews and a favicon drawn from the game's own pixels
@@ -215,20 +244,22 @@ A dated design review with before and after screenshots is in
 | Stream tokens (after grabbing MAX) | Hold Space, X, or J | Hold `>_` |
 | Voice power | Hold M, say the command, release | Hold *talk* in the terminal bar, say it, release |
 | Powers without voice | 1 ship it, 2 rollback, 3 refactor | Tap the power in the terminal bar |
+| Type a line (the fall) | Type it; Tab fills it in, Enter sends, Backspace fixes | Every tap types the next letter; or hold *talk*, say it, release |
+| Steer the canopy | Arrow keys or A / D | ← → bottom left |
 | Pause / mute | P or Esc / N | Pause button at the top; sound toggle on the pause screen |
 | Title screen | Enter start, V set up microphone | Tap to start, tap *set up mic* |
 | Intro | Enter, Space, or Esc skips | Tap skips |
-| End screen | Enter retry (from the park, the floor, or the boss you died on), T title | Tap retries; *title* button |
+| End screen | Enter retry (from the park, the floor, the fall, or the boss you died on), T title | Tap retries; *title* button |
 
 Touch controls appear on devices whose main pointer is a finger. A thumb on the seam between
 `>_` and ↑ presses both. The game plays in landscape and pauses if the phone turns portrait.
 On Android the tap that starts a run goes fullscreen; iPhone Safari cannot make a page
 fullscreen, but *Add to Home Screen* runs the game fullscreen from its web manifest.
 
-Six URL flags help when testing: `?park`, `?tower=59` (or `60`, `61`), and `?boss` start at
-Salesforce Park, a tower floor, or the boss after you press Enter on the title screen, `?debug`
-draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows the touch
-controls on a desktop (they work with a mouse).
+Seven URL flags help when testing: `?park`, `?tower=59` (or `60`, `61`), `?chute`, and `?boss`
+start at Salesforce Park, a tower floor, the fall, or the boss after you press Enter on the title
+screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
+the touch controls on a desktop (they work with a mouse).
 
 ---
 
@@ -255,17 +286,18 @@ controls on a desktop (they work with a mouse).
 ┌─ Browser ───────────────────────────────────────────────────────────────┐
 │  index.html → src/main.js   Phaser.Game 960x540, WebGL, CRT pipeline    │
 │                                                                         │
-│  Scenes: Boot → Title → Level1 → Park → Tower ⇄ Elevator → BossHQ → End │
-│                         │ Cine overlay                     │ Hydra      │
-│                         │ (intros, the elevator)           │            │
-│                 HUD runs in parallel with every play scene              │
+│  Scenes: Boot → Title → Level1 → Park → Tower ⇄ Elevator → Chute        │
+│          → Landing → BossHQ → End                                       │
+│  Overlays: Cine (intros, the elevator), Terminal (the fall's typing)    │
+│  HUD runs in parallel with every play scene; the Hydra is in BossHQ     │
 │                                                                         │
 │  Art: drawn to canvas textures at boot (sprites.js, backdrops.js,       │
-│       hqArt.js, parkArt.js, towerArt.js) + public/assets                │
+│       hqArt.js, parkArt.js, towerArt.js, chuteArt.js) + public/assets   │
 │  Storage: one localStorage key (a demo setting)                         │
 │                                                                         │
 │  src/touch.js ── DOM buttons over the canvas ──→ Player.tick, HUD taps  │
 │  src/victorySong.js ── MIDI note data ──→ WebAudio synth (win screen)   │
+│  src/noise.js ── filtered noise ──→ WebAudio (the fall's wind, keys)    │
 │  src/voice.js ── hold M ──→ Web Speech API                              │
 └──────────────────────────────┼──────────────────────────────────────────┘
           trust boundary: in Chrome, microphone audio is sent to the
@@ -344,7 +376,11 @@ against the running game, recorded with screenshots in
 | Intro length and skip (2026-09-27) | Control returns at 11.9 s (was 18.2 s); a skip partway through leaves the player visible with physics on, the HUD shown, and no intro events pending |
 | Rollback tip on real damage (2026-09-27) | Shown after the first hit that lands, waiting out any other tip; not in god mode, not once rollback has been used, and reset by a new run |
 | Context meter is truthful | The HUD countdown matches the real growth timer, including after `refactor` |
-| Tower flow (2026-09-27) | The park's exit starts floor 59; each elevator ride starts the next floor at full health; a death on floor 60 retries floor 60; the leap from floor 61 lands at HQ; no console errors |
+| Tower flow (2026-09-27) | The park's exit starts floor 59; each elevator ride starts the next floor at full health; a death on floor 60 retries floor 60; the leap from floor 61 starts the fall; no console errors |
+| The fall and the landing (2026-09-27) | From floor 61: the leap starts the fall with the HUD off; three typed lines, one sent while Claude was still answering (it waited its turn), deploy the chute at 778 ft; the landing ends the fall's scenes and keeps its music; the Waymo reaches HQ and the boss starts with the HUD back and the level music stopped. Typed `m`, `1`, `2`, `3` leave voice and powers untouched. At 0 ft, *retry the fall* restores the stars you arrived with. Touch (iPhone landscape emulation): taps type and send the lines and the D-pad steers the canopy. Missing the Waymo's roof lands you on the street, and it picks you up. No console errors |
+| Line matching (2026-09-27) | `Build Me A Parachute`, `build me a parchute`, `No. A real one!` and `shipit` pass; `build me`, `a real one` and `ship` don't; the same rule finds a line inside a spoken transcript |
+| Star arcs are flyable (2026-09-27) | A simulation of the canopy's drift collects 4 stars with no steering, 8 with a mid-course steer, and all 12 on a chasing route; the game matched the 8-star route exactly |
+| Ohana finale (2026-09-27) | A wave agent left alive at the far wall no longer holds the exit: the last 8 tiles drop 18 closers right behind you (13 within 120 px at 1.5 s), the stray joins them, the third contract into the window breaks it at about 2 s, and the crowd shoves an idle player through; clearing the lounge mid-floor drops them behind you there |
 | Contracts and popups (2026-09-27) | A contract locks fire without damage, `refactor` voids it, and a new lock waits out a 1 s grace; a popup shot closed asks *Was this helpful?* once; `refactor` clears popups and on-screen chatbots |
 | Push-to-talk parsing | The four cases in [Architecture](#the-design-decision-worth-explaining) pass with a simulated recognizer |
 | Production build | Loads with no failed requests and no console errors or warnings, locally and on the live URL |
@@ -354,7 +390,7 @@ against the running game, recorded with screenshots in
 | Victory song | Offline render at -27.4 dB RMS against -27.9 dB for the level music; silent within 0.8 s of leaving the win screen |
 
 Not verified by automation: real spoken commands through a microphone, the audio mix, and
-difficulty with first-time players.
+difficulty with first-time players (the fall's 24 seconds included).
 
 ---
 
@@ -387,10 +423,14 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   audio never leaves the machine.
 - **No automated tests.** The checks above are scripted browser runs. Next: unit tests for
   the command parsing in `src/voice.js` and a headless smoke test (title, level, boss, win) in CI.
-- **The leap out of the tower lands straight at HQ.** Next: the free-fall between them, where
-  you type `build me a parachute` while an altimeter counts down and land on a Waymo's roof;
-  then more neighborhoods and the two unused enemies from the original monster sheet (a Pixel
-  Nudger that moves platforms and a Breach Wraith that leaks keys).
+- **One level song for the whole run.** The city, the park, the tower and the landing share it
+  (the Hydra has its own). Next, a song per level: something energetic for Salesforce Park,
+  which is full of runners and people working out; something more serious and corporate for
+  the tower, with real elevator music in the elevator; one for the free fall; and another once
+  the parachute opens, for the ride to Anthropic.
+- **One route through the city.** Next: more neighborhoods and the two unused enemies from the
+  original monster sheet (a Pixel Nudger that moves platforms and a Breach Wraith that leaks
+  keys).
 - **No reduced-effects option.** The CRT effect, camera flashes, and screen shake cannot be
   turned off, which matters for photosensitive players and projectors. Next: a toggle on
   the title screen.
