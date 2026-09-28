@@ -429,8 +429,9 @@ export const T = {
   TOP: 0, FILL: 1, PLAT_L: 2, PLAT_M: 3, PLAT_R: 4,
   HQ_TOP: 5, HQ_FILL: 6, HQ_WALL_L: 7, HQ_WALL_R: 8, HQ_PL: 9, HQ_PM: 10, HQ_PR: 11, HQ_BLOCK: 12,
   PARK_TOP: 13, PARK_FILL: 14, PARK_PL: 15, PARK_PM: 16, PARK_PR: 17,
+  TOWER_TOP: 18, TOWER_FILL: 19, TOWER_PL: 20, TOWER_PM: 21, TOWER_PR: 22,
 };
-const TILE_COUNT = 18;
+const TILE_COUNT = 23;
 
 function codeLines(ctx, ox, seed, colors) {
   // Deterministic "lines of code" dashes so fill tiles read as terminal text.
@@ -536,8 +537,6 @@ function shelf(ctx, ox, cap) {
   if (cap === 'R' || cap === 'B') px(14, 0, 2, 9, OAK.seam);
 }
 
-// Robotaxi (white SUV, roof sensor dome), side view facing right, 56x30. Built from per-row
-// spans so every edge stays pixel-crisp.
 // Salesforce Park lawn: grass blades over a lit concrete edge, lattice below.
 const GRASS = ['#6fbf5a', '#4f9a45', '#3a7a3a', '#2a5a2e'];
 function lawn(ctx, ox) {
@@ -593,6 +592,45 @@ function planter(ctx, ox, cap) {
   if (cap === 'R') ctx.fillRect(ox + 15, 4, 1, 8);
 }
 
+// Salesforce Tower floors: charcoal loop-pile carpet over the floor slab.
+function carpet(ctx, ox) {
+  slabFill(ctx, ox);
+  ctx.fillStyle = '#3a3d46';
+  ctx.fillRect(ox, 0, 16, 5);
+  ctx.fillStyle = '#555a66';
+  ctx.fillRect(ox, 0, 16, 1);
+  ctx.fillStyle = '#2e3038';
+  for (let x = 0; x < 16; x++) if ((x * 7 + ox) % 5 === 0) ctx.fillRect(ox + x, 2 + (x % 2), 1, 1);
+  ctx.fillStyle = '#15161a';
+  ctx.fillRect(ox, 5, 16, 1);
+}
+
+function slabFill(ctx, ox) {
+  ctx.fillStyle = '#1e1f24';
+  ctx.fillRect(ox, 0, 16, 16);
+  ctx.fillStyle = '#26272d';
+  for (const [x, y, w] of [[3, 9, 3], [11, 12, 3], [7, 14, 2], [1, 3, 2]]) ctx.fillRect(ox + x, y, w, 1);
+}
+
+// Standing desk, front on (visible rows 0-11): a white oak top over a charcoal modesty panel;
+// the left end has the height controls, set to standing.
+function desk(ctx, ox, cap) {
+  for (const [y, h, c] of [[0, 1, '#efe7d8'], [1, 2, '#d4c8b0'], [3, 1, '#9c8f78'], [4, 6, '#3a3d46'], [10, 1, '#2a2c33'], [11, 1, '#1a1b1f']]) {
+    ctx.fillStyle = c;
+    ctx.fillRect(ox, y, 16, h);
+  }
+  ctx.clearRect(ox, 12, 16, 4);
+  ctx.fillStyle = '#2a2c33';
+  if (cap === 'L') ctx.fillRect(ox, 4, 1, 7);
+  if (cap === 'R') ctx.fillRect(ox + 15, 4, 1, 7);
+  if (cap === 'L') {
+    ctx.fillStyle = '#3fb950';
+    ctx.fillRect(ox + 3, 5, 1, 1);
+  }
+}
+
+// Robotaxi (white SUV, roof sensor dome), side view facing right, 56x30. Built from per-row
+// spans so every edge stays pixel-crisp.
 function waymo(ctx, open) {
   const span = (y, x0, x1, c) => {
     ctx.fillStyle = c;
@@ -726,6 +764,12 @@ const DRAWN = {
       planter(ctx, at(T.PARK_PL), 'L');
       planter(ctx, at(T.PARK_PM), '');
       planter(ctx, at(T.PARK_PR), 'R');
+      // Salesforce Tower: carpet over the slab, standing desks.
+      carpet(ctx, at(T.TOWER_TOP));
+      slabFill(ctx, at(T.TOWER_FILL));
+      desk(ctx, at(T.TOWER_PL), 'L');
+      desk(ctx, at(T.TOWER_PM), '');
+      desk(ctx, at(T.TOWER_PR), 'R');
     },
   },
 

@@ -24,6 +24,7 @@ const SNAP_MS = 100;
 const SNAPS = 30; // ~3s of rollback history
 const TRAP_MS = 2600; // a founder's demo runs this long before it crashes on its own
 const TRAP_MASHES = 7; // or mash your way out sooner
+const LOCK_GRACE_MS = 1000; // after a contract lock ends, no new lock for this long
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -42,6 +43,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // Caught in a founder's demo: the way out, shown on the player like the reversed chip.
     this.trapChip = worldText(scene, x, y, TOUCH ? 'MASH!' : 'MASH ↑', { color: '#0d0d0d', bg: '#e3b341', size: 6, depth: 47 }).setVisible(false);
     this.trapped = null;
+    // Locked into a contract (a CRM agent's): no firing. The chip and its fine print ride along.
+    this.lockChip = worldText(scene, x, y, 'LOCKED IN', { color: '#f5f5f5', bg: '#e5534b', size: 6, depth: 47 }).setVisible(false);
+    this.lockFine = worldText(scene, x, y, '*auto-renews annually', { tiny: true, color: '#f5f5f5', bg: '#0d0d0d', depth: 47 }).setVisible(false);
+    this.lockedUntil = 0;
+    this.lockGraceUntil = 0;
     this.launchedUntil = 0;
     this.touchFireWas = false;
     this.coyoteUntil = 0;
@@ -132,7 +138,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.setTexture('player_idle');
     }
 
-    const firing = k.fire.isDown || k.fire2.isDown || k.fire3.isDown || touch.fire;
+    const locked = time < this.lockedUntil;
+    this.lockChip.setVisible(locked).setPosition(this.x, this.y - 22);
+    this.lockFine.setVisible(locked).setPosition(this.x, this.y - 14);
+    const firing = !locked && (k.fire.isDown || k.fire2.isDown || k.fire3.isDown || touch.fire);
     const tokens = () => this.scene.registry.get('maxTokens') > 0;
     if (firing && tokens()) {
       // MAX streams in fixed steps and catches up within a frame, so the rate is the same at
@@ -204,6 +213,30 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     t.by.endDemo?.(escaped);
   }
 
+  get locked() {
+    return this.scene.time.now < this.lockedUntil;
+  }
+
+  // Locked into a contract: no firing for `ms`. Powers still work, and "refactor" voids it.
+  lock(ms) {
+    const now = this.scene.time.now;
+    if (this.dead || now < this.lockGraceUntil) return false;
+    this.lockedUntil = now + ms;
+    this.lockGraceUntil = this.lockedUntil + LOCK_GRACE_MS;
+    this.scene.onLocked?.();
+    return true;
+  }
+
+  // Void the contract. Returns whether there was one.
+  unlock() {
+    const was = this.locked;
+    this.lockedUntil = 0;
+    this.lockChip.setVisible(false);
+    this.lockFine.setVisible(false);
+    if (was) this.lockGraceUntil = this.scene.time.now + LOCK_GRACE_MS;
+    return was;
+  }
+
   // Shoved aside without damage (a jogger lapping you).
   bump(fromX) {
     if (!this.targetable) return;
@@ -247,6 +280,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.dead = true;
       this.reversedChip.setVisible(false);
       this.trapChip.setVisible(false);
+      this.unlock();
       this.setTint(0xe5534b);
       this.scene.onPlayerDead();
     }

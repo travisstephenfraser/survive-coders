@@ -16,6 +16,7 @@ const STREAM_COLORS = ['#f5f5f5', '#f5f5f5', '#f5f5f5', '#d97757', '#3fb950'];
 const TILESETS = {
   suburbs: { top: T.TOP, fill: T.FILL, pl: T.PLAT_L, pm: T.PLAT_M, pr: T.PLAT_R },
   park: { top: T.PARK_TOP, fill: T.PARK_FILL, pl: T.PARK_PL, pm: T.PARK_PM, pr: T.PARK_PR },
+  tower: { top: T.TOWER_TOP, fill: T.TOWER_FILL, pl: T.TOWER_PL, pm: T.TOWER_PM, pr: T.TOWER_PR },
 };
 
 // Shared plumbing for playable scenes: tilemap from ASCII, player, bolts, enemies, hazards,
@@ -130,7 +131,7 @@ export default class PlayScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.player, this.hazards, (pl, h) => {
       if (!h.active) return;
-      pl.hurt(1, h.x);
+      if (!h.harmless) pl.hurt(1, h.x); // a contract locks you in instead (its onHitPlayer)
       // A hit's effect (the gaslight reversal) lands even when god mode or i-frames block the damage.
       if (pl.targetable) h.onHitPlayer?.(pl);
       h.destroy();
@@ -242,16 +243,17 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   // A building on the map's exit (D): the facade runs past the camera's top and right edges;
-  // two glass panels slide open as the player nears, and crossing the threshold walks in.
-  buildExit(facadeKey, next) {
+  // two door panels (glass by default, steel for an elevator) slide open as the player nears,
+  // and crossing the threshold walks in. `data` goes to the next scene.
+  buildExit(facadeKey, next, { data, panel = 'hq_door', panelAlpha = 0.6 } = {}) {
     const d = this.spawns.find((s) => s.ch === 'D');
     const ground = d.y + TILE / 2;
     this.add.image(d.x - FACADE.door, ground, facadeKey).setOrigin(0, 1).setDepth(-1);
     // Behind everyone on the pavement; the walk-in brings them in front.
     const panels = [-1, 1].map((side) =>
-      this.add.image(d.x + side * 5, ground, 'hq_door').setOrigin(0.5, 1).setFlipX(side > 0).setAlpha(0.6).setDepth(-0.5),
+      this.add.image(d.x + side * 5, ground, panel).setOrigin(0.5, 1).setFlipX(side > 0).setAlpha(panelAlpha).setDepth(-0.5),
     );
-    this.exitDoor = { x: d.x, ground, panels, open: false, next };
+    this.exitDoor = { x: d.x, ground, panels, open: false, next, data };
     return this.exitDoor;
   }
 
@@ -282,8 +284,9 @@ export default class PlayScene extends Phaser.Scene {
     if (this.leaving) return;
     this.leaving = true;
     const p = this.player;
-    const { x, ground, panels, next } = this.exitDoor;
+    const { x, ground, panels, next, data } = this.exitDoor;
     p.release?.();
+    p.unlock?.();
     p.body.enable = false;
     this.tweens.killTweensOf([p, p.laptop]); // a landing squash would fight the walk-in's scale
     p.facing = 1;
@@ -297,7 +300,7 @@ export default class PlayScene extends Phaser.Scene {
     this.tweens.add({ targets: [p, p.laptop], alpha: 0, scale: 0.8, y: ground - 11, delay: 220, duration: 480, ease: 'Sine.in' });
     this.time.delayedCall(620, () => {
       this.cameras.main.fadeOut(500);
-      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(next));
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(next, data));
     });
   }
 
@@ -495,6 +498,7 @@ export default class PlayScene extends Phaser.Scene {
       this.shout('refactor', '#3fb950');
       this.sfx('refactor', 0.6);
       this.cameras.main.flash(250, 63, 185, 80);
+      if (pl.unlock()) floatText(this, pl.x, pl.y - 32, 'contract voided: loophole!', '#3fb950');
       for (const e of [...this.enemies.getChildren()]) {
         if (!this.inView(e) || e.dying) continue;
         if (e.refactorable) {

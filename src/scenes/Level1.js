@@ -70,7 +70,7 @@ export default class Level1 extends PlayScene {
     for (const [x, name, color] of HOODS) this.sign(x, 118, name, color);
     this.buildCableCar();
     const door = this.buildExit('transit_facade', 'Park');
-    worldText(this, door.x - 16, door.ground - 92, 'TRANSIT CENTER · PARK ↑', { color: '#39c5cf', bg: '#0d0d0d', depth: 0 });
+    worldText(this, door.x - 16, door.ground - 108, 'TRANSIT CENTER · PARK ↑', { color: '#39c5cf', bg: '#0d0d0d', depth: 0 });
     this.playMusic('music_level', 0.28);
     this.registry.set('toast', null);
     if (!this.registry.get('introSeen')) this.playIntro();

@@ -8,7 +8,7 @@ import { playVictorySong } from '../victorySong.js';
 import { TOUCH } from '../touch.js';
 
 // Every level after the first is a checkpoint: a death there retries that level.
-const RETRY = { Park: 'retry the park', BossHQ: 'retry the boss' };
+const RETRY = { Park: 'retry the park', Tower: 'retry this floor', BossHQ: 'retry the boss' };
 
 export default class End extends Phaser.Scene {
   constructor() {

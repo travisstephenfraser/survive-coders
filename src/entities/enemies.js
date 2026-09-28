@@ -67,9 +67,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (!this.noFlip) this.setFlipX(this.dir < 0);
   }
 
-  groundAhead() {
+  groundAhead(dir = this.dir) {
     const layer = this.scene.layer;
-    return Boolean(layer.getTileAtWorldXY(this.x + this.dir * (this.body.halfWidth + 2), this.body.bottom + 2));
+    return Boolean(layer.getTileAtWorldXY(this.x + dir * (this.body.halfWidth + 2), this.body.bottom + 2));
   }
 }
 
@@ -484,4 +484,195 @@ export class Jogger extends Enemy {
   }
 }
 
-export const SPAWNERS = { B: BadPromptBlob, G: KeyboardGoblin, H: H100, F: Founder, V: VestedBro, J: Jogger };
+// ---- Salesforce Tower ----
+
+const AGENT_PITCHES = ['per seat, per month', 'agentic AND agentful', 'can I get 15 min?'];
+const AGENT_DEATHS = ['Trailhead badge unlocked: Being Sold To', "I'll send a calendar invite", 'let me loop in my manager'];
+
+// CRM agent: holds a sales distance (backs off inside 56px, closes in past 110px) and throws a
+// contract every 2s. A contract does no damage; it locks you in (no firing) until it lapses or
+// "refactor" voids it. The Ohana finale's sales team is `closing`: unhurtable, walking right at
+// 24px/s, bumping you along instead of hurting you.
+export class CrmAgent extends Enemy {
+  constructor(scene, x, y, closing = false) {
+    super(scene, x, y, 'agent0', 3, closing ? 0 : 5);
+    this.body.setSize(10, 15).setOffset(3, 1);
+    this.play('agent_walk');
+    this.nextPitch = scene.time.now + Phaser.Math.Between(900, 1800);
+    this.nextLine = 0;
+    this.closing = closing;
+    if (closing) this.refactorable = false;
+  }
+
+  update(time) {
+    if (this.dying || this.stunned) return;
+    if (this.closing) {
+      if (this.body.blocked.down) this.setVelocityX(24);
+      this.setFlipX(false);
+      return;
+    }
+    const p = this.scene.player;
+    const dx = p.x - this.x;
+    const sees = Math.abs(dx) < 160 && Math.abs(p.y - this.y) < 40 && !p.dead;
+    if (!sees) {
+      this.patrol(24);
+      return;
+    }
+    this.dir = Math.sign(dx) || 1;
+    this.setFlipX(this.dir < 0);
+    const dist = Math.abs(dx);
+    const step = dist < 56 ? -this.dir : dist > 110 ? this.dir : 0;
+    const tooFar = Math.abs(this.x + step * 2 - this.homeX) > 150; // chase leash
+    if (this.body.blocked.down) this.setVelocityX(step && this.groundAhead(step) && !tooFar ? step * 40 : 0);
+    if (time > this.nextPitch) {
+      this.nextPitch = time + 2000;
+      this.pitch();
+    }
+  }
+
+  pitch() {
+    const s = this.scene;
+    floatText(s, this.x, this.y - 16, Phaser.Utils.Array.GetRandom(AGENT_PITCHES), '#8fd0ff');
+    const h = s.spawnHazard(this.x + this.dir * 8, this.y - 3, 'contract', this.dir * 120, 0, false, (pl) => pl.lock(3000));
+    h.harmless = true;
+  }
+
+  // The closing team only ever talks pricing.
+  say(line) {
+    const now = this.scene.time.now;
+    if (now < this.nextLine) return;
+    this.nextLine = now + 900;
+    floatText(this.scene, this.x, this.y - 18, line, '#8fd0ff');
+  }
+
+  hurt(dmg) {
+    if (!this.closing) {
+      super.hurt(dmg);
+      return;
+    }
+    this.scene.burst(this.x, this.y - 2, 'px_white', 2);
+    this.say("we're flexible on pricing");
+  }
+
+  onRefactor() {
+    if (this.closing) this.say("we're flexible on pricing");
+  }
+
+  onTouchPlayer(pl) {
+    if (!this.closing) return false;
+    if (pl.targetable && this.scene.time.now > this.nextLine) {
+      pl.bump(this.x);
+      this.say("let's circle back on pricing");
+    }
+    return true;
+  }
+
+  onDie() {
+    floatText(this.scene, this.x, this.y - 18, Phaser.Utils.Array.GetRandom(AGENT_DEATHS), '#8fd0ff');
+  }
+}
+
+const POPUP_LINES = [
+  ["Hi! I'm your Agent.", 'How can I help?'],
+  ['Hi again!', 'Still here to help!'],
+  ["I noticed you're busy!", 'Want a demo?'],
+];
+// Where popups sit, as offsets from the camera's centre: above the player, in jump range. Two
+// at most, so the fight stays readable.
+const POPUP_SLOTS = [[-80, -16], [72, -24]];
+
+// Chatbot: floats above and beside you and, every ~5s, opens a popup in a free slot on screen.
+// "refactor" clears chatbots and popups alike.
+export class ChatbotAgent extends Enemy {
+  constructor(scene, x, y) {
+    super(scene, x, y, 'chatbot', 2, 4);
+    this.body.setAllowGravity(false);
+    this.body.setSize(14, 12).setOffset(1, 2);
+    this.ghost = true;
+    this.noFlip = true;
+    this.greeting = 0;
+    this.phase = Math.random() * Math.PI * 2;
+    this.nextPopup = scene.time.now + Phaser.Math.Between(1200, 2400);
+  }
+
+  update(time) {
+    if (this.dying || this.stunned) return;
+    const p = this.scene.player;
+    const dx = p.x - this.x;
+    const bob = Math.sin(time / 400 + this.phase);
+    if (Math.abs(dx) > 200 || p.dead) {
+      this.setVelocity(0, bob * 6);
+      return;
+    }
+    const tx = p.x - Math.sign(dx || 1) * 36; // hovers on its own side of you
+    const ty = p.y - 30 + bob * 4;
+    this.setVelocity(Phaser.Math.Clamp((tx - this.x) * 2, -60, 60), Phaser.Math.Clamp((ty - this.y) * 2, -60, 60));
+    this.setFlipX(dx < 0);
+    if (time > this.nextPopup && this.scene.inView(this)) {
+      this.nextPopup = time + 5000;
+      Popup.open(this.scene, POPUP_LINES[this.greeting++ % POPUP_LINES.length]);
+    }
+  }
+
+  onDie() {
+    floatText(this.scene, this.x, this.y - 14, 'escalating to a human...', '#8fd0ff');
+  }
+}
+
+// A chatbot's popup: pinned to a slot on screen until it's shot (1 HP, no reward, no contact
+// damage). Closing one asks "Was this helpful?", once. It re-pins after the camera moves each
+// frame (followupdate), so it never trails the view.
+export class Popup extends Enemy {
+  static open(scene, lines, small = false) {
+    const taken = scene.enemies.getChildren().filter((e) => e instanceof Popup && !e.dying).map((e) => e.slot);
+    const slot = POPUP_SLOTS.findIndex((_, i) => !taken.includes(i));
+    return slot < 0 ? null : new Popup(scene, slot, lines, small);
+  }
+
+  constructor(scene, slot, [a, b], small) {
+    super(scene, 0, 0, small ? 'popup_small' : 'popup', 1, 0);
+    this.slot = slot;
+    this.small = small;
+    this.body.setAllowGravity(false);
+    this.body.moves = false; // placed by pin(), not by physics
+    this.ghost = true;
+    this.noFlip = true;
+    this.setDepth(45);
+    const [w, h] = small ? [88, 24] : [112, 32];
+    const text = (str, dx, dy, opts) => [worldText(scene, 0, 0, str, { ox: 0, depth: 46, ...opts }), dx, dy];
+    const indent = small ? 4 : 15;
+    this.texts = [
+      text('Agent', -w / 2 + 3, -h / 2 + (small ? 3.5 : 4), { tiny: true }),
+      text(a, -w / 2 + indent, -h / 2 + (small ? 11 : 14), { color: '#0d0d0d' }),
+      text(b, -w / 2 + indent, -h / 2 + (small ? 19 : 23), { color: '#0d0d0d' }),
+    ];
+    const cam = scene.cameras.main;
+    this.pin = () => {
+      const [ox, oy] = POPUP_SLOTS[this.slot];
+      this.setPosition(Math.round(cam.midPoint.x + ox), Math.round(cam.midPoint.y + oy));
+      for (const [t, dx, dy] of this.texts) t.setPosition(this.x + dx, this.y + dy);
+    };
+    this.pin();
+    this.body.updateFromGameObject();
+    cam.on('followupdate', this.pin);
+    this.once('destroy', () => {
+      cam.off('followupdate', this.pin);
+      for (const [t] of this.texts) t.destroy();
+    });
+    scene.sfx?.('hit', 0.3);
+  }
+
+  onTouchPlayer() {
+    return true;
+  }
+
+  onDie() {
+    if (this.small || this.refactored) return;
+    // After this physics step, so the enemies group isn't changed mid-overlap (and destroy()
+    // clears this.scene, so hold on to it).
+    const { scene } = this;
+    scene.time.delayedCall(0, () => Popup.open(scene, ['Was this helpful?', 'Y / N'], true));
+  }
+}
+
+export const SPAWNERS = { B: BadPromptBlob, G: KeyboardGoblin, H: H100, F: Founder, V: VestedBro, J: Jogger, A: CrmAgent, C: ChatbotAgent };

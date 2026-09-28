@@ -561,6 +561,17 @@ export const PARK_LAYERS = [
   { key: 'bg_park', f: 0.55, tint: 0xc8c4d0 },
 ];
 
+// The view from the Salesforce Tower's floors, 900ft up: the same sky, the city dropped below
+// the window line (the hills 40px, downtown 55px; the street is out of sight), and Karl the Fog
+// down over the bay. Floors are too short to scroll the skyline as far as the tower itself.
+export const TOWER_VIEW = [
+  { key: 'bg_sky', f: 0 },
+  { key: 'bg_far', f: 0.15, tint: 0x80788c, y: 40 },
+  { key: 'bg_mid', f: 0.3, tint: 0x9c94a8, y: 55 },
+  { key: 'bg_signs', f: 0.3, tint: 0xb8b0c0, res: SIGN_RES, y: 55 },
+  { key: 'bg_fog', f: 0.2, y: 118, h: 40, drift: 0.004 },
+];
+
 // Cable cars running along the Painted Ladies street (near layer plane).
 export const TROLLEYS = [
   { x0: 0, speed: 0.012, dir: 1 },

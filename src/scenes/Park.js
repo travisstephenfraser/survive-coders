@@ -51,14 +51,13 @@ export default class Park extends PlayScene {
 
     this.buildLandmarks();
     this.sign(88, 112, 'SALESFORCE PARK', '#3fb950');
-    this.sign(244, 118, 'NO PITCHING', '#e5534b');
+    this.sign(244, 100, 'NO PITCHING', '#e5534b'); // above a demo grab's bubble
     this.sign(520, 118, 'ZONE 4: SERIES A FERNS', '#3fb950');
     this.sign(690, 118, 'PLAY AREA: FOUNDERS WELCOME', '#e3b341');
     this.sign(1130, 110, 'NEXT BUS: 2 MIN (PROBABLY)', '#e3b341');
     this.buildJets();
     this.buildArena();
-    // The tower's floors come next; until then its lobby leads to the Hydra.
-    const door = this.buildExit('tower_lobby', 'BossHQ');
+    const door = this.buildExit('tower_lobby', 'Tower', { data: { floor: 59 } });
     worldText(this, door.x - 16, door.ground - 66, 'SALESFORCE TOWER', { color: '#f5f5f5', bg: '#0d0d0d', depth: 0 });
 
     this.playMusic('music_level', 0.28);
