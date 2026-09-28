@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
+import { playElevatorSong } from '../elevatorSong.js';
 
-// The ride between floors: a CRM agent pitches the whole way up, and the ding cuts him off
-// mid-sentence. About 6s, skippable (ENTER or a tap). Not a PlayScene, so the HUD sits it out.
+// The ride between floors: a CRM agent pitches the whole way up over elevator music, and the
+// ding cuts him off mid-sentence. About 6s, skippable (ENTER or a tap). Not a PlayScene, so the
+// HUD sits it out.
 const PITCHES = {
   59: ['While I have you... have you considered Agentfarce?', "It's agentic AND agentful.", "I'll let you get back to your day. Actually, one more th-"],
   60: ['Quick question: how are you managing customer relationships today?', 'Spreadsheets? Oh no. Oh no no no.', "Let me loop in my manager, he's on 61. We could ri-"],
@@ -64,6 +66,20 @@ export default class Elevator extends Phaser.Scene {
     const skip = () => this.leave();
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.once(k, skip);
     this.input.once('pointerdown', skip);
+
+    // The building's music, picking up where the last ride left off. N mutes here too, since
+    // the HUD that owns it is stopped for the ride.
+    this.song = playElevatorSong(this, { from: this.registry.get('elevatorSongAt') ?? 0 });
+    this.input.keyboard.on('keydown-N', () => (this.sound.mute = !this.sound.mute));
+    this.events.once('shutdown', () => this.stopSong(0.05));
+  }
+
+  // Remembers how far the song got, for the next ride.
+  stopSong(fade) {
+    if (!this.song) return;
+    this.registry.set('elevatorSongAt', this.song.at());
+    this.song.stop(fade);
+    this.song = null;
   }
 
   update(time, delta) {
@@ -89,6 +105,7 @@ export default class Elevator extends Phaser.Scene {
     this.leaving = true;
     const cam = this.cameras.main;
     cam.fadeOut(400);
+    this.stopSong(0.4);
     cam.once('camerafadeoutcomplete', () => {
       this.scene.stop('Cine');
       this.scene.start('Tower', { floor: this.floor + 1 });

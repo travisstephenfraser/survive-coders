@@ -87,7 +87,7 @@ export default class Title extends Phaser.Scene {
       started = true;
       voice.resetCooldowns();
       if (this.cache.audio.exists('start')) this.sound.play('start', { volume: 0.5 });
-      this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, towerFloor: null, lockTaught: false, cutscene: false, toast: null });
+      this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, towerFloor: null, lockTaught: false, elevatorSongAt: 0, cutscene: false, toast: null });
       // Dev shortcuts: ?park, ?tower=59|60|61, ?chute, ?boss jump straight to a level.
       const floor = Number(params.get('tower'));
       if (params.has('tower')) this.scene.start('Tower', { floor: [59, 60, 61].includes(floor) ? floor : 59 });

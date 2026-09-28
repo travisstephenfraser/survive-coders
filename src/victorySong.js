@@ -1,20 +1,14 @@
 // The ending's victory song: an original chiptune stored as MIDI note numbers and played on a
 // small NES-style WebAudio synth (two pulse voices, triangle bass, noise drums). A three-bar
 // fanfare (I, bVI-bVII, I) lands on a 16-bar theme that loops until the scene ends. No audio
-// file: it plays through Phaser's master mute node, so muting (N) still applies.
+// file: songPlayer.js plays it through Phaser's master mute node, so muting (N) still applies.
+
+import { hz, midi, parseBar, playOnScene, renderSong } from './songPlayer.js';
 
 const BPM = 150;
 const STEP = 60 / BPM / 4; // one 16th note, in seconds
 const BAR = 16;
 const MASTER = 0.28; // RMS -27.4 dB, level with the level music at its 0.28 volume (-27.9 dB)
-
-// Scientific pitch name to MIDI note number: 'C4' 60, 'Ab5' 80.
-const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-function midi(name) {
-  const [, letter, acc, oct] = /^([A-G])([#b]?)(\d)$/.exec(name);
-  return 12 * (Number(oct) + 1) + PITCH[letter] + (acc === '#' ? 1 : acc === 'b' ? -1 : 0);
-}
-const hz = (m) => 440 * 2 ** ((m - 69) / 12);
 
 // One bar per string: 'note:16ths', 'r' rests. Drums use K kick, S snare, H hat, C crash.
 const LEAD = [
@@ -59,16 +53,6 @@ const FANFARE_HARMONY = ['r:4 E5:3 E5:1 E5:4 r:2 G5:1 G5:1', 'Eb5:6 Ab5:2 F5:6 B
 const FANFARE_DRUMS = ['K:4 S:4 K:4 S:2 S:1 S:1', 'K:4 S:2 S:2 K:4 S:1 S:1 S:1 S:1', 'C:4 r:4 K:4 S:1 S:1 S:1 S:1'];
 const BEAT = 'K:2 H:2 S:2 H:2 K:2 H:2 S:2 H:2';
 const FILL = 'K:2 H:2 S:2 H:2 K:2 H:2 S:1 S:1 S:1 S:1';
-
-function parseBar(bar, voice, at, out) {
-  let t = at;
-  for (const tok of bar.split(' ')) {
-    const [name, len] = tok.split(':');
-    if (name !== 'r') out.push({ voice, at: t, len: Number(len), note: voice === 'drum' ? name : midi(name) });
-    t += Number(len);
-  }
-  if (t - at !== BAR) throw new Error(`victorySong: ${voice} bar "${bar}" is ${t - at} steps, not ${BAR}`);
-}
 
 // Every note of the song as { voice, at, len (16ths), note }, sorted by start.
 function score() {
@@ -198,52 +182,12 @@ function* timeline(seconds) {
   }
 }
 
-// Plays live on the scene's sound manager, scheduling ~150ms ahead on the audio clock.
-// Returns { stop() }, or null without WebAudio (Phaser's HTML5 audio fallback).
-export function playVictorySong(scene) {
-  const ctx = scene.sound.context;
-  if (!ctx || !scene.sound.destination) return null;
-  const out = ctx.createGain();
-  out.gain.value = MASTER;
-  out.connect(scene.sound.destination);
-  const play = synth(ctx, out);
-  const start = ctx.currentTime + 0.1;
-  const events = timeline(Infinity);
-  let next = events.next().value;
-  const tick = () => {
-    const horizon = ctx.currentTime + 0.15;
-    while (next && start + next[1] < horizon) {
-      const t = start + next[1];
-      if (t >= ctx.currentTime) play(next[0], t); // skip notes we're already late for
-      next = events.next().value;
-    }
-  };
-  tick();
-  const timer = scene.time.addEvent({ delay: 30, loop: true, callback: tick });
-  let stopped = false;
-  return {
-    stop() {
-      if (stopped) return;
-      stopped = true;
-      timer.remove();
-      const now = ctx.currentTime;
-      out.gain.cancelScheduledValues(now);
-      out.gain.setValueAtTime(out.gain.value, now);
-      out.gain.linearRampToValueAtTime(0, now + 0.25);
-      setTimeout(() => out.disconnect(), 400);
-    },
-  };
-}
+const VICTORY = { master: MASTER, synth, timeline };
+
+// Plays live on the scene's sound manager. Returns { stop() }, or null without WebAudio.
+export const playVictorySong = (scene) => playOnScene(scene, VICTORY);
 
 // Offline render for checks (loudness, length): the song's first `seconds` as an AudioBuffer.
-export async function renderVictorySong(seconds, sampleRate = 44100) {
-  const ctx = new OfflineAudioContext(2, Math.ceil(seconds * sampleRate), sampleRate);
-  const out = ctx.createGain();
-  out.gain.value = MASTER;
-  out.connect(ctx.destination);
-  const play = synth(ctx, out);
-  for (const [e, t] of timeline(seconds)) play(e, t);
-  return ctx.startRendering();
-}
+export const renderVictorySong = (seconds, sampleRate) => renderSong(VICTORY, seconds, sampleRate);
 
 export const SONG_INFO = { bpm: BPM, introSeconds: INTRO_STEPS * STEP, loopSeconds: LOOP_STEPS * STEP, notes: SONG.length };
