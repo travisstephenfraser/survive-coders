@@ -207,7 +207,8 @@ export function drawGondola(ctx) {
 // ---- Park landmarks, in the real map's order walking west from the gondola ----
 
 // A glass dome glowing from the hall below: steel ribs (meridians and rings) over lit panes,
-// on a drum of tall glass (the Oculus has one, the West Skylight is dome only).
+// on a drum of tall glass under a band of short clerestory panes (the Oculus has one, the West
+// Skylight is dome only).
 function dome(ctx, cx, base, rx, ry, drum) {
   const top = base - ry;
   for (let y = top; y <= base; y++) {
@@ -224,18 +225,20 @@ function dome(ctx, cx, base, rx, ry, drum) {
   }
   if (!drum) return;
   const [w, h] = drum;
+  const transom = base + Math.round(h * 0.28);
   for (let y = base + 1; y <= base + h; y++) {
     for (let x = cx - w; x <= cx + w; x++) {
-      const post = (x - cx + w) % 6 === 0 || Math.abs(x - cx) === w;
+      const post = (x - cx + w) % 6 === 0 || Math.abs(x - cx) === w || y === transom;
       rect(ctx, x, y, 1, 1, post ? '#6d7d8a' : mix('#eef8ff', '#b3dcf2', (y - base) / h));
     }
   }
   rect(ctx, cx - w - 1, base + h + 1, w * 2 + 3, 2, '#4a525a');
 }
 
-// The Light Column's Oculus: the Grand Hall's skylight, a lit dome on a glass drum.
+// The Light Column's Oculus: the Grand Hall's skylight, a lit dome on a glass drum. The drum's
+// glass is about two people tall, as in the real one, so the whole pavilion stands over three.
 export function drawOculus(ctx) {
-  dome(ctx, 32, 13, 28, 13, [26, 10]);
+  dome(ctx, 58, 24, 56, 24, [53, 26]);
 }
 
 // The West Skylight: a low oval dome set in the lawn.
@@ -312,7 +315,7 @@ export const PARK_ART = {
   transit_facade: { w: FACADE.w, h: FACADE.h, draw: drawTransitFacade },
   tower_lobby: { w: FACADE.w, h: FACADE.h, draw: drawTowerLobby },
   gondola: { w: 32, h: 28, draw: drawGondola },
-  oculus: { w: 64, h: 27, draw: drawOculus },
+  oculus: { w: 116, h: 53, draw: drawOculus },
   skylight: { w: 45, h: 14, draw: drawSkylight },
   cafe: { w: 48, h: 32, draw: drawCafe },
   play_frame: { w: 44, h: 40, draw: drawPlayFrame },

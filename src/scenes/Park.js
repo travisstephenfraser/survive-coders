@@ -101,12 +101,12 @@ export default class Park extends PlayScene {
     station.fillStyle(0xdfe3dc).fillRect(36, ground - 44, 18, 2);
     // Paving over the lawn's grass: glass panels around the Oculus, stone across the Main Plaza.
     const floor = this.add.graphics().setDepth(0.5);
-    for (let x = 128; x < 232; x += 8) {
+    for (let x = 104; x < 256; x += 8) {
       floor.fillStyle(0x8fc6de).fillRect(x, ground, 8, 6);
       floor.fillStyle(0xd6f1fc).fillRect(x, ground, 7, 1);
       floor.fillStyle(0x5f7c8a).fillRect(x + 7, ground, 1, 6);
     }
-    for (let x = 232; x < 528; x += 8) {
+    for (let x = 256; x < 528; x += 8) {
       floor.fillStyle(0xa9a497).fillRect(x, ground, 8, 6);
       floor.fillStyle(0xcfcabd).fillRect(x, ground, 7, 1);
       floor.fillStyle(0x7d786d).fillRect(x + 7, ground, 1, 6).fillRect(x, ground + 3, 8, 1);
