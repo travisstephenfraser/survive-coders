@@ -67,8 +67,8 @@ const OHANA_WAVES = [
   [[30, CrmAgent], [18, ChatbotAgent]],
   [[8, CrmAgent], [36, CrmAgent], [24, ChatbotAgent]],
 ];
-// Until the parachute level lands, the leap out of the Ohana Floor comes down at HQ.
-const AFTER_LEAP = 'BossHQ';
+// The leap out of the Ohana Floor goes into the free fall (the Chute).
+const AFTER_LEAP = 'Chute';
 
 // Salesforce Tower, one floor per run of the scene: 59 and 60 end at the elevator, whose ride
 // (the Elevator scene) starts the next floor; 61 ends in a leap through the glass. Each floor is
