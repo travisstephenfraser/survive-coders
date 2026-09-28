@@ -488,11 +488,12 @@ export class Jogger extends Enemy {
 
 const AGENT_PITCHES = ['per seat, per month', 'agentic AND agentful', 'can I get 15 min?'];
 const AGENT_DEATHS = ['Trailhead badge unlocked: Being Sold To', "I'll send a calendar invite", 'let me loop in my manager'];
+const CLOSERS = ['sign here!', 'just initial here', "it's a 3-year deal", 'ohana means multi-year', 'can I loop in legal?', "let's get this signed today"];
 
 // CRM agent: holds a sales distance (backs off inside 56px, closes in past 110px) and throws a
 // contract every 2s. A contract does no damage; it locks you in (no firing) until it lapses or
-// "refactor" voids it. The Ohana finale's sales team is `closing`: unhurtable, walking right at
-// 24px/s, bumping you along instead of hurting you.
+// "refactor" voids it. The Ohana finale's sales team is `closing` (joinSwarm): unhurtable, at you
+// fast, lobbing contracts at your feet and shoving you along instead of hurting you.
 export class CrmAgent extends Enemy {
   constructor(scene, x, y, closing = false) {
     super(scene, x, y, 'agent0', 3, closing ? 0 : 5);
@@ -500,15 +501,26 @@ export class CrmAgent extends Enemy {
     this.play('agent_walk');
     this.nextPitch = scene.time.now + Phaser.Math.Between(900, 1800);
     this.nextLine = 0;
-    this.closing = closing;
-    if (closing) this.refactorable = false;
+    this.closing = false;
+    if (closing) this.joinSwarm();
+  }
+
+  // Onto the closing team. Each closer stops a gap short of you, and the gap shrinks the longer
+  // it has been standing there, so a crowd that holds back at first ends up shoving you along.
+  joinSwarm() {
+    this.closing = true;
+    this.refactorable = false;
+    this.reward = 0;
+    this.gap = Phaser.Math.Between(12, 60);
+    this.speed = Phaser.Math.Between(50, 76);
+    this.nextThrow = this.scene.time.now + Phaser.Math.Between(400, 1400);
+    this.landedAt = null;
   }
 
   update(time) {
     if (this.dying || this.stunned) return;
     if (this.closing) {
-      if (this.body.blocked.down) this.setVelocityX(24);
-      this.setFlipX(false);
+      this.close(time);
       return;
     }
     const p = this.scene.player;
@@ -537,12 +549,53 @@ export class CrmAgent extends Enemy {
     h.harmless = true;
   }
 
-  // The closing team only ever talks pricing.
+  close(time) {
+    if (!this.body.blocked.down) return; // still dropping in
+    if (this.landedAt === null) {
+      this.landedAt = time;
+      this.scene.dust?.(this.x, this.body.bottom);
+      this.scene.sfx?.('hit', 0.2);
+      if (Math.random() < 0.3) this.say(Phaser.Utils.Array.GetRandom(CLOSERS));
+    }
+    const p = this.scene.player;
+    const dx = p.x - this.x;
+    this.dir = Math.sign(dx) || 1;
+    const gap = Math.max(0, this.gap - (time - this.landedAt) * 0.008);
+    this.setVelocityX(Math.abs(dx) > gap + 2 ? this.dir * this.speed : 0);
+    this.setFlipX(this.dir < 0);
+    if (time > this.nextThrow && !p.dead && !this.scene.leaving) {
+      this.nextThrow = time + Phaser.Math.Between(1600, 2800);
+      this.lob(p);
+    }
+  }
+
+  // A contract lobbed to land at your feet: it locks you in if it hits, and lies where it lands
+  // if it doesn't (the scene's fileContract). Now and then the scene has one go over your head
+  // at a point on the window instead (aimAtGlass), which is what cracks it.
+  lob(p) {
+    const s = this.scene;
+    const glass = s.aimAtGlass?.();
+    const T = glass ? Phaser.Math.FloatBetween(0.7, 0.9) : Phaser.Math.FloatBetween(0.5, 0.75); // seconds in the air
+    const g = s.physics.world.gravity.y;
+    const x0 = this.x + this.dir * 4;
+    const y0 = this.y - 8;
+    const [tx, ty] = glass ?? [p.x + Phaser.Math.Between(-12, 12), p.body.bottom - 3];
+    const h = s.spawnHazard(x0, y0, 'contract', (tx - x0) / T, (ty - y0 - 0.5 * g * T * T) / T, true, (pl) => pl.lock(3000));
+    h.harmless = true;
+    h.atGlass = Boolean(glass);
+    h.setAngularVelocity(Phaser.Math.Between(-360, 360));
+    h.onLand = () => s.fileContract?.(h.x, h.body.bottom);
+  }
+
+  // The closing team only ever talks pricing, and one of them at a time (a crowd of speech
+  // bubbles would bury you).
   say(line) {
-    const now = this.scene.time.now;
-    if (now < this.nextLine) return;
+    const s = this.scene;
+    const now = s.time.now;
+    if (now < this.nextLine || now < (s.closerLineAt ?? 0)) return;
     this.nextLine = now + 900;
-    floatText(this.scene, this.x, this.y - 18, line, '#8fd0ff');
+    s.closerLineAt = now + 500;
+    floatText(s, this.x, this.y - 18, line, '#8fd0ff');
   }
 
   hurt(dmg) {

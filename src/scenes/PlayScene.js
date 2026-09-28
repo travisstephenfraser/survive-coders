@@ -111,8 +111,17 @@ export default class PlayScene extends Phaser.Scene {
     // Ghost enemies (follow-up emails) drift through the terrain.
     this.physics.add.collider(this.enemies, this.layer, null, (e) => !e.ghost);
     this.physics.add.collider(this.bolts, this.layer, (b) => b.destroy());
-    // Ghost hazards (the gaslight orb) pass through platforms instead of breaking on them.
-    this.physics.add.collider(this.hazards, this.layer, (h) => h.destroy(), (h) => !h.ghost);
+    // Ghost hazards (the gaslight orb) pass through platforms instead of breaking on them; a
+    // hazard can leave something where it lands (onLand).
+    this.physics.add.collider(
+      this.hazards,
+      this.layer,
+      (h) => {
+        h.onLand?.();
+        h.destroy();
+      },
+      (h) => !h.ghost,
+    );
     this.physics.add.overlap(this.bolts, this.enemies, (b, e) => {
       if (!b.active || e.dying) return;
       const dmg = b.dmg ?? 1; // MAX stream characters carry 0.5

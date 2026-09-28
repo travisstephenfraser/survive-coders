@@ -62,11 +62,17 @@ const FLOORS = {
   },
 };
 
-// The Ohana Floor's all-hands: waves of [column, enemy], then the sales team closes in.
+// The Ohana Floor's all-hands: waves of [column, enemy]. They don't hold the way out: the whole
+// sales team drops in when you near the glass, or once the lounge is clear, whichever is first.
 const OHANA_WAVES = [
   [[30, CrmAgent], [18, ChatbotAgent]],
   [[8, CrmAgent], [36, CrmAgent], [24, ChatbotAgent]],
 ];
+const END_ZONE = 8 * TILE; // this close to the glass and they drop in
+const SWARM = 18; // through the ceiling at once
+const REINFORCE = { every: 2600, n: 3, max: 30 }; // and more while you stay
+const GLASS_EVERY = 3; // one contract in three goes over your head at the window...
+const GLASS_HITS = 3; // ...and the third to hit it goes through
 // The leap out of the Ohana Floor goes into the free fall (the Chute).
 const AFTER_LEAP = 'Chute';
 
@@ -86,6 +92,7 @@ export default class Tower extends PlayScene {
     this.gong = null;
     this.glass = null;
     this.arrow = null;
+    this.papers = [];
     this.registry.set('towerFloor', floor);
     this.registry.set('level', floor < 61 ? `~/sf/salesforce-tower/${floor} → 61` : '~/sf/salesforce-tower/61-ohana');
     this.registry.set('boss', null);
@@ -136,7 +143,8 @@ export default class Tower extends PlayScene {
       this.gong.setAngle(0);
       this.tweens.add({ targets: this.gong, angle: { from: -6, to: 6 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => this.gong.setAngle(0) });
     }
-    if (this.registry.get('lockTaught')) return;
+    // Mid-swarm the lesson would bury the one that matters: out through the glass.
+    if (this.registry.get('lockTaught') || (this.ohana && this.ohana.state !== 'waves')) return;
     this.registry.set('lockTaught', true);
     this.toast(TOUCH ? 'Locked in? Tap "refactor" to void the contract' : 'Locked in? "refactor" voids the contract (or 3)', 'refactor');
   }
@@ -175,39 +183,65 @@ export default class Tower extends PlayScene {
     worldText(this, this.worldW / 2, CEILING + 30, 'OHANA MEANS FAMILY (& MULTI-YEAR CONTRACTS)', { color: '#f5f5f5', bg: '#1f6fb5', depth: -4 });
     // The right-hand glass wall, floor to ceiling: the finale cracks it.
     this.glass = this.add.graphics().setDepth(3);
-    this.drawGlass(false);
+    this.drawGlass();
   }
 
-  drawGlass(cracked) {
+  // The window: the right-hand pane seen edge-on, and a web of cracks in the last bay of glass
+  // wherever a contract has hit it. The one that goes through is a big web, and splits the edge
+  // floor to ceiling.
+  drawGlass() {
     const g = this.glass.clear();
     const x = this.worldW - 6;
     const ground = 10 * TILE;
     g.fillStyle(0xbfe6f5, 0.3).fillRect(x, CEILING, 6, ground - CEILING);
     g.fillStyle(0x3a3f47).fillRect(x - 1, CEILING, 1, ground - CEILING);
-    if (!cracked) return;
-    // Cracks radiating from the impact, pixel by pixel.
+    const hits = this.ohana?.hits ?? [];
     g.fillStyle(0xf5f5f5);
-    const cx = x + 3;
-    const cy = 112;
-    for (const [dx, dy] of [[-3, -40], [2, -30], [-2, 34], [3, 44], [-3, -8], [2, 12]]) {
-      const n = Math.max(Math.abs(dx), Math.abs(dy));
-      for (let i = 0; i <= n; i++) g.fillRect(Math.round(cx + (dx * i) / n + Math.sin(i / 3)), Math.round(cy + (dy * i) / n), 1, 1);
+    const plot = (px, py) => py > CEILING && py < ground && g.fillRect(Math.round(px), Math.round(py), 1, 1);
+    const segment = (x1, y1, x2, y2) => {
+      const n = Math.max(1, Math.abs(x2 - x1), Math.abs(y2 - y1));
+      for (let k = 0; k <= n; k++) plot(x1 + ((x2 - x1) * k) / n, y1 + ((y2 - y1) * k) / n);
+    };
+    for (const { x: cx, y: cy, rays, big } of hits) {
+      const tip = (a, len) => [cx + Math.cos(a) * len, cy + Math.sin(a) * len];
+      for (const [a, len] of rays) segment(cx, cy, ...tip(a, len));
+      // Rings between neighbouring rays make it a web rather than a star.
+      rays.forEach(([a, len], k) => {
+        const [b, next] = rays[(k + 1) % rays.length];
+        for (const f of big ? [0.3, 0.6, 0.9] : [0.55]) segment(...tip(a, len * f), ...tip(b, next * f));
+      });
+    }
+    if (this.ohana?.state === 'cracked') {
+      const cy = hits.at(-1).y;
+      for (const [dx, dy] of [[-3, -40], [2, -30], [-2, 34], [3, 44], [-3, -8], [2, 12]]) segment(x + 3, cy, x + 3 + dx, cy + dy);
     }
   }
 
-  // ---- The Ohana finale: two waves, then the sales team walks you to the glass. ----
+  // ---- The Ohana finale: the waves, then the whole sales team, and out through the glass. ----
   startOhana() {
-    this.ohana = { state: 'waves', wave: 0, foes: [], nextAt: this.time.now + 1600 };
+    this.ohana = { state: 'waves', wave: 0, foes: [], nextAt: this.time.now + 1600, hits: [], throws: 0, nextDrop: 0 };
     this.toast('All hands on the Ohana Floor. Clear the lounge', null, 3000);
   }
 
   updateOhana(time) {
     const o = this.ohana;
     const p = this.player;
-    if (o.state === 'waves' && o.foes.every((f) => !f.active) && time > o.nextAt) {
-      if (o.wave < OHANA_WAVES.length) this.spawnOhanaWave(time);
-      else this.closeIn();
-    } else if (o.state === 'cracked' && !p.dead && p.x > this.worldW - 28) this.leap();
+    if (o.state === 'leaping') return;
+    if (o.state === 'waves') {
+      if (!p.dead && p.x > this.worldW - END_ZONE) this.swarm(time);
+      else if (o.foes.every((f) => !f.active) && time > o.nextAt) {
+        if (o.wave < OHANA_WAVES.length) this.spawnOhanaWave(time);
+        else this.swarm(time);
+      }
+      return;
+    }
+    for (const h of [...this.hazards.getChildren()]) if (h.atGlass && h.active && h.x >= this.worldW - 7) this.hitGlass(h);
+    const closers = this.enemies.getChildren().filter((e) => e.closing && !e.dying).length;
+    if (time > o.nextDrop && closers < REINFORCE.max) {
+      o.nextDrop = time + REINFORCE.every;
+      this.dropTeam(REINFORCE.n);
+    }
+    if (o.state === 'cracked' && !p.dead && p.x > this.worldW - 28) this.leap();
   }
 
   spawnOhanaWave(time) {
@@ -218,22 +252,86 @@ export default class Tower extends PlayScene {
     if (o.wave > 1) this.toast('Round 2: they looped in their manager');
   }
 
-  closeIn() {
+  // The whole sales team drops in behind you. Whoever's left from the waves joins them, the
+  // chatbots log off, and the contracts start flying.
+  swarm(time) {
     const o = this.ohana;
-    o.state = 'closing';
+    o.state = 'swarm';
+    o.nextDrop = time + REINFORCE.every + 1200;
     this.toast('No exit. Only one thing left to do.', null, 6000);
-    this.time.delayedCall(1200, () => {
-      for (let i = 0; i < 5; i++) new CrmAgent(this, 12 + i * 16, 9 * TILE, true);
-    });
-    this.time.delayedCall(2800, () => {
-      o.state = 'cracked';
-      this.drawGlass(true);
-      this.cameras.main.shake(260, 0.006);
-      this.sfx('hit', 0.6);
-      floatText(this, this.worldW - 20, 96, '*crack*', '#bfe6f5');
-      this.arrow = worldText(this, this.worldW - 22, 128, '→', { color: '#e3b341', size: 14, depth: 4 });
-      this.tweens.add({ targets: this.arrow, x: this.worldW - 16, duration: 300, yoyo: true, repeat: -1 });
-    });
+    for (const e of [...this.enemies.getChildren()]) {
+      if (e.dying) continue;
+      if (e instanceof CrmAgent) e.joinSwarm();
+      else if (e instanceof ChatbotAgent) this.logOff(e);
+    }
+    this.dropTeam(SWARM);
+    this.time.delayedCall(650, () => this.cameras.main.shake(220, 0.005)); // the first of them hit the carpet
+  }
+
+  // Through the ceiling tiles, a few at a time, right behind wherever you are as each one drops:
+  // the nearest a step away, the farthest at the left of the view.
+  dropTeam(n) {
+    for (let i = 0; i < n; i++) {
+      this.time.delayedCall(i * 45, () => {
+        if (this.ohana?.state === 'leaping') return;
+        const view = this.cameras.main.worldView;
+        const left = Math.max(12, view.x + 6, this.player.x - 170);
+        const x = Phaser.Math.Between(left, Math.max(left + 24, this.player.x - 22));
+        new CrmAgent(this, x, CEILING + 8, true);
+        this.burst(x, CEILING + 1, 'px_white', 3); // a ceiling tile gives
+      });
+    }
+  }
+
+  // A chatbot sits the close out: out of the fight and up through the ceiling.
+  logOff(bot) {
+    bot.dying = true;
+    bot.body.enable = false;
+    floatText(this, bot.x, bot.y - 12, 'brb', '#8fd0ff');
+    this.tweens.add({ targets: bot, y: CEILING - 24, alpha: 0, duration: 600, ease: 'Sine.in', onComplete: () => bot.destroy() });
+  }
+
+  // One throw in three, while the window holds, goes over your head at it (CrmAgent.lob).
+  aimAtGlass() {
+    const o = this.ohana;
+    if (o?.state !== 'swarm' || ++o.throws % GLASS_EVERY) return null;
+    return [this.worldW - 4, Phaser.Math.Between(CEILING + 30, 10 * TILE - 30)];
+  }
+
+  // A contract into the window: a web of cracks where it hit, and the third goes through.
+  hitGlass(h) {
+    const o = this.ohana;
+    const y = h.y;
+    h.destroy();
+    if (o.state !== 'swarm') return;
+    const big = o.hits.length === GLASS_HITS - 1;
+    const x = this.worldW - 8 - Phaser.Math.Between(0, big ? 6 : 14);
+    const n = big ? 9 : 6;
+    const rays = Array.from({ length: n }, (_, k) => [((k + Math.random() * 0.6) / n) * Math.PI * 2, big ? Phaser.Math.Between(18, 32) : Phaser.Math.Between(7, 12)]);
+    o.hits.push({ x, y, rays, big });
+    this.burst(x, y, 'px_cyan', big ? 12 : 5);
+    const flash = this.add.circle(x, y, big ? 10 : 5, 0xffffff, 0.8).setDepth(3.5);
+    this.tweens.add({ targets: flash, alpha: 0, scale: 1.6, duration: 220, onComplete: () => flash.destroy() });
+    if (!big) {
+      this.drawGlass();
+      this.sfx('hit', 0.35);
+      floatText(this, this.worldW - 40, y - 8, '*tink*', '#bfe6f5');
+      return;
+    }
+    o.state = 'cracked';
+    this.drawGlass();
+    this.cameras.main.shake(260, 0.006);
+    this.sfx('hit', 0.7);
+    floatText(this, this.worldW - 44, y - 10, '*CRACK*', '#bfe6f5');
+    this.arrow = worldText(this, this.worldW - 22, 128, '→', { color: '#e3b341', size: 14, depth: 4 });
+    this.tweens.add({ targets: this.arrow, x: this.worldW - 16, duration: 300, yoyo: true, repeat: -1 });
+  }
+
+  // A contract that missed lies where it landed, and the pile grows around you.
+  fileContract(x, y) {
+    const paper = this.add.image(x, y + 1, 'contract').setOrigin(0.5, 1).setAngle(Phaser.Math.Between(-80, 80)).setDepth(-0.5);
+    this.papers.push(paper);
+    if (this.papers.length > 60) this.papers.shift().destroy();
   }
 
   // Out through the glass: an arc, shards, a flash, then down to whatever's below.
