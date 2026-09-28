@@ -630,8 +630,8 @@ function desk(ctx, ox, cap) {
 }
 
 // Robotaxi (white SUV, roof sensor dome), side view facing right, 56x30. Built from per-row
-// spans so every edge stays pixel-crisp.
-function waymo(ctx, open) {
+// spans so every edge stays pixel-crisp. `rider` puts the vibe coder in the back seat.
+function waymo(ctx, open, rider = false) {
   const span = (y, x0, x1, c) => {
     ctx.fillStyle = c;
     ctx.fillRect(x0, y, x1 - x0 + 1, 1);
@@ -653,6 +653,18 @@ function waymo(ctx, open) {
   span(9, 19, 26, '#2f6f78');
   for (let y = 8; y <= 12; y++) span(y, 29, 29, WHITE); // B-pillar
   span(8, 41, 42, '#2b2f36'); // front roof sensor
+  if (rider) {
+    // Behind the B-pillar, facing forward: hair, headphones, face, the orange hoodie.
+    span(8, 22, 25, '#5a3a2a');
+    span(9, 21, 22, '#5a3a2a');
+    span(9, 23, 26, '#f2c29b');
+    span(10, 21, 21, '#8b8b8b');
+    span(10, 22, 22, '#5a3a2a');
+    span(10, 23, 26, '#f2c29b');
+    span(10, 25, 25, '#0d0d0d');
+    span(11, 23, 25, '#f2c29b');
+    span(12, 21, 27, '#f59a70');
+  }
   // Body.
   [[13, 14, 45], [14, 8, 49], [15, 5, 52], [16, 3, 53], [17, 2, 54]].forEach(([y, a, b]) => span(y, a, b, WHITE));
   for (let y = 18; y <= 24; y++) span(y, 2, 55, y >= 21 ? SHADE : WHITE);
@@ -739,6 +751,7 @@ const DRAWN = {
   gpu1: { w: 40, h: 18, draw: (ctx) => h100(ctx, 1) },
   waymo: { w: 56, h: 30, draw: (ctx) => waymo(ctx, false) },
   waymo_open: { w: 56, h: 30, draw: (ctx) => waymo(ctx, true) },
+  waymo_rider: { w: 56, h: 30, draw: (ctx) => waymo(ctx, false, true) },
   tiles: {
     w: 16 * TILE_COUNT,
     h: 16,

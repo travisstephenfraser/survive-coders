@@ -4,21 +4,18 @@ import { ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX, pop } from '../fx.js';
 import { TOUCH, showPad, touch } from '../touch.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
-import { FACADE } from '../hqArt.js';
 import { placeLidar } from '../sprites.js';
 import { loopSong } from './Songs.js';
 
 // Under the canopy over SoMa, after the Chute: steer through the stars on the way down and land on
-// the Waymo that has come for you. "Rider detected on roof. Adjusting route." It drives you to
-// Anthropic HQ, and you walk in through the same sliding doors as every building. Not a
-// PlayScene: no HUD, and nothing here can hurt you.
+// the Waymo that has come for you. "Rider detected on roof. Adjusting route." Its lidar sweeps you,
+// you sink into the roof and turn up in the back seat, and it drives off east: the ride itself is
+// the next scene (Ride). Not a PlayScene: no HUD, and nothing here can hurt you.
 
 const W = 900; // world width
 const SY = 300; // the street's surface
 const H = SY + 30;
-const HQ_X = 740; // the HQ facade's left edge
-const DOOR = HQ_X + FACADE.door;
-const STOP = DOOR - 46; // where the Waymo pulls up, its nose short of the doors
+const STOP = 782; // the Waymo waits no further east than this, and the canopy drifts 30px short
 const START = { x: 110, y: 40 };
 const DESCENT = 24; // px/s under the canopy
 const WIND = 16; // px/s, always east
@@ -45,7 +42,7 @@ export default class Landing extends Phaser.Scene {
   create({ music } = {}) {
     this.scene.stop('HUD');
     voice.keysSuspended = true; // no powers here; M and 1-3 do nothing
-    this.state = 'drift'; // 'drift' | 'street' (missed the car) | 'landed' | 'drive' | 'arrive' | 'leaving'
+    this.state = 'drift'; // 'drift' | 'street' (missed the car) | 'landed' | 'drive' (you're in) | 'leaving'
     this.vx = WIND;
     this.speed = 0;
     this.bubble = null;
@@ -60,9 +57,6 @@ export default class Landing extends Phaser.Scene {
     this.parallax = addParallax(this, LANDING_LAYERS);
     this.add.image(0, SY, 'soma_roofs').setOrigin(0, 1).setDepth(-4).setTint(0xc8c4d0);
     this.add.tileSprite(0, SY, W, H - SY, 'street').setOrigin(0).setDepth(-2);
-    this.add.image(HQ_X, SY, 'hq_facade').setOrigin(0, 1).setDepth(-1);
-    this.panels = [-1, 1].map((side) => this.add.image(DOOR + side * 5, SY, 'hq_door').setOrigin(0.5, 1).setFlipX(side > 0).setAlpha(0.6).setDepth(-0.5));
-    this.doorsOpen = false;
 
     this.stars = STARS.map(([x, y]) => {
       const s = this.add.image(x, y, 'star').setDepth(2);
@@ -128,7 +122,7 @@ export default class Landing extends Phaser.Scene {
     else if (this.state === 'street') this.pickUp(dt);
     else if (this.state === 'drive') this.drive(dt);
     if (this.state === 'landed' || this.state === 'drive') p.setPosition(this.waymo.x, DOME - 8);
-    if (this.state !== 'arrive' && this.state !== 'leaving') this.laptop.setPosition(p.x + 10, p.y - 1 + Math.sin(time / 250));
+    if (this.state !== 'leaving') this.laptop.setPosition(p.x + 10, p.y - 1 + Math.sin(time / 250));
     if (this.bubble) this.bubble.setPosition(this.waymo.x, SY - 52);
   }
 
@@ -205,7 +199,7 @@ export default class Landing extends Phaser.Scene {
     this.tweens.add({ targets: this.canopy, x: '+=70', y: '-=24', angle: 40, scaleY: 0.4, alpha: 0, duration: 1400, onComplete: () => this.canopy.destroy() });
   }
 
-  // On the roof: the car notices.
+  // On the roof: the car notices, and takes you in.
   onRoof() {
     const p = this.player;
     if (this.state === 'drift') this.dropCanopy();
@@ -213,8 +207,28 @@ export default class Landing extends Phaser.Scene {
     p.setTexture('player_idle').setAngle(0).setPosition(this.waymo.x, DOME - 8);
     this.sfx('jump', 0.4);
     this.say('Rider detected on roof. Adjusting route.');
-    this.time.delayedCall(1500, () => this.state === 'landed' && (this.state = 'drive'));
-    this.time.delayedCall(3400, () => this.state === 'drive' && this.say('Please keep your laptop inside the vehicle.'));
+    this.time.delayedCall(700, () => this.dissolve());
+  }
+
+  // The lidar's sweep runs down you, then you and the laptop pour into the roof as pixels (drawn
+  // behind the car, so they vanish into it) and a rider sits in the back seat. Off it goes.
+  dissolve() {
+    if (this.state !== 'landed') return;
+    const p = this.player;
+    const scan = this.add.rectangle(p.x, p.y - 9, 18, 1, 0x39c5cf).setDepth(7);
+    this.tweens.add({ targets: scan, y: p.y + 8, duration: 380, ease: 'Sine.inOut', onComplete: () => scan.destroy() });
+    this.time.delayedCall(380, () => {
+      if (this.state !== 'landed') return;
+      for (const [obj, tex, n] of [[p, 'px_cyan', 16], [this.laptop, 'px_white', 8]]) {
+        const spread = { x: { min: -5, max: 5 }, y: { min: -7, max: 5 }, speedY: { min: 15, max: 55 }, lifespan: 500, alpha: { start: 1, end: 0 }, emitting: false };
+        this.add.particles(obj.x, obj.y, tex, spread).setDepth(2.5).explode(n);
+      }
+      this.tweens.add({ targets: [p, this.laptop], alpha: 0, duration: 140 });
+      this.waymo.setTexture('waymo_rider');
+      this.sfx('refactor', 0.3);
+      this.state = 'drive';
+      this.cameras.main.stopFollow(); // it leaves you standing where you landed
+    });
   }
 
   say(text) {
@@ -223,61 +237,11 @@ export default class Landing extends Phaser.Scene {
     this.sfx('start', 0.3);
   }
 
-  // To HQ: speed up, then brake into the stop by the doors.
+  // Away east with you in the back, out of the frame, and the cut to the ride.
   drive(dt) {
-    const left = STOP - this.waymo.x;
-    this.speed = Math.min(170, this.speed + 150 * dt, Math.sqrt(2 * 150 * Math.max(0, left)) + 8);
-    this.waymo.x = Math.min(STOP, this.waymo.x + this.speed * dt);
-    if (this.waymo.x >= STOP) this.arrive();
-  }
-
-  // Off the roof and in through the doors (PlayScene.exit's walk-in, from the kerb).
-  arrive() {
-    this.state = 'arrive';
-    const p = this.player;
-    this.tweens.add({ targets: this.bubble, alpha: 0, delay: 400, duration: 300 });
-    p.setTexture('player_jump');
-    const kerb = STOP + 36;
-    this.tweens.add({ targets: p, x: kerb, duration: 360 });
-    this.tweens.add({
-      targets: p,
-      y: DOME - 22,
-      duration: 160,
-      ease: 'Sine.out',
-      onComplete: () =>
-        this.tweens.add({
-          targets: p,
-          y: SY - 8,
-          duration: 200,
-          ease: 'Sine.in',
-          onComplete: () => {
-            p.play('run', true);
-            this.setDoors(true);
-            this.tweens.add({ targets: p, x: DOOR - 1, duration: ((DOOR - 1 - kerb) / 95) * 1000, onComplete: () => this.walkIn() });
-          },
-        }),
-    });
-    this.tweens.add({ targets: this.laptop, x: kerb + 10, y: SY - 9, duration: 360 });
-  }
-
-  walkIn() {
-    const p = this.player;
-    for (const panel of this.panels) panel.setDepth(6.5); // over you (5) and the laptop (6)
-    this.tweens.add({ targets: p, y: SY - 8, duration: 220, ease: 'Sine.out' });
-    this.tweens.add({ targets: this.laptop, x: DOOR + 2, y: SY - 9, duration: 220, ease: 'Sine.out' });
-    this.time.delayedCall(220, () => this.setDoors(false));
-    this.tweens.add({ targets: [p, this.laptop], alpha: 0, scale: 0.8, y: SY - 11, delay: 220, duration: 480, ease: 'Sine.in' });
-    this.time.delayedCall(620, () => this.leave());
-  }
-
-  setDoors(open) {
-    if (this.doorsOpen === open) return;
-    this.doorsOpen = open;
-    this.panels.forEach((panel, i) => {
-      const x = DOOR + (i ? 1 : -1) * (open ? 15 : 5);
-      this.tweens.killTweensOf(panel);
-      this.tweens.add({ targets: panel, x, duration: Math.max(16, 26 * Math.abs(x - panel.x)), ease: 'Sine.inOut' });
-    });
+    this.speed = Math.min(170, this.speed + 150 * dt);
+    this.waymo.x += this.speed * dt;
+    if (this.waymo.x - 30 > this.cameras.main.worldView.right) this.leave();
   }
 
   leave() {
@@ -285,6 +249,6 @@ export default class Landing extends Phaser.Scene {
     this.state = 'leaving';
     const cam = this.cameras.main;
     cam.fadeOut(500);
-    cam.once('camerafadeoutcomplete', () => this.scene.start('BossHQ'));
+    cam.once('camerafadeoutcomplete', () => this.scene.start('Ride'));
   }
 }
