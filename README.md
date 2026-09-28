@@ -118,7 +118,8 @@ the one liberty taken with the map (the real tower stands mid-park).
 hold a sales distance and throw contracts that don't hurt but lock you in, so you can't fire
 until the contract lapses or `refactor` voids it (it *auto-renews annually*), and a gong rings
 on every signing. The elevator up is a six-second ride with an account executive who pitches
-until the ding cuts him off mid-sentence. Floor 60 is the Dreamfarce demo center, where
+over the building's bossa nova until the ding cuts him off mid-sentence, and the next ride
+picks the song up where it left off. Floor 60 is the Dreamfarce demo center, where
 chatbots hover beside you and open popups you have to shoot closed, each followed by *Was this
 helpful?* Floor 61 is the Ohana Floor, after the real one: living green columns, blue sofas,
 glass to the ceiling over the bay. Two waves come for you, but the way out doesn't wait on
@@ -141,8 +142,8 @@ altimeter counts down from 1,070 feet in 24 seconds. The laptop tumbling beside 
 Code, and the way down alive is three lines typed into it. `build me a parachute` gets a CRM
 dashboard in the shape of a canopy, charting your altitude as it trends down. `no, a real one`
 gets Parachute Pro, strapped to your back behind a paywall at $150 a seat a month, Enterprise
-tier only. `ship it` deploys it anyway: the paywall shatters, the canopy opens, and the music
-drops. Case, spacing and small typos don't matter, Tab fills in the line (*that's vibe coding*),
+tier only. `ship it` deploys it anyway: the paywall shatters, the canopy opens, and the fall's
+song drops into the ride's. Case, spacing and small typos don't matter, Tab fills in the line (*that's vibe coding*),
 and typing never fires a power. On a phone every tap types the next letter, or you hold *talk*
 and say the line. Run out of altitude and you meet the Transit Center's roof, `404: parachute
 not found`, and a retry restarts the fall.
@@ -231,7 +232,7 @@ A dated design review with before and after screenshots is in
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
 - Pause, mute, and a checkpoint at every level after the first (the park, each tower floor, the fall, the boss) that restores your star total on retry
 - Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
-- An original chiptune victory song on the win screen, written as MIDI note data and synthesized in the browser
+- A song for each stretch of the run (the city, the park, the tower, the fall, the ride to HQ, and the Hydra), the new ones loudness-matched to the city's so none jumps out, plus two originals written as MIDI note data and synthesized in the browser: the elevator's bossa nova and the chiptune victory song on the win screen
 - Link previews and a favicon drawn from the game's own pixels
 
 ## Controls
@@ -275,7 +276,7 @@ the touch controls on a desktop (they work with a mouse).
 | Look | A custom CRT post-pipeline (scanlines, slight RGB split, vignette); no bloom, because Phaser's bloom halves the frame before adding glow | Ties mismatched art sources into one terminal aesthetic. |
 | Voice | The browser's Web Speech API, push-to-talk | No API key, no server, and no cost; the browser handles recognition. Keyboard keys cover browsers without it. |
 | Input | Phaser keyboard input; touch buttons as DOM elements over the canvas (pointer events) | The canvas is letterboxed at 16:9, so buttons anchored to the screen's corners sit partly in the side bars on wide phones instead of over the game. |
-| Audio | Ninja Adventure sound effects, two music tracks converted to MP3, and a victory song synthesized with WebAudio | CC0 licensed; MP3 plays in every major browser. The song is MIDI note data on a small NES-style synth, so it ships as code, not a file. |
+| Audio | Ninja Adventure sound effects, six songs converted to MP3, and two originals synthesized with WebAudio | CC0 licensed; MP3 plays in every major browser. Only the first level's song loads before the title and the other five load behind it, so the new songs didn't lengthen the wait to play. The originals are MIDI note data on small WebAudio synths, so they ship as code, not files. |
 | Hosting | Vercel, static, Git-linked | Every push to `master` builds and deploys; no server code to run. |
 
 ---
@@ -288,6 +289,7 @@ the touch controls on a desktop (they work with a mouse).
 │                                                                         │
 │  Scenes: Boot → Title → Level1 → Park → Tower ⇄ Elevator → Chute        │
 │          → Landing → BossHQ → End                                       │
+│  Songs loads the later levels' music in parallel, behind the title      │
 │  Overlays: Cine (intros, the elevator), Terminal (the fall's typing)    │
 │  HUD runs in parallel with every play scene; the Hydra is in BossHQ     │
 │                                                                         │
@@ -296,7 +298,8 @@ the touch controls on a desktop (they work with a mouse).
 │  Storage: one localStorage key (a demo setting)                         │
 │                                                                         │
 │  src/touch.js ── DOM buttons over the canvas ──→ Player.tick, HUD taps  │
-│  src/victorySong.js ── MIDI note data ──→ WebAudio synth (win screen)   │
+│  src/elevatorSong.js, victorySong.js ── note data ──→ songPlayer.js     │
+│       ──→ WebAudio synths (the elevator's bossa nova, the win screen)   │
 │  src/noise.js ── filtered noise ──→ WebAudio (the fall's wind, keys)    │
 │  src/voice.js ── hold M ──→ Web Speech API                              │
 └──────────────────────────────┼──────────────────────────────────────────┘
@@ -388,6 +391,7 @@ against the running game, recorded with screenshots in
 | Touch-only playthrough | A scripted run using only the touch controls finished Level 1, cable car included, and the Hydra; it checks the controls, not the difficulty |
 | Canvas refits after rotation | Landscape, portrait, landscape: back to 693x390 within 300 ms; Phaser alone stayed fitted to the portrait size |
 | Victory song | Offline render at -27.4 dB RMS against -27.9 dB for the level music; silent within 0.8 s of leaving the win screen |
+| A song per level (2026-09-27) | One song at a time from Level 1 through the park, the tower, both elevator rides, the fall and `ship it` (the fall's song stops, and the ride's is the same sound through the landing) to the Hydra; three falls onto the roof leave no song playing and none held by the sound manager. A song still loading when its level starts plays the moment it arrives, and never after a splat or once you've left. The four new pack songs encode at -21.1 LUFS, the same as the city's, and the elevator's bossa nova renders at -32.0 LUFS against -32.2 for the city's at its in-game volume. The elevator song resumes on the next ride at the bar where it stopped, and N mutes in the elevator and the landing |
 
 Not verified by automation: real spoken commands through a microphone, the audio mix, and
 difficulty with first-time players (the fall's 24 seconds included).
@@ -423,11 +427,6 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   audio never leaves the machine.
 - **No automated tests.** The checks above are scripted browser runs. Next: unit tests for
   the command parsing in `src/voice.js` and a headless smoke test (title, level, boss, win) in CI.
-- **One level song for the whole run.** The city, the park, the tower and the landing share it
-  (the Hydra has its own). Next, a song per level: something energetic for Salesforce Park,
-  which is full of runners and people working out; something more serious and corporate for
-  the tower, with real elevator music in the elevator; one for the free fall; and another once
-  the parachute opens, for the ride to Anthropic.
 - **One route through the city.** Next: more neighborhoods and the two unused enemies from the
   original monster sheet (a Pixel Nudger that moves platforms and a Breach Wraith that leaks
   keys).
@@ -454,10 +453,13 @@ Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Travis Fraser. 
 covers this repository's code, art, and music; the third-party assets below keep their CC0
 dedication.
 
-Third-party assets: the slime and skull sprite sheets, the 8x8 font, the sound effects, and both
-music tracks come from the [Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
-by Pixel-boy and AAA, released under CC0. All other art is drawn in code in this repository, and the victory song is original, written as
-note data in `src/victorySong.js`.
+Third-party assets: the slime and skull sprite sheets, the 8x8 font, the sound effects, and six
+songs come from the [Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
+by Pixel-boy and AAA, released under CC0: *Adventure* in the city, *Revelation* in the park,
+*Dark Forest* in the tower, *Final Area* for the fall, *Boat* for the ride to HQ, and *Fight* for
+the Hydra. All other art is drawn in code in this repository, and the elevator's bossa nova and
+the victory song are original, written as note data in `src/elevatorSong.js` and
+`src/victorySong.js`.
 
 This is an unofficial hackathon project. It is not affiliated with or endorsed by Anthropic,
 Waymo, NVIDIA, Slack, or GitHub; their names are used descriptively.

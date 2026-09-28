@@ -9,7 +9,7 @@ Title → Level 1 (Daly City → SoMa, ends at the Salesforce Transit Center) �
 **Tower F59 → F60 → F61 Ohana** → **Chute** (free fall, typing) → Waymo ride → BossHQ (Hydra) →
 End.
 
-Phase status: **1 Park, 4 art pass, 2 Tower, 3 Chute: shipped on the branch.**
+Phase status: **1 Park, 4 art pass, 2 Tower, 3 Chute, and a song per level: shipped on the branch.**
 
 ## Decisions from the brainstorm (Travis's picks)
 
@@ -202,17 +202,27 @@ retry restarts the fall. God mode slows the altimeter.
 - Land on the Waymo, which drives to the HQ facade. The walk-in moves here from Level 1: use
   `buildExit('hq_facade', 'BossHQ')`, or tween it the same way.
 
-## Next: a song per level (roadmap, from Travis 2026-09-27)
+## A song per level (shipped 2026-09-27; the roadmap was Travis's)
 
-Today the city, the park, the tower and the landing share `music_level`; the Hydra has
-`music_boss`, and the win screen its synthesized song.
+The brief: something energetic for the park's runners, something serious and corporate for the
+tower with real elevator music between floors, a track under the fall, and a different song once
+the chute opens, cut in on "ship it". Travis picked from a shortlist of four per slot, auditioned
+loudness-matched (`feed/audition/`, local only):
 
-- **Salesforce Park:** energetic, for the runners and everyone working out.
-- **Salesforce Tower:** more serious and corporate, with actual elevator music on the elevator
-  rides (the Elevator scene is the place for it).
-- **The free fall:** its own track under the fall (today it's only wind until the chute opens).
-- **After the parachute opens:** a different song for the canopy and the Waymo ride, up to
-  Anthropic HQ. The drop at "ship it" would cut from the fall's track into this one.
+| Stretch | Song | Notes |
+|---|---|---|
+| Daly City to SoMa | 35 - Adventure (`music_level`) | Unchanged |
+| Salesforce Park | 3 - Revelation (`music_park`) | G major, about 180 BPM felt |
+| Tower floors | 37 - Dark Forest (`music_tower`) | A minor, a 2:34 loop, restarts each floor |
+| Elevator | Original bossa nova (`src/elevatorSong.js`) | F major, 108 BPM, an 8-bar loop; the next ride resumes at the bar where the last stopped |
+| The fall | 24 - Final Area (`music_fall`) | F minor, 140 BPM, under the wind |
+| Canopy and Waymo | 39 - Boat (`music_landing`) | F major, 120 BPM; "ship it" cuts the fall's song into it |
+| The Hydra | 17 - Fight (`music_boss`) | Unchanged |
+
+Pack songs are encoded as mono 80 kbps MP3 (the same command reproduces `music_level.mp3` byte for
+byte) with a gain that puts each at -21.1 LUFS, the city song's loudness, so every level plays at
+0.28 (0.32 for the ride, as before). Only `music_level` loads before the title; the rest load
+behind it (`src/scenes/Songs.js`), and `loopSong` starts a song that arrives after its level did.
 
 ## Verification (every phase)
 
