@@ -301,7 +301,7 @@ function drawFog(ctx, w, h) {
 // rim on the sunset side. The crown is the open lattice of the top six floors, lit by Jim
 // Campbell's "Day for Night" LEDs (here in bands, as on a pride night seen from the Bay Bridge),
 // and a strip of lit panels runs down the face below it.
-const TOWER_BANDS = ['#ff9ae8', '#ff6a5e', '#ff9a6a', '#ffe066', '#fff0c8', '#7fe8f0'];
+export const TOWER_BANDS = ['#ff9ae8', '#ff6a5e', '#ff9a6a', '#ffe066', '#fff0c8', '#7fe8f0'];
 function drawSalesforceTower(ctx, cx, base, top) {
   const r = rng(415); // 415 Mission St
   const H = base - top;
@@ -571,6 +571,27 @@ export const TOWER_VIEW = [
   { key: 'bg_signs', f: 0.3, tint: 0xb8b0c0, res: SIGN_RES, y: 55 },
   { key: 'bg_fog', f: 0.2, y: 118, h: 40, drift: 0.004 },
 ];
+
+// Camera-pinned parallax: one TileSprite per layer. With a 3x zoom, (320,180) is the view's
+// top-left for an object that ignores the camera's scroll.
+export function addParallax(scene, layers) {
+  return layers.map((l) => {
+    const ts = scene.add
+      .tileSprite(320, 180 + (l.y ?? 0), 320, l.h ?? 180, l.key)
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setTint(l.tint ?? 0xffffff)
+      .setTileScale(1 / (l.res ?? 1)) // a hi-res layer's texels are 1/res of a world pixel
+      .setDepth(-10);
+    return { ...l, ts };
+  });
+}
+
+// Slide each layer by its factor for a camera at world x. tilePosition is in texels, so a hi-res
+// layer scrolls res texels per world pixel.
+export function panParallax(parallax, x, time) {
+  for (const l of parallax) l.ts.tilePositionX = (x * l.f + (l.ox ?? 0) + (l.drift ? time * l.drift : 0)) * (l.res ?? 1);
+}
 
 // Cable cars running along the Painted Ladies street (near layer plane).
 export const TROLLEYS = [

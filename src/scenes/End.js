@@ -8,7 +8,12 @@ import { playVictorySong } from '../victorySong.js';
 import { TOUCH } from '../touch.js';
 
 // Every level after the first is a checkpoint: a death there retries that level.
-const RETRY = { Park: 'retry the park', Tower: 'retry this floor', BossHQ: 'retry the boss' };
+const RETRY = { Park: 'retry the park', Tower: 'retry this floor', Chute: 'retry the fall', BossHQ: 'retry the boss' };
+// Running out of health is a context problem; running out of altitude isn't.
+const LOSE = {
+  Chute: ['404: PARACHUTE NOT FOUND', TOUCH ? 'Salesforce Park broke your fall.\nTap faster: every tap types.' : 'Salesforce Park broke your fall.\nType faster, or press TAB.'],
+};
+const CONTEXT_LOST = ['CONTEXT EXHAUSTED', 'The vibes ran out.\nTry a smaller change.'];
 
 export default class End extends Phaser.Scene {
   constructor() {
@@ -21,14 +26,9 @@ export default class End extends Phaser.Scene {
     const w = terminalWindow(this, win ? 'git push origin main - success' : 'process exited with code 1');
     const left = w.x + 30;
     uiText(this, left, 90, win ? '$ git push origin main' : '$ npm run survive', { size: 16, color: '#8b8b8b' });
-    uiText(this, left, 126, win ? 'SHIPPED.' : 'CONTEXT EXHAUSTED', { size: win ? 64 : 40, color: win ? '#3fb950' : '#e5534b' });
-    uiText(
-      this,
-      left,
-      214,
-      win ? 'The Context Rot Hydra is compacted.\nYour small change is merged.' : 'The vibes ran out.\nTry a smaller change.',
-      { size: 16, color: '#f5f5f5', lineSpacing: 6 },
-    );
+    const [headline, story] = win ? ['SHIPPED.', 'The Context Rot Hydra is compacted.\nYour small change is merged.'] : (LOSE[retry] ?? CONTEXT_LOST);
+    uiText(this, left, 126, headline, { size: win ? 64 : 40, color: win ? '#3fb950' : '#e5534b' });
+    uiText(this, left, 214, story, { size: 16, color: '#f5f5f5', lineSpacing: 6 });
     uiText(this, left, 290, `★ ${stars} GitHub stars`, { size: 40, color: '#e3b341' });
     // Cuphead-style progress on a boss death: show how close the run got.
     const boss = this.registry.get('boss');

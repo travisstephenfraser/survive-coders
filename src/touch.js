@@ -33,6 +33,7 @@ const CSS = `
 #pad { --u: clamp(52px, 17vh, 84px); --gap: 10px; --edge: 12px; position: fixed; inset: 0; pointer-events: none; z-index: 2; }
 #pad[hidden] { display: none; }
 #pad.paused { opacity: 0.35; }
+#pad.steer .act { display: none; }
 #pad .zone { position: absolute; pointer-events: auto; touch-action: none; }
 #pad .btn { position: absolute; box-sizing: border-box; width: var(--u); height: var(--u); border: 3px solid rgba(217, 119, 87, 0.8);
   background: rgba(13, 13, 13, 0.45) center / 50% no-repeat; image-rendering: pixelated; }
@@ -165,10 +166,12 @@ function build() {
 
 touch.reset = () => {};
 
-// Shown by the HUD during play; hiding also releases everything, so nothing stays held.
-export function showPad(on) {
+// Shown by the HUD during play; hiding also releases everything, so nothing stays held. Under
+// the canopy (Landing) only the D-pad shows: nothing to fire at, nowhere to jump from.
+export function showPad(on, { steerOnly = false } = {}) {
   if (!TOUCH) return;
   if (!pad) build();
+  pad.classList.toggle('steer', on && steerOnly);
   if (pad.hidden === !on) return;
   pad.hidden = !on;
   touch.reset();

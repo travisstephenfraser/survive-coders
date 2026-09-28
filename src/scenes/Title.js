@@ -88,10 +88,10 @@ export default class Title extends Phaser.Scene {
       voice.resetCooldowns();
       if (this.cache.audio.exists('start')) this.sound.play('start', { volume: 0.5 });
       this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, towerFloor: null, lockTaught: false, cutscene: false, toast: null });
-      // Dev shortcuts: ?park, ?tower=59|60|61, ?boss jump straight to a level.
+      // Dev shortcuts: ?park, ?tower=59|60|61, ?chute, ?boss jump straight to a level.
       const floor = Number(params.get('tower'));
       if (params.has('tower')) this.scene.start('Tower', { floor: [59, 60, 61].includes(floor) ? floor : 59 });
-      else this.scene.start(params.has('park') ? 'Park' : params.has('boss') ? 'BossHQ' : 'Level1');
+      else this.scene.start(params.has('park') ? 'Park' : params.has('chute') ? 'Chute' : params.has('boss') ? 'BossHQ' : 'Level1');
     };
     this.input.keyboard.once('keydown-ENTER', go);
     // Start on release of a tap that began here (a tap that left another screen can't start a

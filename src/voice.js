@@ -22,8 +22,10 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.listening = false; // M is held
     this.running = false; // recognizer session active
     this.pendingFire = false;
+    this.keysSuspended = false; // while typing (the Chute's terminal), m and 1/2/3 are just letters
     this.status = `hold ${TALK} to talk`;
     window.addEventListener('keydown', (e) => {
+      if (this.keysSuspended) return;
       if (e.key === 'm' || e.key === 'M') {
         if (!e.repeat) this.press();
         return;

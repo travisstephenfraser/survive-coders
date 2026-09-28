@@ -3,6 +3,7 @@ import Player from '../entities/Player.js';
 import { SPAWNERS } from '../entities/enemies.js';
 import { T } from '../sprites.js';
 import { FACADE } from '../hqArt.js';
+import { addParallax, panParallax } from '../backdrops.js';
 import { voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
@@ -222,24 +223,13 @@ export default class PlayScene extends Phaser.Scene {
     this.registry.set('checkpointTokens', this.registry.get('maxTokens') ?? 0);
   }
 
-  // Camera-pinned parallax layers; with a 3x zoom, (320,180) is the view's top-left.
+  // Camera-pinned parallax layers (backdrops.js).
   buildParallax(layers) {
-    this.parallax = layers.map((l) => {
-      const ts = this.add
-        .tileSprite(320, 180 + (l.y ?? 0), 320, l.h ?? 180, l.key)
-        .setOrigin(0)
-        .setScrollFactor(0)
-        .setTint(l.tint ?? 0xffffff)
-        .setTileScale(1 / (l.res ?? 1)) // a hi-res layer's texels are 1/res of a world pixel
-        .setDepth(-10);
-      return { ...l, ts };
-    });
+    this.parallax = addParallax(this, layers);
   }
 
   scrollParallax(time) {
-    const x = this.cameras.main.worldView.x;
-    // tilePosition is in texels, so a hi-res layer scrolls res texels per world pixel.
-    for (const l of this.parallax) l.ts.tilePositionX = (x * l.f + (l.ox ?? 0) + (l.drift ? time * l.drift : 0)) * (l.res ?? 1);
+    panParallax(this.parallax, this.cameras.main.worldView.x, time);
   }
 
   // A building on the map's exit (D): the facade runs past the camera's top and right edges;
