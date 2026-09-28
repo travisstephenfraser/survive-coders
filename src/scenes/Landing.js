@@ -6,6 +6,7 @@ import { TOUCH, showPad, touch } from '../touch.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
 import { FACADE } from '../hqArt.js';
 import { placeLidar } from '../sprites.js';
+import { loopSong } from './Songs.js';
 
 // Under the canopy over SoMa, after the Chute: steer through the stars on the way down and land on
 // the Waymo that has come for you. "Rider detected on roof. Adjusting route." It drives you to
@@ -91,14 +92,16 @@ export default class Landing extends Phaser.Scene {
     this.tweens.add({ targets: hint, alpha: 0, delay: 4200, duration: 500, onComplete: () => hint.destroy() });
     this.badge = worldText(this, 320 + 312, 180 + 6, '★ 000', { color: '#e3b341', size: 12, bg: '#0d0d0d', ox: 1, oy: 0, depth: 60 }).setScrollFactor(0, 0, true);
 
-    // The level music dropped when the chute opened (the Chute hands it over); started here
+    // The landing's song dropped when the chute opened (the Chute hands it over); started here
     // when the landing is played on its own.
-    this.music = music ?? (this.cache.audio.exists('music_level') ? this.sound.add('music_level', { loop: true, volume: 0.32 }) : null);
-    if (this.music && !this.music.isPlaying) this.music.play();
+    this.music = music ?? null;
+    if (!music) loopSong(this, 'music_landing', 0.32, (song) => (this.music = song));
+    else if (!music.isPlaying) music.play();
 
     const skip = () => this.state !== 'drift' && this.state !== 'street' && this.leave();
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.on(k, skip);
     this.input.on('pointerdown', skip);
+    this.input.keyboard.on('keydown-N', () => (this.sound.mute = !this.sound.mute)); // the HUD, which owns N, sits this out
     this.events.once('shutdown', () => {
       voice.keysSuspended = false;
       showPad(false);

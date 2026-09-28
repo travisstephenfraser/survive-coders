@@ -8,6 +8,7 @@ import { voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
 import { TOUCH } from '../touch.js';
+import { loopSong } from './Songs.js';
 
 // MAX stream: random alphanumerics, mostly white with syntax-highlight accents.
 const STREAM_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
@@ -172,7 +173,7 @@ export default class PlayScene extends Phaser.Scene {
     voice.on('power', this.onPower);
     this.events.once('shutdown', () => {
       voice.off('power', this.onPower);
-      this.music?.stop();
+      this.music?.destroy();
     });
 
     if (!this.scene.isActive('HUD')) this.scene.launch('HUD');
@@ -205,9 +206,8 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   playMusic(key, volume = 0.3) {
-    if (!this.cache.audio.exists(key)) return;
-    this.music = this.sound.add(key, { loop: true, volume });
-    this.music.play();
+    this.music = null;
+    loopSong(this, key, volume, (song) => (this.music = song), () => !this.outcome);
   }
 
   update(time) {

@@ -60,7 +60,7 @@ export default class Park extends PlayScene {
     const door = this.buildExit('tower_lobby', 'Tower', { data: { floor: 59 } });
     worldText(this, door.x - 16, door.ground - 66, 'SALESFORCE TOWER', { color: '#f5f5f5', bg: '#0d0d0d', depth: 0 });
 
-    this.playMusic('music_level', 0.28);
+    this.playMusic('music_park', 0.28);
     this.registry.set('toast', null);
     // x-position beats: [worldX, keyboard text, touch text (if different), power to pulse]
     this.beats = [

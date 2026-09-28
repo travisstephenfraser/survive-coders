@@ -112,7 +112,7 @@ export default class Tower extends PlayScene {
       worldText(this, door.x - 24, door.ground - 84, `ELEVATORS · ${floor + 1}-61 ↑`, { color: '#e3b341', bg: '#0d0d0d', depth: 0 });
     }
 
-    this.playMusic('music_level', 0.28);
+    this.playMusic('music_tower', 0.28);
     this.registry.set('toast', null);
     // x-position beats: [worldX, keyboard text, touch text (if different), power to pulse]
     this.beats = {

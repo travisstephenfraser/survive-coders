@@ -14,7 +14,10 @@ const SHEETS = [
   ['pack_skull', 'assets/ninja/skull.png'],
 ];
 const SFX = ['shoot', 'jump', 'hit', 'kill', 'hurt', 'star', 'ship', 'rollback', 'refactor', 'flood', 'gaslight', 'grow', 'headkill', 'start', 'split', 'win', 'lose'];
-const MUSIC = ['music_level', 'music_boss'];
+// A song per stretch of the run (Ninja Adventure, CC0), as mono 80 kbps MP3. The park, tower,
+// fall and landing songs are encoded at music_level's loudness (-21.1 LUFS), so each plays at the
+// city's volume. Only the city's song loads here; the rest load behind the title (Songs).
+const MUSIC = ['music_level'];
 
 export default class Boot extends Phaser.Scene {
   constructor() {
@@ -56,6 +59,7 @@ export default class Boot extends Phaser.Scene {
         repeat: -1,
       });
     }
+    this.scene.launch('Songs');
     this.scene.start('Title');
   }
 }

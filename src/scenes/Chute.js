@@ -6,13 +6,15 @@ import { TOUCH } from '../touch.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
 import { OHANA, ROOF, TOWER, towerHalf } from '../chuteArt.js';
 import { wind } from '../noise.js';
+import { loopSong } from './Songs.js';
 
 // The fall from the Ohana Floor. You tumble down the Salesforce Tower's face while the altimeter
 // counts down, and the only way out is to get a parachute out of Claude: three lines typed into
 // the terminal (the Terminal overlay, which owns the typing). Claude keeps getting it wrong: a CRM
 // dashboard shaped like a canopy, then a real chute behind a paywall. "ship it" deploys it anyway,
-// the music drops, and the cut goes to the landing (Landing). At 0 ft you meet the Transit
-// Center's roof, and the retry restarts the fall. Not a PlayScene, so there's no HUD.
+// the fall's song cuts to the landing's (the drop), and the cut goes to the landing (Landing). At
+// 0 ft you meet the Transit Center's roof, and the retry restarts the fall. Not a PlayScene, so
+// there's no HUD.
 
 export const START_FT = 1070;
 const FALL_MS = 24000; // floor 61 to the roof; god mode doubles it
@@ -55,7 +57,7 @@ export default class Chute extends Phaser.Scene {
     this.tumble = true;
     this.orbit = 0;
     this.canopy = null;
-    this.pack = this.lock = this.wall = this.music = null;
+    this.pack = this.lock = this.wall = this.music = this.fallMusic = null;
     this.gear = []; // things riding along with you: [object, dx, dy]
     this.notes = [];
 
@@ -85,6 +87,8 @@ export default class Chute extends Phaser.Scene {
         .explode(10);
     }
     this.wind = wind(this);
+    // The fall's own song, under the wind, until "ship it" cuts it or the roof does.
+    loopSong(this, 'music_fall', 0.28, (song) => (this.fallMusic = song), () => this.state === 'fall');
 
     this.scene.launch('Terminal');
     this.scene.bringToTop('Terminal');
@@ -100,7 +104,8 @@ export default class Chute extends Phaser.Scene {
     this.events.once('shutdown', () => {
       voice.keysSuspended = false;
       this.wind.stop(0.05);
-      this.music?.stop(); // only if it wasn't handed to the landing
+      this.fallMusic?.destroy();
+      this.music?.destroy(); // only if it wasn't handed to the landing
       this.scene.stop('Terminal');
       portrait.removeEventListener('change', onTurn);
     });
@@ -275,9 +280,9 @@ export default class Chute extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.shake(180, 0.006);
     this.sfx('ship', 0.6);
-    // The drop: the level music, carried on into the landing.
-    this.music = this.cache.audio.exists('music_level') ? this.sound.add('music_level', { loop: true, volume: 0.32 }) : null;
-    this.music?.play();
+    // The drop: the fall's song cuts to the landing's, which carries on into the landing.
+    this.fallMusic?.stop();
+    loopSong(this, 'music_landing', 0.32, (song) => (this.music = song));
     this.time.delayedCall(1400, () => {
       cam.fadeOut(220, 245, 245, 245);
       cam.once('camerafadeoutcomplete', () => {
@@ -294,6 +299,7 @@ export default class Chute extends Phaser.Scene {
     this.state = 'splat';
     this.alt = 0;
     this.wind.stop(0.05);
+    this.fallMusic?.stop();
     this.streaks.stop();
     this.dropCanopy();
     this.tumble = false;
