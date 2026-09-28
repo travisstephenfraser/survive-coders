@@ -224,6 +224,32 @@ byte) with a gain that puts each at -21.1 LUFS, the city song's loudness, so eve
 0.28 (0.32 for the ride, as before). Only `music_level` loads before the title; the rest load
 behind it (`src/scenes/Songs.js`), and `loopSong` starts a song that arrives after its level did.
 
+## The ride to HQ, and the Oculus at scale (2026-09-27, Travis; on branch `claude/waymo-ride`)
+
+Travis: landing on the Waymo should dissolve you into it, then a cutscene of arriving at
+Anthropic, so it feels like time has passed. He picked the ambitious version: the back seat of a
+Waymo for 10-15 s, the elevator music again, a few Slack messages, and the rider screen from his
+photos to interact with. No line explaining the dissolve ("video game logic").
+
+- **Landing:** "Rider detected on roof. Adjusting route.", the lidar sweeps you, you sink through
+  the roof as pixels and appear in the rear window (`waymo_rider`), and the car drives out of a
+  still frame (about 2 s) into the ride. The street pickup ends the same way. The HQ facade and
+  the walk-in moved out of the Landing.
+- **Ride** (`src/scenes/Ride.js`, art in `src/rideArt.js`): back-seat POV from the photos (panoramic
+  roof, overhead sensors, the mirror with your eyes in it, the dash map, silver-edged console, mesh
+  pockets, the "Hello!" card). Empty seats, the wheel turning itself on the bends, a pseudo-3D
+  night street. The rider screen: START RIDE (ENTER, a tap, or it starts itself after 3.5 s), then
+  the car's view of the road, an ETA time-lapsed from 47 to 1 over 11 s, and a skip button that
+  renames the same bossa nova. Slack: dark mode, the office AI forgetting ("that's not your
+  change right?"), then the demo moved up (at ETA 14, "you have 15 min"). ESC or a tap off the
+  screen skips to the boss.
+- **Arrival** (`src/scenes/Arrival.js`): letterboxed like the intro it answers. The door opens
+  ("You have arrived at Anthropic HQ."), you hop out, "Rate your ride: ★★★★★?", and the walk-in.
+  Travis, after playing it: the car stays parked while you walk in (driving off, it passed behind
+  the sliding doors, which the walk-in draws over everything), and the music doesn't come back
+  after you get out; the ride's song ends with the ride.
+- **Oculus:** twice the size (116x53, three times your height), per the photo; its own commit (`7dc665c`).
+
 ## Verification (every phase)
 
 - `npm run build`.

@@ -157,10 +157,22 @@ not found`, and a retry restarts the fall.
 **The landing.** The canopy carries you east over SoMa's rooftops, the Salesforce Tower lit up
 behind you. Steer through three arcs of stars, each laid on a line the canopy can actually fly,
 and come down on a Waymo that has lined up under you: *Rider detected on roof. Adjusting route.*
-It drives you to Anthropic HQ, and you walk in through its sliding doors. Miss the roof and it
-pulls up beside you on the street.
+Its lidar sweeps you, you sink through the roof as pixels, and there you are in the back seat as
+it drives off. Miss the roof and it pulls up beside you on the street, for the same trick.
 
 ![On the Waymo's roof over SoMa: "Rider detected on roof. Adjusting route."](docs/screenshots/08j-chute-waymo.png)
+
+**The ride.** From the back seat, both front seats are empty and the wheel turns itself through
+the bends while SoMa streams past the windshield. The screen between the seats wants you to press
+*START RIDE*, then time-lapses the ETA from 47 minutes to 1, playing the elevator's bossa nova
+(its skip button changes the title, not the song), while Slack asks whether the one line can do
+dark mode, whether the office AI forgetting things is your change, and then moves the demo up.
+The Waymo drops you at Anthropic HQ, *Rate your ride: ★★★★★?*, and you walk in through its
+sliding doors.
+
+![From the back seat: the wheel turning itself, Slack, and the ETA on the rider screen](docs/screenshots/08k-waymo-ride.png)
+
+![Dropped off at Anthropic HQ: "You have arrived at Anthropic HQ."](docs/screenshots/08l-hq-dropoff.png)
 
 **9. The Context Rot Hydra.** Inside, the office goes quiet, the terminal types
 `make one small change`, the heads answer, and the boss card lands. The body is a heap of H100s
@@ -222,7 +234,7 @@ A dated design review with before and after screenshots is in
 - A side-scrolling run from Daly City to SoMa, with the HUD path following the neighborhood signs, over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at the Salesforce Transit Center
 - Salesforce Park on the Transit Center's roof, laid out like the real one, with the bus fountain's geysers, a gondola intro, and a demo-day arena
 - Three floors of the Salesforce Tower, joined by elevator rides, ending when the whole sales team drops in on the Ohana Floor and their contracts crack the window you leap through
-- A free fall down the tower's face against an altimeter, where you type three lines into Claude Code for a parachute (it gets it wrong twice), then a canopy ride over SoMa through arcs of stars onto a Waymo's roof
+- A free fall down the tower's face against an altimeter, where you type three lines into Claude Code for a parachute (it gets it wrong twice), then a canopy ride over SoMa through arcs of stars onto a Waymo's roof, and the ride to HQ from its back seat: empty front seats, a wheel that turns itself, a rider screen to press, and Slack while a 47-minute ETA time-lapses away
 - Enemies by district: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat) in the city; founders, vested bros, and Zone 2 joggers in the park; CRM agents (contracts that lock your fire) and chatbots (popups you shoot closed) in the tower
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
 - The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies); growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
@@ -257,9 +269,9 @@ Touch controls appear on devices whose main pointer is a finger. A thumb on the 
 On Android the tap that starts a run goes fullscreen; iPhone Safari cannot make a page
 fullscreen, but *Add to Home Screen* runs the game fullscreen from its web manifest.
 
-Seven URL flags help when testing: `?park`, `?tower=59` (or `60`, `61`), `?chute`, and `?boss`
-start at Salesforce Park, a tower floor, the fall, or the boss after you press Enter on the title
-screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
+Nine URL flags help when testing: `?park`, `?tower=59` (or `60`, `61`), `?chute`, `?landing`,
+`?ride`, and `?boss` start at Salesforce Park, a tower floor, the fall, the canopy, the ride to
+HQ, or the boss after you press Enter on the title screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
 the touch controls on a desktop (they work with a mouse).
 
 ---
@@ -288,13 +300,15 @@ the touch controls on a desktop (they work with a mouse).
 │  index.html → src/main.js   Phaser.Game 960x540, WebGL, CRT pipeline    │
 │                                                                         │
 │  Scenes: Boot → Title → Level1 → Park → Tower ⇄ Elevator → Chute        │
-│          → Landing → BossHQ → End                                       │
+│          → Landing → Ride → Arrival → BossHQ → End                      │
 │  Songs loads the later levels' music in parallel, behind the title      │
-│  Overlays: Cine (intros, the elevator), Terminal (the fall's typing)    │
+│  Overlays: Cine (intros, the elevator, the ride's Slack, the drop-off), │
+│            Terminal (the fall's typing)                                 │
 │  HUD runs in parallel with every play scene; the Hydra is in BossHQ     │
 │                                                                         │
 │  Art: drawn to canvas textures at boot (sprites.js, backdrops.js,       │
-│       hqArt.js, parkArt.js, towerArt.js, chuteArt.js) + public/assets   │
+│       hqArt.js, parkArt.js, towerArt.js, chuteArt.js, rideArt.js)       │
+│       + public/assets                                                   │
 │  Storage: one localStorage key (a demo setting)                         │
 │                                                                         │
 │  src/touch.js ── DOM buttons over the canvas ──→ Player.tick, HUD taps  │
@@ -381,6 +395,7 @@ against the running game, recorded with screenshots in
 | Context meter is truthful | The HUD countdown matches the real growth timer, including after `refactor` |
 | Tower flow (2026-09-27) | The park's exit starts floor 59; each elevator ride starts the next floor at full health; a death on floor 60 retries floor 60; the leap from floor 61 starts the fall; no console errors |
 | The fall and the landing (2026-09-27) | From floor 61: the leap starts the fall with the HUD off; three typed lines, one sent while Claude was still answering (it waited its turn), deploy the chute at 778 ft; the landing ends the fall's scenes and keeps its music; the Waymo reaches HQ and the boss starts with the HUD back and the level music stopped. Typed `m`, `1`, `2`, `3` leave voice and powers untouched. At 0 ft, *retry the fall* restores the stars you arrived with. Touch (iPhone landscape emulation): taps type and send the lines and the D-pad steers the canopy. Missing the Waymo's roof lands you on the street, and it picks you up. No console errors |
+| The Waymo ride (2026-09-27) | Landing on the roof, or on the street where the car picks you up, dissolves you into the back seat, and the car is out of frame about 2 s later. The ride starts itself after 3.5 s (or on ENTER, or a tap on the screen), counts the ETA from 47 to 1 with three Slack messages, and cuts to the drop-off 12.3 s in; ENTER mid-ride renames the track and keeps the same song. The drop-off shows its letterbox and stays quiet, the Waymo waits at the kerb while you walk in, and the walk-in reaches the boss with the HUD back and only the boss song playing. ESC or a tap off the screen skips the ride to the boss, ENTER skips the drop-off. No console errors |
 | Line matching (2026-09-27) | `Build Me A Parachute`, `build me a parchute`, `No. A real one!` and `shipit` pass; `build me`, `a real one` and `ship` don't; the same rule finds a line inside a spoken transcript |
 | Star arcs are flyable (2026-09-27) | A simulation of the canopy's drift collects 4 stars with no steering, 8 with a mid-course steer, and all 12 on a chasing route; the game matched the 8-star route exactly |
 | Ohana finale (2026-09-27) | A wave agent left alive at the far wall no longer holds the exit: the last 8 tiles drop 18 closers right behind you (13 within 120 px at 1.5 s), the stray joins them, the third contract into the window breaks it at about 2 s, and the crowd shoves an idle player through; clearing the lounge mid-floor drops them behind you there |
