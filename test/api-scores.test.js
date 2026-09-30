@@ -142,6 +142,9 @@ test('the board: most stars, then fastest, then first; one row per player; hidde
     const splitStars = stars > 357 ? [98, 172, 206, 246, 275, 275, 287] : [90, 160, 190, 230, 250, 250, 262];
     assert.equal((await post(entry({ name, stars, timeMs, splitStars }))).status, 201, name);
   }
+  // PGlite's clock ticks in milliseconds, so two quick posts can share a created_at and the
+  // random run_id breaks the tie; make "posted later" true regardless (Neon's ticks in µs).
+  await pg.query("UPDATE scores SET created_at = created_at + interval '1 ms' WHERE name = 'p_second'");
   // one player, three runs: only the best shows
   const playerId = crypto.randomUUID();
   for (const [stars, timeMs, splitStars] of [[200, 650000, [50, 60, 70, 80, 90, 90, 110]], [320, 990000], [310, 500000]]) {
