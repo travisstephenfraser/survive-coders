@@ -23,7 +23,15 @@ import { CRTPipeline } from './fx.js';
 import { voice } from './voice.js';
 import { installRunClock } from './run.js';
 
-inject();
+// Arrivals from a shared run (?vs=, see src/arrival.js) count as page views of /from-share/s or
+// /from-share/r, so the dashboard shows whether shares bring anyone back.
+inject({
+  beforeSend: (event) => {
+    const vs = new URL(event.url).searchParams.get('vs');
+    if (!vs) return event;
+    return { ...event, url: `${new URL(event.url).origin}/from-share/${vs.startsWith('r.') ? 'r' : 's'}` };
+  },
+});
 
 // 960x540 canvas; world scenes zoom 3x onto a 320x180 16-bit-style view.
 window.game = new Phaser.Game({

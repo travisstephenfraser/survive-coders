@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
-import { uiText } from '../util.js';
+import { params, uiText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
 import { TOUCH, enterFullscreen } from '../touch.js';
 import { menu, textRow } from '../menu.js';
 import { beginRun, run } from '../run.js';
+import { arrivalBanner } from '../arrival.js';
 
 export default class Title extends Phaser.Scene {
   constructor() {
@@ -19,7 +20,13 @@ export default class Title extends Phaser.Scene {
     const left = win.x + 30;
     uiText(this, left, 82, '$ claude "make one small change"', { size: 16, color: '#8b8b8b' });
     uiText(this, left, 118, 'SURVIVE CODERS', { size: 48, color: '#d97757' });
-    uiText(this, left, 184, "a vibe coder's run from Daly City to Anthropic HQ", { size: 16, color: '#f5f5f5' });
+    const tagline = uiText(this, left, 184, "a vibe coder's run from Daly City to Anthropic HQ", { size: 16, color: '#f5f5f5', wrap: 560 });
+    // Arriving from a shared run (/s/ or /r/ link): the tagline becomes the challenge.
+    if (params.has('vs')) {
+      arrivalBanner(params.get('vs')).then((line) => {
+        if (line && tagline.active) tagline.setText(line).setTint(0x3fb950);
+      });
+    }
 
     // Key art: the hero fills the right side, the laptop floating at his hand as it does in-game.
     this.add.image(756, 245, 'player_idle').setScale(12);
