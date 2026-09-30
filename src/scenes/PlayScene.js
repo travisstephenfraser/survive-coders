@@ -168,7 +168,11 @@ export default class PlayScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setZoom(ZOOM);
     cam.setBounds(0, 0, this.worldW, this.worldH);
-    cam.startFollow(this.player, true, 0.15, 0.06); // vertical follows slower (Eiserloh)
+    // The skyline levels hold the camera's height: they're 12px taller than the view, and a
+    // camera rising that far on every jump slid the ground under a pinned skyline (a playtester
+    // read it as the background riding up with them) and the street behind the HUD. The boss
+    // arena has no skyline and still follows, slower vertically (Eiserloh).
+    cam.startFollow(this.player, true, 0.15, this.parallax ? 0 : 0.06);
     cam.setBackgroundColor('#0d0d0d');
     this.lookahead = 0;
     this.markPits(data, W, H);
