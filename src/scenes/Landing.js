@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
 import { ZOOM, floatText, worldText, freshKey } from '../util.js';
+import { run } from '../run.js';
 import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX, pop } from '../fx.js';
 import { TOUCH, showPad, touch } from '../touch.js';
@@ -41,6 +42,7 @@ export default class Landing extends Phaser.Scene {
   }
 
   create({ music } = {}) {
+    run.split('landing', this.registry.get('stars') ?? 0);
     this.scene.stop('HUD');
     voice.keysSuspended = true; // no powers here; M and 1-3 do nothing
     this.state = 'drift'; // 'drift' | 'street' (missed the car) | 'landed' | 'drive' (you're in) | 'leaving'

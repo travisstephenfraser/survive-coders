@@ -6,6 +6,8 @@ import { CREDITS, phoneCard, terminalWindow } from '../terminal.js';
 import { placeLidar } from '../sprites.js';
 import { playVictorySong } from '../victorySong.js';
 import { TOUCH } from '../touch.js';
+import { beginRun, run } from '../run.js';
+import { MAX_STARS, formatTime } from '../../shared/leaderboard.js';
 
 // Every level after the first is a checkpoint: a death there retries that level.
 const RETRY = { Park: 'retry the park', Tower: 'retry this floor', Chute: 'retry the fall', BossHQ: 'retry the boss' };
@@ -14,6 +16,15 @@ const LOSE = {
   Chute: ['404: PARACHUTE NOT FOUND', TOUCH ? 'Salesforce Park broke your fall.\nTap faster: every tap types.' : 'Salesforce Park broke your fall.\nType faster, or press TAB.'],
 };
 const CONTEXT_LOST = ['CONTEXT EXHAUSTED', 'The vibes ran out.\nTry a smaller change.'];
+// Why a finished run can't go on the leaderboard (run clock summary reasons).
+const UNRANKED = {
+  god: "god mode runs don't go on the board",
+  dev: "level-jump starts (?park, ?boss...) don't go on the board",
+  clock: 'failed a sanity check (clock)',
+  stars: 'failed a sanity check (stars)',
+  time: 'failed a sanity check (time)',
+  splits: 'failed a sanity check (splits)',
+};
 
 export default class End extends Phaser.Scene {
   constructor() {
@@ -26,10 +37,18 @@ export default class End extends Phaser.Scene {
     const w = terminalWindow(this, win ? 'git push origin main - success' : 'process exited with code 1');
     const left = w.x + 30;
     uiText(this, left, 90, win ? '$ git push origin main' : '$ npm run survive', { size: 16, color: '#8b8b8b' });
-    const [headline, story] = win ? ['SHIPPED.', 'The Context Rot Hydra is compacted.\nYour small change is merged.'] : (LOSE[retry] ?? CONTEXT_LOST);
+    // A win's time: the run clock stopped at the Hydra's fall (BossHQ.endEncounter).
+    this.result = win ? run.summary(stars) : null;
+    const [headline, story] = win
+      ? ['SHIPPED.', `The Context Rot Hydra is compacted.\nYour small change is merged in ${formatTime(this.result.timeMs ?? 0)}.`]
+      : (LOSE[retry] ?? CONTEXT_LOST);
     uiText(this, left, 126, headline, { size: win ? 64 : 40, color: win ? '#3fb950' : '#e5534b' });
     uiText(this, left, 214, story, { size: 16, color: '#f5f5f5', lineSpacing: 6 });
-    uiText(this, left, 290, `★ ${stars} GitHub stars`, { size: 40, color: '#e3b341' });
+    uiText(this, left, 290, win ? `★ ${stars}/${MAX_STARS}` : `★ ${stars} GitHub stars`, { size: 40, color: '#e3b341' });
+    // The right-hand panel holds the leaderboard form for a ranked win, or why it isn't ranked.
+    if (win && !this.result.eligible) {
+      uiText(this, 520, 176, `not ranked: ${UNRANKED[this.result.reasons[0]]}`, { size: 16, color: '#8b8b8b', wrap: 380 });
+    }
     // Cuphead-style progress on a boss death: show how close the run got.
     const boss = this.registry.get('boss');
     if (!win && retry === 'BossHQ' && boss) {
@@ -56,6 +75,7 @@ export default class End extends Phaser.Scene {
       fn();
     };
     const playAgain = once(() => {
+      if (win) return beginRun(this); // a new run, on a fresh clock; a retry keeps the clock going
       this.registry.set({
         hp: MAX_HP,
         boss: null,

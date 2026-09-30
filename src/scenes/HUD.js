@@ -2,6 +2,9 @@ import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, freshKey, uiText } from '../util.js';
 import { isMuted, toggleMute } from '../audio.js';
+import { settings } from '../settings.js';
+import { run } from '../run.js';
+import { formatTime } from '../../shared/leaderboard.js';
 import { TOUCH, dimPad, showPad, touch } from '../touch.js';
 import PlayScene from './PlayScene.js';
 
@@ -54,6 +57,8 @@ export default class HUD extends Phaser.Scene {
     this.add.image(744, 18, 'star').setOrigin(0).setScale(P);
     uiText(this, 776, 22, 'Star', { size: 16, color: '#e3b341' });
     this.stars = uiText(this, 900, 30, '0', { size: 24, color: '#f5f5f5', ox: 0.5, oy: 0.5 });
+    // The run clock under the badge, when Settings turns it on (red once the run can't rank).
+    this.timer = uiText(this, 946, 56, '', { size: 16, color: '#8b8b8b', ox: 1 });
 
     this.level = uiText(this, 480, 14, '', { size: 16, color: '#d97757', ox: 0.5 });
     this.godBadge = uiText(this, 48, 52, 'GOD MODE', { size: 8, color: '#3fb950' });
@@ -187,6 +192,9 @@ export default class HUD extends Phaser.Scene {
     segBar(g, 48, 15, MAX_HP, hp, [0xff8f80, 0xe5534b, 0xa33a33, 0x3a2a2a]);
 
     this.stars.setText(`${r.get('stars') ?? 0}`);
+    const timing = settings.get('timer') && run.state === 'running';
+    this.timer.setVisible(timing);
+    if (timing) this.timer.setText(formatTime(run.elapsed())).setTint(run.ranked ? 0x8b8b8b : 0xe5534b);
     this.godBadge.setVisible(Boolean(r.get('god')));
 
     const tokens = r.get('maxTokens') ?? 0;

@@ -3,6 +3,7 @@ import PlayScene from './PlayScene.js';
 import { PARK_LAYERS } from '../backdrops.js';
 import { Founder, VestedBro } from '../entities/enemies.js';
 import { TILE, floatText, worldText } from '../util.js';
+import { run } from '../run.js';
 import { TOUCH } from '../touch.js';
 
 // Legend: # ground (lawn over the Transit Center roof), = planter, P player, * star, F founder,
@@ -42,6 +43,7 @@ export default class Park extends PlayScene {
   }
 
   create() {
+    run.split('park', this.registry.get('stars') ?? 0);
     this.registry.set('level', '~/sf/salesforce-park → salesforce-tower');
     this.registry.set('boss', null);
     this.checkpoint();

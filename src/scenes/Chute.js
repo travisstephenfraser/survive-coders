@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
 import { MAX_HP, ZOOM, worldText } from '../util.js';
+import { run } from '../run.js';
 import { applyScreenFX, pop, shake } from '../fx.js';
 import { sfx as playSfx } from '../audio.js';
 import { TOUCH } from '../touch.js';
@@ -40,6 +41,7 @@ export default class Chute extends Phaser.Scene {
   }
 
   create() {
+    run.split('chute', this.registry.get('stars') ?? 0);
     this.scene.stop('HUD');
     voice.release(); // a hold of M from the Ohana Floor ends here
     voice.keysSuspended = true;

@@ -21,6 +21,7 @@ import Cine from './scenes/Cine.js';
 import { params } from './util.js';
 import { CRTPipeline } from './fx.js';
 import { voice } from './voice.js';
+import { installRunClock } from './run.js';
 
 inject();
 
@@ -40,6 +41,8 @@ window.game = new Phaser.Game({
   dom: { createContainer: true }, // real links and inputs over the canvas (leaderboard, score form)
   scene: [Boot, Songs, Title, Settings, Leaderboard, Level1, Park, Tower, Elevator, Chute, Landing, Ride, Arrival, BossHQ, HUD, Cine, Terminal, End],
 });
+
+installRunClock(window.game);
 
 // Keep the canvas fitted after a phone turns. Phaser's orientation listener refits using the
 // parent size from before the turn, then records the new size inside that same refresh

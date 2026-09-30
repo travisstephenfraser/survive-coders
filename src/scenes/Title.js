@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
-import { MAX_HP, params, uiText } from '../util.js';
+import { uiText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
-import { sfx as playSfx } from '../audio.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
 import { TOUCH, enterFullscreen } from '../touch.js';
 import { menu, textRow } from '../menu.js';
+import { beginRun, run } from '../run.js';
 
 export default class Title extends Phaser.Scene {
   constructor() {
@@ -13,6 +13,7 @@ export default class Title extends Phaser.Scene {
   }
 
   create(data) {
+    run.reset(); // back at the title, any run in progress is over
     applyScreenFX(this.cameras.main);
     const win = terminalWindow(this, 'vibecoder@sf: ~/survive-coders - zsh');
     const left = win.x + 30;
@@ -49,6 +50,7 @@ export default class Title extends Phaser.Scene {
     } catch {
       /* storage blocked: default off */
     }
+    this.registry.set('god', god);
     // Explicit mic setup (V, or a tap) so a permission prompt never interrupts a run; keys
     // 1/2/3 and the power taps always work.
     const micText = uiText(this, left + 520, 428, '', { size: 16 });
@@ -67,6 +69,7 @@ export default class Title extends Phaser.Scene {
     this.input.keyboard.createCombo('GOD', { resetOnMatch: true });
     this.input.keyboard.on('keycombomatch', () => {
       god = !god;
+      this.registry.set('god', god);
       try {
         localStorage.setItem('sc_god', god ? '1' : '0');
       } catch {
@@ -85,13 +88,10 @@ export default class Title extends Phaser.Scene {
     const go = () => {
       if (started) return;
       started = true;
-      voice.resetCooldowns();
-      playSfx(this, 'start', 0.5);
-      this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, towerFloor: null, lockTaught: false, elevatorSongAt: 0, cutscene: false, toast: null });
-      // Dev shortcuts: ?park, ?tower=59|60|61, ?chute, ?landing, ?ride, ?boss jump straight to a level.
-      const floor = Number(params.get('tower'));
-      if (params.has('tower')) this.scene.start('Tower', { floor: [59, 60, 61].includes(floor) ? floor : 59 });
-      else this.scene.start({ park: 'Park', chute: 'Chute', landing: 'Landing', ride: 'Ride', boss: 'BossHQ' }[['park', 'chute', 'landing', 'ride', 'boss'].find((k) => params.has(k))] ?? 'Level1', {});
+      // A run from the title plays the intros and tips again. Dev shortcuts: ?park,
+      // ?tower=59|60|61, ?chute, ?landing, ?ride, ?boss jump straight to a level (unranked).
+      this.registry.set({ bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, lockTaught: false });
+      beginRun(this);
     };
     // A row picks on the release of a press that began on it, so a tap that left another screen
     // can't start a run. PLAY NOW's tap also takes a phone fullscreen: Android only grants it

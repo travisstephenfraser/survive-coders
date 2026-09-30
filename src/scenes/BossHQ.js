@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import Hydra from '../entities/Hydra.js';
 import { floatText, worldText } from '../util.js';
+import { run } from '../run.js';
 import { shake } from '../fx.js';
 
 const ARENA = [
@@ -25,6 +26,7 @@ export default class BossHQ extends PlayScene {
   }
 
   create() {
+    run.split('boss', this.registry.get('stars') ?? 0);
     this.leaving = false;
     this.registry.set('level', '~/anthropic-hq');
     this.checkpoint(); // heal before the boss; a retry restores the stars and MAX carried in
@@ -161,6 +163,14 @@ export default class BossHQ extends PlayScene {
         this.furbyChatter(f);
       }
     }
+  }
+
+  // The run clock stops the moment the Hydra falls; its stars keep landing for a moment after,
+  // and End reads them there.
+  endEncounter(result) {
+    if (!super.endEncounter(result)) return false;
+    if (result === 'win') run.finish();
+    return true;
   }
 
   win() {

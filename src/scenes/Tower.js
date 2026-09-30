@@ -4,6 +4,7 @@ import { TOWER_VIEW } from '../backdrops.js';
 import { CEILING } from '../towerArt.js';
 import { ChatbotAgent, CrmAgent } from '../entities/enemies.js';
 import { TILE, floatText, worldText } from '../util.js';
+import { run } from '../run.js';
 import { flash, shake } from '../fx.js';
 import { TOUCH } from '../touch.js';
 
@@ -88,6 +89,7 @@ export default class Tower extends PlayScene {
   create(data) {
     const floor = data?.floor ?? this.registry.get('towerFloor') ?? 59;
     this.floor = floor;
+    run.split(`tower${floor}`, this.registry.get('stars') ?? 0);
     // Phaser reuses the scene instance from floor to floor: nothing carries over.
     this.ohana = null;
     this.gong = null;
