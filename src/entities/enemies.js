@@ -170,6 +170,9 @@ export class KeyboardGoblin extends Enemy {
   }
 }
 
+const HOP_MS = 180; // one heat hop, up and back down
+const HOP_PX = 2;
+
 // H100: a big, tanky data-center GPU. Slow patrol, fans spinning, heat shimmer rising; when
 // you get close it vents arcing heat blobs. Also what the Hydra provisions for more compute.
 export class H100 extends Enemy {
@@ -178,6 +181,13 @@ export class H100 extends Enemy {
     this.noFlip = true; // "H100" label must never read backwards
     this.body.setSize(36, 15).setOffset(2, 3);
     this.play('gpu_fans');
+    // Heat hop (drawn only): about once a second the card jumps like a boiling lid and puffs
+    // steam. hop() moves the draw origin and the body offset together, and an Arcade body sits at
+    // x + scale * (offset - displayOrigin), so the hitbox, the patrol and the ledge checks never
+    // see it.
+    this.baseOrigin = this.height / 2;
+    this.hopAt = -Infinity;
+    this.nextHop = scene.time.now + Phaser.Math.Between(300, 1300); // out of step with its neighbours
     this.nextVent = scene.time.now + Phaser.Math.Between(900, 1800);
     this.heatFx = scene.add
       .particles(0, 0, 'px_orange', {
@@ -186,16 +196,39 @@ export class H100 extends Enemy {
         speedX: { min: -6, max: 6 },
         speedY: { min: -26, max: -10 },
         lifespan: 650,
-        frequency: 160,
+        frequency: 90, // a thicker plume
         alpha: { start: 0.7, end: 0 },
         scale: { start: 1, end: 0.4 },
       })
       .setDepth(3);
-    this.once('destroy', () => this.heatFx.destroy());
+    this.steamFx = scene.add
+      .particles(0, 0, 'px_white', {
+        follow: this,
+        followOffset: { x: 0, y: -10 },
+        speedX: { min: -12, max: 12 },
+        speedY: { min: -36, max: -18 },
+        lifespan: 700,
+        alpha: { start: 0.6, end: 0 },
+        scale: { start: 1.6, end: 0.4 },
+        emitting: false,
+      })
+      .setDepth(3);
+    this.once('destroy', () => {
+      this.heatFx.destroy();
+      this.steamFx.destroy();
+    });
   }
 
   update(time) {
-    if (this.dying || this.stunned) return;
+    if (this.dying) return;
+    if (time >= this.nextHop) {
+      this.hopAt = time;
+      this.nextHop = time + Phaser.Math.Between(900, 1300);
+      this.steamFx.explode(5);
+    }
+    const t = time - this.hopAt;
+    this.hop(t < HOP_MS ? Math.round(Math.sin((Math.PI * t) / HOP_MS) * HOP_PX) : 0);
+    if (this.stunned) return;
     this.patrol(18);
     const p = this.scene.player;
     const dx = p.x - this.x;
@@ -206,6 +239,11 @@ export class H100 extends Enemy {
       this.scene.spawnHazard(this.x + dir * 12, this.y - 8, 'heat', dir * 40, -210, true);
       this.scene.sfx?.('flood', 0.2);
     }
+  }
+
+  hop(lift) {
+    this.setDisplayOrigin(this.displayOriginX, this.baseOrigin + lift);
+    this.body.setOffset(2, 3 + lift);
   }
 
   onDie() {
