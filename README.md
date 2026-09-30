@@ -260,6 +260,7 @@ A dated design review with before and after screenshots is in
 - An online leaderboard: most stars first (382 is the most one run can earn), then the time from the start of the run to the Hydra's fall, pauses excluded. Deaths and restarts cost time; going back to the first level starts a new run. A finished run posts a name and, optionally, a GitHub, LinkedIn, X, or Bluesky handle, which each of the top ten links to
 - Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
 - A song for each stretch of the run (the city, the park, the tower, the fall, the ride to HQ, and the Hydra), the new ones loudness-matched to the city's so none jumps out, plus two originals written as MIDI note data and synthesized in the browser: the elevator's bossa nova and the chiptune victory song on the win screen
+- Share any run from the win or death screen: on a phone, the share sheet gets a card of the run (drawn in the game's own pixels) and a line with its link; on a desktop, S or a button copies the line and another saves the card. The link unfurls into the same card, and opens the game with a challenge on the title screen
 - Link previews and a favicon drawn from the game's own pixels
 
 ## Controls
@@ -345,7 +346,7 @@ the touch controls on a desktop (they work with a mouse).
                                ▼
                     browser speech recognition service
 
-Vercel: serves the static dist/ build, and one function:
+Vercel: serves the static dist/ build, and two functions:
 
   GET  /api/scores ── top ten, edge-cached 15 min ──┐
   POST /api/scores ── a finished run ───────────────┼──→ Neon Postgres (role sc_app:
@@ -354,8 +355,14 @@ Vercel: serves the static dist/ build, and one function:
        → rate limit → insert + rank ────────────────┘
        a new top-ten best ──→ Resend ──→ an email to Travis
 
+  GET  /s/<code>, /r/<token> ── vercel.json rewrites ──→ api/share.js: a page with
+       link-preview tags, a 1200x630 card PNG, the banner's JSON; cached a year, no database
+       (a /s/ code is the run; an /r/ token is the posted run, signed by the POST above)
+
   shared/leaderboard.js: one set of rules for the game, the API, and (as CHECK constraints)
   the table: at most 382 stars, time floors, names, profile handles.
+  shared/share.js, shared/pixelCard.js: where a run ended, its one-liner and /s/ code, and the
+  card, drawn by the same code in the game (canvas) and the function (node:zlib).
   trust boundary: a posted name and handle are public; addresses are kept only as an HMAC.
 ```
 
@@ -391,6 +398,32 @@ visitor can still get an older copy while it refreshes. God mode and the level-j
 
 There are no accounts: a player is an anonymous id kept in their browser.
 
+### Sharing a run
+
+The board only reaches people already in the game, and most runs end before the Hydra, so both
+End screens can share the run: the card (where it ended, stars, time, the rank a posted run
+got) and one line with a link, like `141 stars, died on the Ohana Floor, 0.1 miles from
+Anthropic HQ. Can you get further? https://survive-coders.vercel.app/s/1-a-3x-ky`.
+
+- **On a phone** the share sheet gets the card image and the line, so it posts as an image
+  with the link in its text. **On a desktop**, S (or *copy link*) copies the line and *save
+  card* downloads the PNG. For LinkedIn, attach the card and paste the line: LinkedIn shows a
+  bare link's preview as a small thumbnail in the feed and gives link-preview posts less reach,
+  while an image post with the link in its text keeps both.
+- **The link** opens a page whose preview tags show the same card (drawn on request by
+  `api/share.js`: about 70 ms once warm, 230 ms cold, measured locally), then sends the visitor to the game, where the title's
+  tagline becomes the challenge: *Someone died on the Ohana Floor with 141★. Get further.*
+  It leads with how far the run got rather than how good it was.
+- **No database.** A death's link (`/s/1-a-3x-ky`) is the run itself: place, stars and
+  seconds. A posted win's link (`/r/<token>`) carries the name, stars, time and rank the POST
+  returned, signed with a key derived from `IP_HASH_SECRET`, so the card keeps the rank it
+  posted at and no crawler wakes the database. The trade-off: a run hidden later as a cheat
+  keeps any card already shared.
+- **What a link reveals:** a death link, a place and two numbers; a posted run's link, what
+  the board already shows. Neither carries an id.
+- **Did it work?** Arrivals from shared links count in Vercel Web Analytics as page views of
+  `/from-share/s` and `/from-share/r`.
+
 ---
 
 ## Local setup
@@ -422,7 +455,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 54 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 64 unit tests on Node's built-in runner (no test framework):
 
 - `shared/leaderboard.js`: the star ceiling, the time and milestone checks, names, profile
   handles, and pasted-URL parsing
@@ -434,11 +467,16 @@ never production.
   runs `db/schema.sql`, then every refusal, the rate limit, the ranking (ties, one row per
   player, hidden rows), the alert email, and what the `sc_app` role can and can't do. This is
   how a CHECK constraint that let a NULL through was caught.
+- sharing: where each kind of death maps to, the exact one-liners, `/s/` codes that decode
+  only in their one canonical spelling, a posted run's token keeping the rank it posted at
+  after a better run lands, and the card function: absolute preview tags, escaped names, a
+  1200x630 PNG, year-long caching, 404 for anything unsigned or tampered with, and death
+  links still working with no secret set
 
 ```console
 $ npm test
-ℹ tests 54
-ℹ pass 54
+ℹ tests 64
+ℹ pass 64
 ℹ fail 0
 ```
 
@@ -479,6 +517,7 @@ against the running game, recorded with screenshots in
 | The fall and the landing (2026-09-27) | From floor 61: the leap starts the fall with the HUD off; three typed lines, one sent while Claude was still answering (it waited its turn), deploy the chute at 778 ft; the landing ends the fall's scenes and keeps its music; the Waymo reaches HQ and the boss starts with the HUD back and the level music stopped. Typed `m`, `1`, `2`, `3` leave voice and powers untouched. At 0 ft, *retry the fall* restores the stars you arrived with. Touch (iPhone landscape emulation): taps type and send the lines and the D-pad steers the canopy. Missing the Waymo's roof lands you on the street, and it picks you up. No console errors |
 | The Waymo ride (2026-09-27) | Landing on the roof, or on the street where the car picks you up, dissolves you into the back seat, and the car is out of frame about 2 s later. The ride starts itself after 3.5 s (or on ENTER, or a tap on the screen), counts the ETA from 47 to 1 with three Slack messages, and cuts to the drop-off 12.3 s in; ENTER mid-ride renames the track and keeps the same song. The drop-off shows its letterbox and stays quiet, the Waymo waits at the kerb while you walk in, and the walk-in reaches the boss with the HUD back and only the boss song playing. ESC or a tap off the screen skips the ride to the boss, ENTER skips the drop-off. No console errors |
 | Line matching (2026-09-27) | `Build Me A Parachute`, `build me a parchute`, `No. A real one!` and `shipit` pass; `build me`, `a real one` and `ship` don't; the same rule finds a line inside a spoken transcript |
+| Sharing a run (2026-09-30) | A death on floor 61: S copies `141 stars, died on the Ohana Floor, 0.1 miles from Anthropic HQ. Can you get further?` and its `/s/` link, and *save card* downloads the 1200x630 card. Touch: the share sheet gets the card as a PNG file plus the line, and the tap doesn't retry the level. A win from a level jump shares an unranked line; a posted win (board mocked) shares its signed `/r/` link with the rank. The copied link's `?vs=` shows the challenge on the title. `scripts/make-images.mjs` still produces byte-identical images after moving its drawing into `shared/pixelCard.js` |
 | Star arcs are flyable (2026-09-27) | A simulation of the canopy's drift collects 4 stars with no steering, 8 with a mid-course steer, and all 12 on a chasing route; the game matched the 8-star route exactly |
 | Ohana finale (2026-09-27) | A wave agent left alive at the far wall no longer holds the exit: the last 8 tiles drop 18 closers right behind you (13 within 120 px at 1.5 s), the stray joins them, the third contract into the window breaks it at about 2 s, and the crowd shoves an idle player through; clearing the lounge mid-floor drops them behind you there |
 | Contracts and popups (2026-09-27) | A contract locks fire without damage, `refactor` voids it, and a new lock waits out a 1 s grace; a popup shot closed asks *Was this helpful?* once; `refactor` clears popups and on-screen chatbots |
@@ -544,7 +583,9 @@ month's hours in about 17 days.
 
 **Link previews** (Slack, iMessage, X, LinkedIn) come from the Open Graph tags in
 `index.html`, not from a Vercel setting; they point at `public/og.png` by absolute URL because
-crawlers do not run JavaScript. Apps cache a preview once fetched: LinkedIn's Post Inspector
+crawlers do not run JavaScript. A shared run's `/s/` and `/r/` pages carry their own tags and
+card (`api/share.js`, routed by `vercel.json`); after a change to the card, check one with
+`curl -A LinkedInBot <url>` and LinkedIn's Post Inspector. Apps cache a preview once fetched: LinkedIn's Post Inspector
 refetches on demand, and elsewhere a new query string (`?v=2`) forces a fresh one.
 
 **The step that is easy to miss.** Share the production alias, not the per-deployment URL
@@ -580,6 +621,9 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
 - **A player is a browser.** Clearing site data, or another browser, is a new player. Inside
   the travisfraser.com embed, storage belongs to that site (and Safari keeps it only in
   memory), so the embed and the direct link count as two players.
+- **Sharing inside the embed** needs the iframe to allow it:
+  `allow="web-share; clipboard-write"`. Without that, share falls back to showing the line to
+  copy by hand.
 
 ---
 
