@@ -4,6 +4,7 @@ import { LAYERS, TROLLEYS } from '../backdrops.js';
 import { placeLidar } from '../sprites.js';
 import { worldText } from '../util.js';
 import { TOUCH } from '../touch.js';
+import { cardMs, lineMs, sequence } from '../pacing.js';
 
 // Legend: # ground, = neon platform, P player, * star, M MAX power-up, B Bad Prompt Blob,
 // G Keyboard Goblin, H H100 GPU, D the doors into the Transit Center, up to Salesforce Park.
@@ -123,35 +124,40 @@ export default class Level1 extends PlayScene {
     this.lidar = this.add.image(0, 0, 'px_cyan').setDepth(5);
     this.tweens.add({ targets: this.waymo, x: STOP_X, duration: 2200, ease: 'Cubic.out' });
 
-    // ~12s to control: beats overlap (the Slack buzz lands as the car pulls in, he hops out
-    // mid-line, it drives off still asking for a rating) instead of each line waiting its turn.
+    // Every ping and line stays up long enough to read (pacing.js), so they take turns; the
+    // beats hang off the lines, so the choreography holds: he hops out a beat into the second
+    // line, and the car drives off still asking for a rating. About 17s, skippable.
+    const PINGS = ["can you make one small change before the demo? it's literally one line", 'also maybe dark mode'];
+    const LINES = ['You have arrived at the edge of my service area.', 'Anthropic HQ is 9.4 miles away. Please take your belongings.', 'Rate your ride: ★★★★★?'];
+    const LAST_PING = 'btw the office AI has been acting weird today';
+    const pings = sequence(600, PINGS.map(cardMs));
+    const lines = sequence(pings.end, LINES.map(lineMs));
     const at = (ms, fn) => this.introEvents.push(this.time.delayedCall(ms, fn));
     this.introEvents = [];
-    at(600, () => cine.phone("can you make one small change before the demo? it's literally one line"));
-    at(3000, () => cine.phone('also maybe dark mode'));
-    at(4200, () => {
+    pings.starts.forEach((ms, i) => at(ms, () => cine.phone(PINGS[i])));
+    at(lines.starts[0], () => {
       cine.hidePhone();
-      cine.say('WAYMO', 'You have arrived at the edge of my service area.');
+      cine.say('WAYMO', LINES[0]);
       this.sfx('start', 0.4);
     });
-    at(6400, () => cine.say('WAYMO', 'Anthropic HQ is 9.4 miles away. Please take your belongings.'));
-    at(7300, () => {
+    at(lines.starts[1], () => cine.say('WAYMO', LINES[1]));
+    at(lines.starts[1] + 900, () => {
       this.waymo.setTexture('waymo_open');
       p.setPosition(this.waymo.x - 5, 150).setVisible(true);
       p.body.enable = true;
       p.setVelocityY(-120);
       p.laptop.setPosition(p.x, p.y + 6).setVisible(true);
     });
-    at(8800, () => cine.say('WAYMO', 'Rate your ride: ★★★★★?'));
-    at(9400, () => {
+    at(lines.starts[2], () => cine.say('WAYMO', LINES[2]));
+    at(lines.starts[2] + 600, () => {
       this.waymo.setTexture('waymo');
       this.tweens.add({ targets: this.waymo, x: -80, duration: 1800, ease: 'Cubic.in' });
     });
-    at(10000, () => {
+    at(lines.end, () => {
       cine.say(null, null);
-      cine.phone('btw the office AI has been acting weird today');
+      cine.phone(LAST_PING);
     });
-    at(11900, () => this.endIntro());
+    at(lines.end + cardMs(LAST_PING), () => this.endIntro());
 
     // A skip key stops here: the HUD also binds ESC (pause) further down the scene list, and
     // would pause the level the moment the skip clears the cutscene flag.

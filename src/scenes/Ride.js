@@ -8,6 +8,7 @@ import { hex } from '../palette.js';
 import { mix } from '../hqArt.js';
 import { CAB } from '../rideArt.js';
 import { playElevatorSong } from '../elevatorSong.js';
+import { cardMs, sequence } from '../pacing.js';
 import { keyClick } from '../noise.js';
 
 // The ride to Anthropic HQ from the Waymo's back seat (the Landing put you there): both front
@@ -18,13 +19,16 @@ import { keyClick } from '../noise.js';
 // (Arrival). ESC, or a tap off the screen, skips to the boss. Not a PlayScene: no HUD.
 
 const ETA = 47; // minutes on the screen as the ride starts...
-const RIDE_MS = 11000; // ...and 1 minute this much later
+const RIDE_MS = 12000; // ...and 1 minute this much later (room for the last Slack card to be read)
 const AUTO_START_MS = 3500; // the car starts the ride itself if you don't
-const SLACK = [
-  [1600, 'also can the one line do dark mode'],
-  [4600, "the office AI keeps forgetting what we tell it. that's not your change right?"],
-  [7600, 'demo got moved up. you have 15 min'],
+// Each card stays up as long as it did (3s) or long enough to read, whichever is longer.
+const SLACK_TEXT = [
+  'also can the one line do dark mode',
+  "the office AI keeps forgetting what we tell it. that's not your change right?",
+  'demo got moved up. you have 15 min',
 ];
+const SLACK_AT = sequence(1600, SLACK_TEXT.map((t) => Math.max(3000, cardMs(t)))).starts;
+const SLACK = SLACK_TEXT.map((t, i) => [SLACK_AT[i], t]);
 const TRACKS = ['Elevator Bossa', 'Elevator Bossa 2', 'Elevator Bossa (Live)', 'Bossa (Extended)'];
 
 // The street in road units (a car is about 1.7 wide), seen from 1.2 up in the right lane. A thing
