@@ -1,0 +1,42 @@
+import { SPLITS, formatTime } from '../../shared/leaderboard.js';
+
+// The top-ten alert: one plain-text email through Resend's REST API, with the run and the SQL
+// that hides it. Sent from Resend's shared test sender, which delivers only to the Resend
+// account's own address (that's who it's for). Bounded by a timeout; a failure is logged and
+// swallowed, because the player's post already succeeded.
+export function resendNotifier(settings, { fetch: send = fetch, log = console } = {}) {
+  return async (e) => {
+    if (!settings) return;
+    const lines = [
+      `#${e.rank} of ${e.total}: ${e.name}, ★ ${e.stars} in ${formatTime(e.timeMs)}`,
+      e.url ? `profile: ${e.url}` : 'no profile linked',
+      '',
+      'milestones (time, stars held):',
+      ...SPLITS.map((s, i) => `  ${s.padEnd(8)} ${formatTime(e.splits[i]).padStart(8)}  ★ ${e.splitStars[i]}`),
+      '',
+      'hide this run (Neon SQL editor, as the owner):',
+      `  UPDATE scores SET hidden = true WHERE id = '${e.id}';`,
+      'or everything from this browser, or this address:',
+      `  UPDATE scores SET hidden = true WHERE player_id = '${e.playerId}';`,
+      `  UPDATE scores SET hidden = true WHERE ip_hash = '${e.ipHash}';`,
+      '',
+      'The public board caches for up to 15 minutes.',
+    ];
+    try {
+      const res = await send('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${settings.apiKey}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          from: 'Survive Coders <onboarding@resend.dev>',
+          to: [settings.to],
+          subject: `Leaderboard #${e.rank} of ${e.total}: ${e.name}, ★ ${e.stars} in ${formatTime(e.timeMs)}`,
+          text: lines.join('\n'),
+        }),
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) log.error(`alert ${res.status}`);
+    } catch (err) {
+      log.error(`alert 0 ${err?.name ?? 'error'}`);
+    }
+  };
+}

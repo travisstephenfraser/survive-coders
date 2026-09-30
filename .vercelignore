@@ -2,3 +2,6 @@ feed/
 node_modules/
 dist/
 docs/
+.env
+.env.*
+test/

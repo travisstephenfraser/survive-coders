@@ -10,13 +10,16 @@
     "preview": "vite preview",
     "images": "node scripts/make-images.mjs",
     "test": "node --test",
-    "stars": "node scripts/count-stars.mjs"
+    "stars": "node scripts/count-stars.mjs",
+    "smoke": "node scripts/api-smoke.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "1.1.0",
     "@vercel/analytics": "^2.0.1",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "vite": "^8.3.1"
   }
 }

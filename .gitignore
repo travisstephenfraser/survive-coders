@@ -5,3 +5,8 @@ dist
 
 # raw asset packs stay out of git (Sci-Fi Starter license forbids redistributing raw files)
 feed/*/
+
+# local secrets for vercel dev (it reads .env, not .env.local)
+.env
+.env.*
+!.env.example
