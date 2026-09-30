@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "images": "node scripts/make-images.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "stars": "node scripts/count-stars.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

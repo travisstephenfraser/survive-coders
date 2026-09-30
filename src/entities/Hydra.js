@@ -304,12 +304,14 @@ export default class Hydra {
   }
 
   // Notifications: skulls that hunt the player across the arena. Each one killed is replaced
-  // about a second later for as long as the spawn head lives, and they all die with it.
+  // about a second later for as long as the spawn head lives, and they all die with it. They
+  // pay no stars: an endless supply would let a run farm the leaderboard by stalling here.
   spawnMinion(head) {
     const scene = this.scene;
     this.minions = this.minions.filter((m) => m.active);
     if (this.minions.length >= MAX_MINIONS || !head.active || head.dying || scene.outcome) return;
     const m = new FlamingSkull(scene, head.x - 8, head.y);
+    m.reward = 0;
     m.onDie = () =>
       scene.time.delayedCall(RESPAWN_MS, () => {
         if (!head.active || head.dying || scene.outcome) return;
