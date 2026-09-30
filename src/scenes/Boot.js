@@ -7,6 +7,7 @@ import { buildParkTextures } from '../parkArt.js';
 import { buildTowerTextures } from '../towerArt.js';
 import { buildChuteTextures } from '../chuteArt.js';
 import { buildRideTextures } from '../rideArt.js';
+import { isMuted, setMuted } from '../audio.js';
 
 // Asset-pack art (Ninja Adventure, CC0). Missing files are fine: code-drawn sprites cover
 // every key.
@@ -37,6 +38,7 @@ export default class Boot extends Phaser.Scene {
   }
 
   create() {
+    setMuted(this.sound, isMuted()); // as the player left it
     buildPixelFont(this);
     buildTextures(this);
     buildBackdrops(this);

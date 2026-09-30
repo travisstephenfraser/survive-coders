@@ -2,6 +2,8 @@
 // still mutes them: the wind of the Chute's fall, and the terminal's key clicks. Both are no-ops
 // without WebAudio (Phaser's HTML5 audio fallback).
 
+import { settings } from './settings.js';
+
 const buffers = new WeakMap(); // a second of white noise per AudioContext
 
 function noise(ctx) {
@@ -19,7 +21,7 @@ function noise(ctx) {
 export function wind(scene) {
   const ctx = scene.sound.context;
   const out = scene.sound.destination;
-  if (!ctx || !out) return { set() {}, stop() {} };
+  if (!ctx || !out || !settings.get('sfx')) return { set() {}, stop() {} };
   const src = ctx.createBufferSource();
   src.buffer = noise(ctx);
   src.loop = true;
@@ -29,7 +31,7 @@ export function wind(scene) {
   band.Q.value = 0.8;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 0.8);
+  gain.gain.linearRampToValueAtTime(0.16 * settings.get('sfx'), ctx.currentTime + 0.8);
   src.connect(band).connect(gain).connect(out);
   src.start();
   let stopped = false;
@@ -50,7 +52,8 @@ export function wind(scene) {
 export function keyClick(scene, low = false) {
   const ctx = scene.sound.context;
   const out = scene.sound.destination;
-  if (!ctx || !out) return;
+  const level = settings.get('sfx');
+  if (!ctx || !out || !level) return;
   const t = ctx.currentTime;
   const src = ctx.createBufferSource();
   src.buffer = noise(ctx);
@@ -58,7 +61,7 @@ export function keyClick(scene, low = false) {
   f.type = low ? 'bandpass' : 'highpass';
   f.frequency.value = low ? 1400 : 3200 + Math.random() * 1200;
   const env = ctx.createGain();
-  env.gain.setValueAtTime(low ? 0.3 : 0.18, t);
+  env.gain.setValueAtTime((low ? 0.3 : 0.18) * level, t);
   env.gain.exponentialRampToValueAtTime(0.001, t + (low ? 0.06 : 0.025));
   src.connect(f).connect(env).connect(out);
   src.start(t, Math.random() * 0.8);

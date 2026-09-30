@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { musicVolume } from '../audio.js';
 
 // The later levels' songs load here, behind the title and the first level, so the first load
 // only waits for what those two need (the songs are most of the download, which a phone feels).
@@ -25,7 +26,7 @@ export default class Songs extends Phaser.Scene {
 // has shut down by then or no longer `wants` it. Hands the playing sound to `onPlay`.
 export function loopSong(scene, key, volume, onPlay, wants = () => true) {
   const start = () => {
-    const song = scene.sound.add(key, { loop: true, volume });
+    const song = scene.sound.add(key, { loop: true, volume: musicVolume(volume) });
     song.play();
     onPlay(song);
   };

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { ZOOM, floatText, worldText, freshKey } from '../util.js';
-import { toggleMute } from '../audio.js';
+import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX } from '../fx.js';
 import { playElevatorSong } from '../elevatorSong.js';
 
@@ -97,7 +97,7 @@ export default class Elevator extends Phaser.Scene {
   ding() {
     this.rising = false;
     this.display.setText(`${this.floor + 1}`);
-    if (this.cache.audio.exists('star')) this.sound.play('star', { volume: 0.5 });
+    playSfx(this, 'star', 0.5);
     floatText(this, CAR.x, CAR.y - 40, 'DING', '#ffb000');
   }
 

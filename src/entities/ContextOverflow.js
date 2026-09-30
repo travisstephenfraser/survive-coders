@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { floatText, worldText } from '../util.js';
+import { shake } from '../fx.js';
 
 // Context overflow: once the Hydra's context window is full, terminal text buries the arena
 // and the player takes context rot until a refactor compacts it. The rain covers the office
@@ -37,7 +38,7 @@ export default class ContextOverflow {
     this.nextRot = s.time.now + GRACE_MS;
     this.cols ??= this.build();
     floatText(s, 160, 70, 'CONTEXT WINDOW FULL', '#e5534b');
-    s.cameras.main.shake(250, 0.006);
+    shake(s.cameras.main, 250, 0.006);
     s.sfx('grow', 0.5);
     // The call to action is in the HUD's power bar (it reads the boss state), off the arena.
   }

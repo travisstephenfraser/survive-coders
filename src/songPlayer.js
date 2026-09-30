@@ -3,6 +3,8 @@
 // returns play(event, time); timeline(seconds) yields [event, seconds from the song's start].
 // Songs play through Phaser's master mute node, so muting (N) applies, and there is no file.
 
+import { musicVolume } from './audio.js';
+
 // Scientific pitch name to MIDI note number: 'C4' 60, 'Ab5' 80.
 const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 export function midi(name) {
@@ -25,11 +27,11 @@ export function parseBar(bar, voice, at, out, steps = 16) {
 
 // Plays live, scheduling ~150ms ahead on the audio clock from a timer. `every(ms, fn)` runs the
 // timer and returns its cancel (default setInterval; scenes pass their clock, which pauses with
-// them); `from` starts that many seconds into the song. Returns { at(), stop(fade) }, where at()
-// is how far into the song it has played.
-export function playSong(song, { ctx, destination, every = interval }, from = 0) {
+// them); `gain` scales the song's master level; `from` starts that many seconds into the song.
+// Returns { at(), stop(fade) }, where at() is how far into the song it has played.
+export function playSong(song, { ctx, destination, every = interval, gain = 1 }, from = 0) {
   const out = ctx.createGain();
-  out.gain.value = song.master;
+  out.gain.value = song.master * gain;
   out.connect(destination);
   const play = song.synth(ctx, out);
   const start = ctx.currentTime + 0.1 - from;
@@ -79,7 +81,7 @@ export function playOnScene(scene, song, from = 0) {
     const timer = scene.time.addEvent({ delay: ms, loop: true, callback: fn });
     return () => timer.remove();
   };
-  return playSong(song, { ctx, destination: scene.sound.destination, every }, from);
+  return playSong(song, { ctx, destination: scene.sound.destination, every, gain: musicVolume(1) }, from);
 }
 
 // Offline render for checks (loudness, length): the song's first `seconds` as an AudioBuffer.

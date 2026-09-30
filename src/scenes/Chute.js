@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
 import { MAX_HP, ZOOM, worldText } from '../util.js';
-import { applyScreenFX, pop } from '../fx.js';
+import { applyScreenFX, pop, shake } from '../fx.js';
+import { sfx as playSfx } from '../audio.js';
 import { TOUCH } from '../touch.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
 import { OHANA, ROOF, TOWER, towerHalf } from '../chuteArt.js';
@@ -118,7 +119,7 @@ export default class Chute extends Phaser.Scene {
   }
 
   sfx(key, volume = 0.5) {
-    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+    playSfx(this, key, volume);
   }
 
   update(time, delta) {
@@ -278,7 +279,7 @@ export default class Chute extends Phaser.Scene {
     this.canopy = { img, dy: 28, hem: 26 };
     this.tweens.add({ targets: this, jolt: -12, duration: 160, ease: 'Quad.out', onComplete: () => this.tweens.add({ targets: this, jolt: -6, duration: 500, ease: 'Sine.inOut' }) });
     const cam = this.cameras.main;
-    cam.shake(180, 0.006);
+    shake(cam, 180, 0.006);
     this.sfx('ship', 0.6);
     // The drop: the fall's song cuts to the landing's, which carries on into the landing.
     this.fallMusic?.stop();
@@ -315,7 +316,7 @@ export default class Chute extends Phaser.Scene {
     for (const [tex, n] of [['px_green', 14], ['px_white', 10]]) {
       this.add.particles(p.x, ROOF_Y - 2, tex, { speedX: { min: -90, max: 90 }, speedY: { min: -120, max: -30 }, gravityY: 320, lifespan: 800, emitting: false }).setDepth(7).explode(n);
     }
-    this.cameras.main.shake(320, 0.014);
+    shake(this.cameras.main, 320, 0.014);
     this.sfx('hurt', 0.7);
     this.sfx('lose', 0.6);
     this.scene.get('Terminal')?.crash?.();

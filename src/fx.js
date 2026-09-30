@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { params } from './util.js';
+import { settings } from './settings.js';
 
 // CRT look: per-world-pixel scanlines, slight RGB split, vignette. Glues the mismatched
 // asset packs together and sells the terminal vibe. The scanline ripple averages 1.0, so it
@@ -40,8 +41,24 @@ const FX_OFF = params.get('fx') === 'off';
 // so it halves the frame before adding glow. At (blur 0.6, strength 0.3) it rendered the world
 // at 58% brightness, which read as the play area sitting at half opacity under the HUD.
 export function applyScreenFX(cam) {
+  setScreenFX(cam, settings.get('crt'));
+}
+
+// The CRT filter on or off for a camera, including one already showing (Settings flips it live).
+export function setScreenFX(cam, on) {
   if (FX_OFF || cam.scene.game.renderer.type !== Phaser.WEBGL) return;
-  cam.setPostPipeline(CRTPipeline);
+  cam.removePostPipeline('CRTPipeline');
+  if (on) cam.setPostPipeline(CRTPipeline);
+}
+
+// Camera shake and flashes, unless the player turned them off in Settings. Fades are left
+// alone: they carry the scene changes, and ease rather than strobe.
+export function shake(cam, duration, intensity) {
+  if (settings.get('shake')) cam.shake(duration, intensity);
+}
+
+export function flash(cam, duration, r, g, b) {
+  if (settings.get('flash')) cam.flash(duration, r, g, b);
 }
 
 // Make gameplay sprites (player, enemies, heads) pop against the busy neon background:

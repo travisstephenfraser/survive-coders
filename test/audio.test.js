@@ -26,3 +26,37 @@ test('two toggles unmute again even when the manager getter lags', () => {
   assert.equal(isMuted(), false);
   assert.deepEqual(sound.sets, [false, true, false]);
 });
+
+test('muting is remembered in settings', async () => {
+  const { settings } = await import('../src/settings.js');
+  setMuted(laggingSound(), true);
+  assert.equal(settings.get('mute'), true);
+  setMuted(laggingSound(), false);
+  assert.equal(settings.get('mute'), false);
+});
+
+test('sound effects play at their volume times the SFX setting, and not at all at zero', async () => {
+  const { settings } = await import('../src/settings.js');
+  const { sfx } = await import('../src/audio.js');
+  const plays = [];
+  const scene = {
+    cache: { audio: { exists: (k) => k === 'star' } },
+    sound: { play: (key, cfg) => plays.push([key, cfg.volume]) },
+  };
+  settings.set('sfx', 0.5);
+  sfx(scene, 'star', 0.4);
+  sfx(scene, 'not-loaded', 0.4);
+  settings.set('sfx', 0);
+  sfx(scene, 'star', 0.4);
+  settings.set('sfx', 1);
+  assert.deepEqual(plays, [['star', 0.2]]);
+});
+
+test('music plays at its volume times the music setting', async () => {
+  const { settings } = await import('../src/settings.js');
+  const { musicVolume } = await import('../src/audio.js');
+  settings.set('music', 0.3);
+  assert.equal(musicVolume(0.28).toFixed(3), '0.084');
+  settings.set('music', 1);
+  assert.equal(musicVolume(0.28), 0.28);
+});

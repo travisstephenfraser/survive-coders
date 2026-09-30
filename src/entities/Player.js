@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import Laptop from './Laptop.js';
 import { MAX_HP, worldText } from '../util.js';
-import { pop } from '../fx.js';
+import { pop, shake } from '../fx.js';
 import { TOUCH, touch } from '../touch.js';
 
 const SPEED = 95;
@@ -273,7 +273,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.invulnUntil = t + 1000;
     this.knockUntil = t + 220;
     this.setVelocity((this.x < fromX ? -1 : 1) * 120, -160);
-    this.scene.cameras.main.shake(120, 0.006);
+    shake(this.scene.cameras.main, 120, 0.006);
     this.scene.hitStop?.(100);
     this.scene.sfx?.('hurt', 0.5);
     if (this.hp <= 0) {

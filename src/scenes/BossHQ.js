@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import Hydra from '../entities/Hydra.js';
 import { floatText, worldText } from '../util.js';
+import { shake } from '../fx.js';
 
 const ARENA = [
   '#..................#',
@@ -87,7 +88,7 @@ export default class BossHQ extends PlayScene {
     this.hydra.dormantUntil = Math.max(this.hydra.dormantUntil, this.time.now + INTRO_MS);
     const card = worldText(this, 160, 84, 'CONTEXT ROT HYDRA', { color: '#e5534b', size: 14, bg: '#0d0d0d', depth: 60 });
     const sub = worldText(this, 160, 104, 'it remembers everything. wrongly.', { color: '#f5f5f5', bg: '#0d0d0d', depth: 60 });
-    this.cameras.main.shake(300, 0.004);
+    shake(this.cameras.main, 300, 0.004);
     this.sfx('grow', 0.5);
     this.tweens.add({
       targets: [card, sub],

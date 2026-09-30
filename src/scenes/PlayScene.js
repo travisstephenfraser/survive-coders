@@ -6,7 +6,8 @@ import { FACADE } from '../hqArt.js';
 import { addParallax, panParallax } from '../backdrops.js';
 import { voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
-import { applyScreenFX } from '../fx.js';
+import { applyScreenFX, flash, shake } from '../fx.js';
+import { sfx as playSfx } from '../audio.js';
 import { TOUCH } from '../touch.js';
 import { loopSong } from './Songs.js';
 
@@ -202,7 +203,7 @@ export default class PlayScene extends Phaser.Scene {
     this.lastSfx ??= {};
     if (this.time.now - (this.lastSfx[key] ?? -Infinity) < 60) return;
     this.lastSfx[key] = this.time.now;
-    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+    playSfx(this, key, volume);
   }
 
   playMusic(key, volume = 0.3) {
@@ -486,17 +487,17 @@ export default class PlayScene extends Phaser.Scene {
       bl.setFlipX(pl.facing < 0).setDepth(9).setVelocity(pl.facing * 260, 0);
       this.tweens.add({ targets: bl, scale: 1.4, duration: 250, yoyo: true, repeat: 2 });
       this.time.delayedCall(1200, () => bl.destroy());
-      this.cameras.main.shake(200, 0.008);
+      shake(this.cameras.main, 200, 0.008);
     } else if (name === 'rollback') {
       this.shout('rollback', '#58a6ff');
       this.registry.set('rollbackTaught', true);
       this.sfx('rollback', 0.6);
       pl.rollback();
-      this.cameras.main.flash(200, 88, 166, 255);
+      flash(this.cameras.main, 200, 88, 166, 255);
     } else if (name === 'refactor') {
       this.shout('refactor', '#3fb950');
       this.sfx('refactor', 0.6);
-      this.cameras.main.flash(250, 63, 185, 80);
+      flash(this.cameras.main, 250, 63, 185, 80);
       if (pl.unlock()) floatText(this, pl.x, pl.y - 32, 'contract voided: loophole!', '#3fb950');
       for (const e of [...this.enemies.getChildren()]) {
         if (!this.inView(e) || e.dying) continue;

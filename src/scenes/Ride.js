@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
 import { ZOOM, worldText, freshKey } from '../util.js';
-import { toggleMute } from '../audio.js';
+import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX } from '../fx.js';
 import { TOUCH } from '../touch.js';
 import { hex } from '../palette.js';
@@ -113,7 +113,7 @@ export default class Ride extends Phaser.Scene {
   }
 
   sfx(key, volume = 0.5) {
-    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+    playSfx(this, key, volume);
   }
 
   press() {

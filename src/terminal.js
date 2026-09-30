@@ -1,4 +1,5 @@
 import { uiText } from './util.js';
+import { sfx as playSfx } from './audio.js';
 
 // A macOS-style terminal window frame: full-screen for UI scenes by default, or any rect (the
 // Chute's typing pane). `parts` are its game objects, for sliding the window in and out.
@@ -36,7 +37,7 @@ export function phoneCard(scene, x, y, w, title) {
       draw();
       parts.forEach((o) => o.setVisible(true).setAlpha(1));
       scene.tweens.add({ targets: parts, x: '-=12', duration: 90, yoyo: true, repeat: 1 }); // buzz
-      if (scene.cache.audio.exists('hit')) scene.sound.play('hit', { volume: 0.25 });
+      playSfx(scene, 'hit', 0.25);
     },
     hide() {
       scene.tweens.add({ targets: parts, alpha: 0, duration: 250, onComplete: () => parts.forEach((o) => o.setVisible(false)) });

@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { Enemy, FlamingSkull } from './enemies.js';
 import ContextOverflow, { DEPTH as RAIN_DEPTH } from './ContextOverflow.js';
 import { worldText, floatText } from '../util.js';
+import { flash, shake } from '../fx.js';
+import { settings } from '../settings.js';
 
 const LIES = [
   "You're absolutely right!",
@@ -93,7 +95,8 @@ class Head extends Enemy {
       // Targets are chosen when the warning starts and reused by the attack itself.
       this.plan ??= this.hydra.prepare(this);
       x += (Math.random() - 0.5) * 3;
-      if (Math.floor(time / 70) % 2) this.setTintFill(0xffffff);
+      // The white strobe (~7 Hz) is a flash; with flashes off the warning holds a steady red.
+      if (settings.get('flash') && Math.floor(time / 70) % 2) this.setTintFill(0xffffff);
       else this.setTint(0xff7a6a);
     }
     this.setPosition(x, y);
@@ -187,7 +190,7 @@ export default class Hydra {
       duration: 420,
       ease: 'Quad.in',
       onComplete: () => {
-        this.scene.cameras.main.shake(90, 0.003);
+        shake(this.scene.cameras.main, 90, 0.003);
         this.scene.dust(card.x, y + 6);
         this.scene.sfx('hit', 0.3);
       },
@@ -218,7 +221,7 @@ export default class Hydra {
     for (const h of this.alive) h.grow();
     this.addGpu();
     this.scene.sfx('grow', 0.4);
-    this.scene.cameras.main.shake(150, 0.004);
+    shake(this.scene.cameras.main, 150, 0.004);
   }
 
   lie() {
@@ -330,13 +333,13 @@ export default class Hydra {
     }
     this.scene.hitStop(180);
     this.scene.sfx('headkill', 0.5);
-    this.scene.cameras.main.shake(200, 0.01);
+    shake(this.scene.cameras.main, 200, 0.01);
     this.scene.time.delayedCall(0, () => {
       this.publish();
       if (!this.alive.length) this.collapse();
       else if (this.alive.length === 1) {
         floatText(this.scene, 160, 40, 'LAST HEAD: ENRAGED', '#e5534b');
-        this.scene.cameras.main.flash(250, 229, 83, 75);
+        flash(this.scene.cameras.main, 250, 229, 83, 75);
       }
     });
   }

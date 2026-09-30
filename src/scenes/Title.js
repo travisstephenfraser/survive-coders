@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { voice } from '../voice.js';
 import { MAX_HP, params, uiText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
+import { sfx as playSfx } from '../audio.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
 import { TOUCH, enterFullscreen } from '../touch.js';
 
@@ -86,7 +87,7 @@ export default class Title extends Phaser.Scene {
       if (started) return;
       started = true;
       voice.resetCooldowns();
-      if (this.cache.audio.exists('start')) this.sound.play('start', { volume: 0.5 });
+      playSfx(this, 'start', 0.5);
       this.registry.set({ hp: MAX_HP, stars: 0, maxTokens: 0, boss: null, god, bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, towerFloor: null, lockTaught: false, elevatorSongAt: 0, cutscene: false, toast: null });
       // Dev shortcuts: ?park, ?tower=59|60|61, ?chute, ?landing, ?ride, ?boss jump straight to a level.
       const floor = Number(params.get('tower'));

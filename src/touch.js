@@ -196,3 +196,14 @@ export function enterFullscreen() {
     .then(() => screen.orientation?.lock?.('landscape'))
     .catch(() => {});
 }
+
+// Settings' fullscreen toggle, on any device that has element fullscreen (so not iPhone). The
+// whole page goes, not just the canvas, so the DOM overlays (the pad, the score form) come too.
+// Has to run inside a tap or key press.
+export const canFullscreen = () => !!document.fullscreenEnabled;
+export const isFullscreen = () => !!document.fullscreenElement;
+export function toggleFullscreen() {
+  if (document.fullscreenElement) return document.exitFullscreen().catch(() => {});
+  if (TOUCH) return enterFullscreen();
+  return document.documentElement.requestFullscreen?.().catch(() => {});
+}

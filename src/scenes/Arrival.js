@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
 import { ZOOM, freshKey } from '../util.js';
-import { toggleMute } from '../audio.js';
+import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX, pop } from '../fx.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
 import { FACADE } from '../hqArt.js';
@@ -69,7 +69,7 @@ export default class Arrival extends Phaser.Scene {
   }
 
   sfx(key, volume = 0.5) {
-    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+    playSfx(this, key, volume);
   }
 
   update(time) {

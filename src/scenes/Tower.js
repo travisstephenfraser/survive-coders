@@ -4,6 +4,7 @@ import { TOWER_VIEW } from '../backdrops.js';
 import { CEILING } from '../towerArt.js';
 import { ChatbotAgent, CrmAgent } from '../entities/enemies.js';
 import { TILE, floatText, worldText } from '../util.js';
+import { flash, shake } from '../fx.js';
 import { TOUCH } from '../touch.js';
 
 // Legend: # floor slab (carpet on top), = standing desk, P player, * star, A CRM agent,
@@ -265,7 +266,7 @@ export default class Tower extends PlayScene {
       else if (e instanceof ChatbotAgent) this.logOff(e);
     }
     this.dropTeam(SWARM);
-    this.time.delayedCall(650, () => this.cameras.main.shake(220, 0.005)); // the first of them hit the carpet
+    this.time.delayedCall(650, () => shake(this.cameras.main, 220, 0.005)); // the first of them hit the carpet
   }
 
   // Through the ceiling tiles, a few at a time, right behind wherever you are as each one drops:
@@ -320,7 +321,7 @@ export default class Tower extends PlayScene {
     }
     o.state = 'cracked';
     this.drawGlass();
-    this.cameras.main.shake(260, 0.006);
+    shake(this.cameras.main, 260, 0.006);
     this.sfx('hit', 0.7);
     floatText(this, this.worldW - 44, y - 10, '*CRACK*', '#bfe6f5');
     this.arrow = worldText(this, this.worldW - 22, 128, '→', { color: '#e3b341', size: 14, depth: 4 });
@@ -351,8 +352,8 @@ export default class Tower extends PlayScene {
     this.sfx('hit', 0.7);
     this.sfx('flood', 0.4);
     const cam = this.cameras.main;
-    cam.flash(260, 255, 255, 255);
-    cam.shake(260, 0.01);
+    flash(cam, 260, 255, 255, 255);
+    shake(cam, 260, 0.01);
     cam.setBounds(0, 0, this.worldW + 160, this.worldH); // follow them out past the glass
     // Glass everywhere, some of it back into the lounge.
     for (const [tex, n] of [['px_white', 24], ['px_cyan', 16]]) {
