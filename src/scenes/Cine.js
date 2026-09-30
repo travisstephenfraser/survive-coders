@@ -2,12 +2,12 @@ import Phaser from 'phaser';
 import { uiText } from '../util.js';
 import { phoneCard } from '../terminal.js';
 import { TOUCH } from '../touch.js';
+import { TYPE_MS } from '../pacing.js';
 
 // Cutscene overlay: letterbox bars, a Slack phone card, and a speaker dialogue box with a
 // typewriter reveal. Driven by the scene under it (Level1's intro, the elevator, the drop-off); the
 // HUD is hidden meanwhile. The ride to HQ launches it with no bars (they'd cover its screen) and
 // its own skip hint.
-const TYPE_MS = 28;
 
 export default class Cine extends Phaser.Scene {
   constructor() {

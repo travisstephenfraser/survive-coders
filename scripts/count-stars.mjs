@@ -27,7 +27,7 @@ for (const dir of ['scenes', 'entities']) {
     const file = `${dir}/${f}`;
     const text = read(file);
     const grants = count(text, /registry\.set\('stars',\s*\(this\.registry\.get\('stars'\) \?\? 0\) \+/g);
-    const calls = count(text, /addStars\((?!n, x, y\) \{)/g);
+    const calls = count(text, /addStars\((?!n, x, y(, hold = false)?\) \{)/g);
     if (grants !== (GRANTS[file] ?? 0)) fail(`${file}: ${grants} direct star grants, expected ${GRANTS[file] ?? 0}`);
     if (calls !== (CALLERS[file] ?? 0)) fail(`${file}: ${calls} addStars() calls, expected ${CALLERS[file] ?? 0}`);
   }

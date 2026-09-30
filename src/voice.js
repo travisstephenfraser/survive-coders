@@ -3,9 +3,9 @@ import { TOUCH } from './touch.js';
 
 // "Wispr Flow": spoken keywords fire powers.
 export const POWERS = {
-  ship: { label: 'ship it', key: '1', cooldown: 6000, re: /\bship(ped|ping|s)?\b|\bshipit\b/ },
-  rollback: { label: 'rollback', key: '2', cooldown: 8000, re: /\broll ?backs?\b|\brole ?back\b|\broll bag\b|\brollback\b/ },
-  refactor: { label: 'refactor', key: '3', cooldown: 10000, re: /\bre-? ?factor(ed|ing|s)?\b|\breactor\b|\brefractor\b/ },
+  ship: { label: 'ship it', does: 'big forward blast', key: '1', cooldown: 6000, re: /\bship(ped|ping|s)?\b|\bshipit\b/ },
+  rollback: { label: 'rollback', does: 'rewind 3s, heal', key: '2', cooldown: 8000, re: /\broll ?backs?\b|\brole ?back\b|\broll bag\b|\brollback\b/ },
+  refactor: { label: 'refactor', does: 'clear enemies; shrink the Hydra', key: '3', cooldown: 10000, re: /\bre-? ?factor(ed|ing|s)?\b|\breactor\b|\brefractor\b/ },
 };
 
 const TALK = TOUCH ? 'talk' : 'M'; // the push-to-talk control: the M key, or the HUD's talk slot
@@ -23,6 +23,8 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.running = false; // recognizer session active
     this.pendingFire = false;
     this.keysSuspended = false; // while typing (the Chute's terminal), m and 1/2/3 are just letters
+    this.gate = null; // set by the play scene: true while an intro owns the controls
+    this.heldLocked = false; // this push-to-talk hold began under the gate
     this.status = `hold ${TALK} to talk`;
     window.addEventListener('keydown', (e) => {
       if (this.keysSuspended) return;
@@ -105,6 +107,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       return;
     }
     this.listening = true;
+    this.heldLocked = Boolean(this.gate?.());
     this.pendingFire = false;
     this.transcript = '';
     this.heard = '';
@@ -116,6 +119,19 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   release() {
     if (!this.listening) return;
     this.listening = false;
+    // A hold that began or ends while an intro owns the controls is dropped, so Chrome's late
+    // final result can't fire it after the intro lifts.
+    if (this.heldLocked || this.gate?.()) {
+      this.heldLocked = false;
+      this.transcript = '';
+      this.status = `hold ${TALK} to talk`;
+      try {
+        this.rec.abort();
+      } catch {
+        /* not running */
+      }
+      return;
+    }
     if (this.fireFromTranscript()) {
       try {
         this.rec.abort();
@@ -159,7 +175,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   // Returns true if the power fired. Powers only fire while a play scene is listening.
   // `lastEvent` lets the HUD tell "heard" apart from "ran" and "cooling down".
   trigger(name, source) {
-    if (this.listenerCount('power') === 0) return false;
+    if (this.listenerCount('power') === 0 || this.gate?.()) return false; // refused, no cooldown spent
     const now = performance.now();
     if ((this.readyAt[name] ?? 0) > now) {
       this.lastEvent = { type: 'cooldown', name, source, left: this.readyAt[name] - now, at: now };

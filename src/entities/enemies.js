@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { floatText, worldText } from '../util.js';
+import { floatText, jokeText, worldText } from '../util.js';
 import { pop } from '../fx.js';
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -49,7 +49,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.dying = true;
     this.scene.hitStop?.(45);
     this.scene.sfx?.('kill', 0.35);
-    if (this.reward) this.scene.addStars(this.reward, this.x, this.y - 10);
+    if (this.reward) this.scene.addStars(this.reward, this.x, this.y - 10, true); // holds with the kill line
     this.scene.burst(this.x, this.y, 'px_orange');
     this.onDie?.();
     this.destroy();
@@ -127,7 +127,7 @@ export class BadPromptBlob extends Enemy {
   onDie() {
     const { scene, x, y } = this;
     if (this.small) return;
-    floatText(scene, x, y - 18, `"${Phaser.Utils.Array.GetRandom(BAD_PROMPTS)}"`, '#bc8cff', 6);
+    jokeText(scene, x, y - 18, `"${Phaser.Utils.Array.GetRandom(BAD_PROMPTS)}"`, '#bc8cff');
     if (this.refactored) return; // refactor clears the screen; no split
     scene.sfx?.('split', 0.4);
     // Spawn after the current physics step so we don't mutate the group mid-overlap.
@@ -170,6 +170,9 @@ export class KeyboardGoblin extends Enemy {
   }
 }
 
+const HOP_MS = 180; // one heat hop, up and back down
+const HOP_PX = 2;
+
 // H100: a big, tanky data-center GPU. Slow patrol, fans spinning, heat shimmer rising; when
 // you get close it vents arcing heat blobs. Also what the Hydra provisions for more compute.
 export class H100 extends Enemy {
@@ -178,6 +181,13 @@ export class H100 extends Enemy {
     this.noFlip = true; // "H100" label must never read backwards
     this.body.setSize(36, 15).setOffset(2, 3);
     this.play('gpu_fans');
+    // Heat hop (drawn only): about once a second the card jumps like a boiling lid and puffs
+    // steam. hop() moves the draw origin and the body offset together, and an Arcade body sits at
+    // x + scale * (offset - displayOrigin), so the hitbox, the patrol and the ledge checks never
+    // see it.
+    this.baseOrigin = this.height / 2;
+    this.hopAt = -Infinity;
+    this.nextHop = scene.time.now + Phaser.Math.Between(300, 1300); // out of step with its neighbours
     this.nextVent = scene.time.now + Phaser.Math.Between(900, 1800);
     this.heatFx = scene.add
       .particles(0, 0, 'px_orange', {
@@ -186,16 +196,39 @@ export class H100 extends Enemy {
         speedX: { min: -6, max: 6 },
         speedY: { min: -26, max: -10 },
         lifespan: 650,
-        frequency: 160,
+        frequency: 90, // a thicker plume
         alpha: { start: 0.7, end: 0 },
         scale: { start: 1, end: 0.4 },
       })
       .setDepth(3);
-    this.once('destroy', () => this.heatFx.destroy());
+    this.steamFx = scene.add
+      .particles(0, 0, 'px_white', {
+        follow: this,
+        followOffset: { x: 0, y: -10 },
+        speedX: { min: -12, max: 12 },
+        speedY: { min: -36, max: -18 },
+        lifespan: 700,
+        alpha: { start: 0.6, end: 0 },
+        scale: { start: 1.6, end: 0.4 },
+        emitting: false,
+      })
+      .setDepth(3);
+    this.once('destroy', () => {
+      this.heatFx.destroy();
+      this.steamFx.destroy();
+    });
   }
 
   update(time) {
-    if (this.dying || this.stunned) return;
+    if (this.dying) return;
+    if (time >= this.nextHop) {
+      this.hopAt = time;
+      this.nextHop = time + Phaser.Math.Between(900, 1300);
+      this.steamFx.explode(5);
+    }
+    const t = time - this.hopAt;
+    this.hop(t < HOP_MS ? Math.round(Math.sin((Math.PI * t) / HOP_MS) * HOP_PX) : 0);
+    if (this.stunned) return;
     this.patrol(18);
     const p = this.scene.player;
     const dx = p.x - this.x;
@@ -208,8 +241,13 @@ export class H100 extends Enemy {
     }
   }
 
+  hop(lift) {
+    this.setDisplayOrigin(this.displayOriginX, this.baseOrigin + lift);
+    this.body.setOffset(2, 3 + lift);
+  }
+
   onDie() {
-    floatText(this.scene, this.x, this.y - 16, 'CUDA OOM', '#3fb950');
+    jokeText(this.scene, this.x, this.y - 16, 'CUDA OOM', '#3fb950');
     this.scene.burst(this.x, this.y, 'px_green', 14);
   }
 }
@@ -281,7 +319,7 @@ export class Founder extends Enemy {
   pitch() {
     const [line, hockey] = Phaser.Utils.Array.GetRandom(PITCHES);
     const s = this.scene;
-    floatText(s, this.x, this.y - 16, line, '#e3b341');
+    jokeText(s, this.x, this.y - 16, line, '#e3b341');
     const h = s.spawnHazard(this.x + this.dir * 8, this.y - 3, hockey ? 'slide_up' : 'slide', this.dir * 105, 0);
     h.setFlipX(this.dir < 0);
     if (hockey) s.time.delayedCall(380, () => h.active && h.setVelocityY(-130)); // flat, then up and to the right
@@ -306,7 +344,7 @@ export class Founder extends Enemy {
     this.demo.destroy();
     this.demo = null;
     if (!this.active || this.dying) return;
-    floatText(this.scene, this.x, this.y - 18, escaped ? "wait, it's AI-native!" : 'it worked 5 min ago', '#e5534b');
+    jokeText(this.scene, this.x, this.y - 18, escaped ? "wait, it's AI-native!" : 'it worked 5 min ago', '#e5534b');
     // Step back to reboot the demo, so the freed player isn't hit on the spot.
     const away = this.x < this.scene.player.x ? -1 : 1;
     this.setVelocity(away * 90, -90);
@@ -319,7 +357,7 @@ export class Founder extends Enemy {
     if (this.demo) s.player.release();
     if (this.refactored) return; // refactor clears the inbox too
     const { x, y } = this;
-    floatText(s, x, y - 18, "I'll circle back!", '#f5f5f5');
+    jokeText(s, x, y - 18, "I'll circle back!", '#f5f5f5');
     s.time.delayedCall(300, () => {
       for (const d of [-1, 1]) new FollowUp(s, x + d * 6, y - 6, d);
     });
@@ -419,7 +457,7 @@ export class VestedBro extends Enemy {
     if (time > this.nextThrow) {
       this.nextThrow = time + 2400;
       const s = this.scene;
-      s.spawnHazard(this.x + this.dir * 6, this.y - 8, 'coffee', this.dir * 85, -170, true, (pl) => floatText(s, pl.x, pl.y - 16, '$9 pour-over', '#a8905e'));
+      s.spawnHazard(this.x + this.dir * 6, this.y - 8, 'coffee', this.dir * 85, -170, true, (pl) => jokeText(s, pl.x, pl.y - 16, '$9 pour-over', '#a8905e'));
     }
   }
 
@@ -450,7 +488,7 @@ export class VestedBro extends Enemy {
   }
 
   onDie() {
-    floatText(this.scene, this.x, this.y - 18, Phaser.Utils.Array.GetRandom(BRO_LINES), '#a8c8e8');
+    jokeText(this.scene, this.x, this.y - 18, Phaser.Utils.Array.GetRandom(BRO_LINES), '#a8c8e8');
   }
 }
 
@@ -474,13 +512,13 @@ export class Jogger extends Enemy {
     if (now > this.nextBump && pl.targetable) {
       this.nextBump = now + 900;
       pl.bump(this.x);
-      floatText(this.scene, this.x, this.y - 16, 'on your left!', '#f5f5f5');
+      jokeText(this.scene, this.x, this.y - 16, 'on your left!', '#f5f5f5');
     }
     return true;
   }
 
   onDie() {
-    floatText(this.scene, this.x, this.y - 18, 'my Oura score!', '#f5f5f5');
+    jokeText(this.scene, this.x, this.y - 18, 'my Oura score!', '#f5f5f5');
   }
 }
 
@@ -544,7 +582,7 @@ export class CrmAgent extends Enemy {
 
   pitch() {
     const s = this.scene;
-    floatText(s, this.x, this.y - 16, Phaser.Utils.Array.GetRandom(AGENT_PITCHES), '#8fd0ff');
+    jokeText(s, this.x, this.y - 16, Phaser.Utils.Array.GetRandom(AGENT_PITCHES), '#8fd0ff');
     const h = s.spawnHazard(this.x + this.dir * 8, this.y - 3, 'contract', this.dir * 120, 0, false, (pl) => pl.lock(3000));
     h.harmless = true;
   }
@@ -593,9 +631,10 @@ export class CrmAgent extends Enemy {
     const s = this.scene;
     const now = s.time.now;
     if (now < this.nextLine || now < (s.closerLineAt ?? 0)) return;
-    this.nextLine = now + 900;
-    s.closerLineAt = now + 500;
-    floatText(s, this.x, this.y - 18, line, '#8fd0ff');
+    this.nextLine = now + 1350; // 1.5x, as the line itself now lasts 1.5x (jokeText)
+    this.nextShove = now + 900; // the shove rhythm, unchanged from when nextLine paced it
+    s.closerLineAt = now + 750;
+    jokeText(s, this.x, this.y - 18, line, '#8fd0ff');
   }
 
   hurt(dmg) {
@@ -613,7 +652,7 @@ export class CrmAgent extends Enemy {
 
   onTouchPlayer(pl) {
     if (!this.closing) return false;
-    if (pl.targetable && this.scene.time.now > this.nextLine) {
+    if (pl.targetable && this.scene.time.now > (this.nextShove ?? 0)) {
       pl.bump(this.x);
       this.say("let's circle back on pricing");
     }
@@ -621,7 +660,7 @@ export class CrmAgent extends Enemy {
   }
 
   onDie() {
-    floatText(this.scene, this.x, this.y - 18, Phaser.Utils.Array.GetRandom(AGENT_DEATHS), '#8fd0ff');
+    jokeText(this.scene, this.x, this.y - 18, Phaser.Utils.Array.GetRandom(AGENT_DEATHS), '#8fd0ff');
   }
 }
 
@@ -668,7 +707,7 @@ export class ChatbotAgent extends Enemy {
   }
 
   onDie() {
-    floatText(this.scene, this.x, this.y - 14, 'escalating to a human...', '#8fd0ff');
+    jokeText(this.scene, this.x, this.y - 18, 'escalating to a human...', '#8fd0ff');
   }
 }
 

@@ -1,4 +1,5 @@
 import { hex } from './palette.js';
+import { FLOAT_MS, JOKE_HOLD_MS } from './pacing.js';
 
 // World scenes render at 320x180 and zoom 3x. All text is the 8x8 pixel font ('pixel',
 // built in Boot from the Ninja Adventure sheet); sizes snap to whole font pixels so glyphs
@@ -39,10 +40,22 @@ export function worldText(scene, x, y, str, opts = {}) {
   return obj;
 }
 
-export function floatText(scene, x, y, str, color = '#f5f5f5') {
+// Text that rises and fades over the world. `hold` keeps it still and solid first.
+function rise(scene, x, y, str, color, hold) {
   const t = worldText(scene, x, y, str, { color, depth: 50 });
-  scene.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 900, onComplete: () => t.destroy() });
+  scene.tweens.add({ targets: t, y: y - 18, alpha: 0, delay: hold, duration: FLOAT_MS, onComplete: () => t.destroy() });
   return t;
+}
+
+// A status pop (+1★, GONG!, context +25%): quick, gone in FLOAT_MS.
+export function floatText(scene, x, y, str, color = '#f5f5f5') {
+  return rise(scene, x, y, str, color, 0);
+}
+
+// A joke (a kill line, an enemy's bark): it holds still for JOKE_HOLD_MS before the same rise
+// and fade, 1.5x as long in all, so it can be read mid-fight.
+export function jokeText(scene, x, y, str, color = '#f5f5f5') {
+  return rise(scene, x, y, str, color, JOKE_HOLD_MS);
 }
 
 // Screen-space text; size snaps to a multiple of 8 (8 = 1x font).

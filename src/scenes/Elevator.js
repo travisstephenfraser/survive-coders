@@ -3,6 +3,7 @@ import { ZOOM, floatText, worldText, freshKey } from '../util.js';
 import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX } from '../fx.js';
 import { playElevatorSong } from '../elevatorSong.js';
+import { TYPE_MS } from '../pacing.js'; // Cine's typewriter pace, so the ding lands on the last letter
 
 // The ride between floors: a CRM agent pitches the whole way up over elevator music, and the
 // ding cuts him off mid-sentence. About 6s, skippable (ENTER or a tap). Not a PlayScene, so the
@@ -12,7 +13,6 @@ const PITCHES = {
   60: ['Quick question: how are you managing customer relationships today?', 'Spreadsheets? Oh no. Oh no no no.', "Let me loop in my manager, he's on 61. We could ri-"],
 };
 const LINE_AT = [300, 2100, 3900]; // when each line starts, in ms
-const TYPE_MS = 28; // Cine's typewriter pace, so the ding lands on the last letter
 const CAR = { x: 160, y: 88 }; // the car's centre (elevator_car is 128x100)
 const FLOOR_Y = CAR.y + 42; // where the riders stand
 const SLAB_GAP = 90; // floors pass the car this far apart

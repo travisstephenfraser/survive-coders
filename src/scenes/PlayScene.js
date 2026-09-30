@@ -5,7 +5,7 @@ import { T } from '../sprites.js';
 import { FACADE } from '../hqArt.js';
 import { addParallax, panParallax } from '../backdrops.js';
 import { voice } from '../voice.js';
-import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
+import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, jokeText, worldText } from '../util.js';
 import { applyScreenFX, flash, shake } from '../fx.js';
 import { sfx as playSfx } from '../audio.js';
 import { TOUCH } from '../touch.js';
@@ -14,6 +14,7 @@ import { loopSong } from './Songs.js';
 // MAX stream: random alphanumerics, mostly white with syntax-highlight accents.
 const STREAM_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'];
 const STREAM_COLORS = ['#f5f5f5', '#f5f5f5', '#f5f5f5', '#d97757', '#3fb950'];
+const DONE_LINGER_MS = 800; // a tip you just acted on stays this long, so the change registers
 
 // Outdoor tile sets per theme (the HQ interior has its own wall/shelf logic in buildWorld).
 const TILESETS = {
@@ -34,6 +35,10 @@ export default class PlayScene extends Phaser.Scene {
     this.cutscene = false;
     this.stopping = false;
     this.leaving = false;
+    this.shots = 0; // prompts and MAX characters fired in this level (the SPACE tip waits on one)
+    this.lastPower = null; // the last power that ran here (the refactor tip waits on it)
+    this.tipDone = null;
+    this.registry.set('toast', null); // a tip waiting on you never follows you out of a level
     this.exitDoor = null;
     this.physics.world.resume(); // a shutdown mid hit-stop would otherwise leave physics paused
     const H = rows.length;
@@ -163,7 +168,11 @@ export default class PlayScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setZoom(ZOOM);
     cam.setBounds(0, 0, this.worldW, this.worldH);
-    cam.startFollow(this.player, true, 0.15, 0.06); // vertical follows slower (Eiserloh)
+    // The skyline levels hold the camera's height: they're 12px taller than the view, and a
+    // camera rising that far on every jump slid the ground under a pinned skyline (a playtester
+    // read it as the background riding up with them) and the street behind the HUD. The boss
+    // arena has no skyline and still follows, slower vertically (Eiserloh).
+    cam.startFollow(this.player, true, 0.15, this.parallax ? 0 : 0.06);
     cam.setBackgroundColor('#0d0d0d');
     this.lookahead = 0;
     this.markPits(data, W, H);
@@ -171,9 +180,12 @@ export default class PlayScene extends Phaser.Scene {
     applyScreenFX(cam);
 
     this.onPower = (name) => this.usePower(name);
+    this.powerGate = () => this.inputLocked;
     voice.on('power', this.onPower);
+    voice.gate = this.powerGate; // powers held during intros (1/2/3 used to fire under the Waymo's)
     this.events.once('shutdown', () => {
       voice.off('power', this.onPower);
+      if (voice.gate === this.powerGate) voice.gate = null;
       this.music?.destroy();
     });
 
@@ -182,10 +194,17 @@ export default class PlayScene extends Phaser.Scene {
     cam.fadeIn(300);
   }
 
+  // Whether an intro owns the controls. BossHQ adds its entrance and title card.
+  get inputLocked() {
+    return this.cutscene;
+  }
+
   // One-shot contextual tip in the HUD; `power` pulses that power's slot (teach at the moment
-  // of need, like Mario 1-1, instead of a wall of text on the title screen).
-  toast(text, power, ms = 4200) {
-    this.registry.set('toast', { text, power, until: this.time.now + ms, at: this.time.now });
+  // of need, like Mario 1-1, instead of a wall of text on the title screen). With `done`, the tip
+  // stays until done() is true (you did the thing), then lingers DONE_LINGER_MS.
+  toast(text, power, ms = 4200, done = null) {
+    this.tipDone = done;
+    this.registry.set('toast', { text, power, until: done ? Infinity : this.time.now + ms, at: this.time.now });
   }
 
   // Rollback is taught at the first real damage (a hit or a pit; god mode takes none), once per
@@ -212,8 +231,14 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   update(time) {
+    if (this.cutscene) this.player.swallowEdges(); // presses during an intro don't fire after it
     if (this.cutscene || this.leaving) return; // an intro or the walk-in owns the player
     this.player.tick(time);
+    if (this.tipDone?.()) {
+      this.tipDone = null;
+      const tip = this.registry.get('toast');
+      if (tip) this.registry.set('toast', { ...tip, until: this.time.now + DONE_LINGER_MS });
+    }
     this.teachRollback();
     // Camera lookahead: show more of what's ahead of the player (Itay Keren, "Scroll Back").
     this.lookahead = Phaser.Math.Linear(this.lookahead, -this.player.facing * 48, 0.04);
@@ -382,9 +407,11 @@ export default class PlayScene extends Phaser.Scene {
     return s;
   }
 
-  addStars(n, x, y) {
+  // A kill's reward (hold) holds and rises with the kill's line, so the two never cross; a
+  // pickup's pops at once.
+  addStars(n, x, y, hold = false) {
     this.registry.set('stars', (this.registry.get('stars') ?? 0) + n);
-    floatText(this, x, y, `+${n}★`, '#e3b341');
+    (hold ? jokeText : floatText)(this, x, y, `+${n}★`, '#e3b341');
   }
 
   // MAX power-up: a token budget that turns held fire into a character stream.
@@ -404,6 +431,7 @@ export default class PlayScene extends Phaser.Scene {
 
   // Spend one MAX token on one character.
   fireStream(x, y, dir) {
+    this.shots++;
     const left = this.registry.get('maxTokens') - 1;
     this.registry.set('maxTokens', left);
     const ch = Phaser.Utils.Array.GetRandom(STREAM_CHARS);
@@ -434,12 +462,13 @@ export default class PlayScene extends Phaser.Scene {
   // Prompts get light "autocomplete" aim: they bend toward the nearest enemy ahead that is
   // within 30px vertically, so small blobs and low Hydra heads are hittable from the floor.
   firePrompt(x, y, dir) {
+    this.shots++;
     const SPEED = 230;
     const b = this.bolts.create(x + dir * 6, y + 1, 'bolt');
     let target = null;
     let best = Infinity;
     for (const e of this.enemies.getChildren()) {
-      if (e.dying || !e.body) continue;
+      if (e.dying || !e.body || e.asleep) continue; // a sleeping Hydra head can't be hurt
       const dx = (e.body.center.x - b.x) * dir;
       const dy = e.body.center.y - b.y;
       if (dx < 6 || dx > 200 || Math.abs(dy) > 30) continue;
@@ -478,6 +507,7 @@ export default class PlayScene extends Phaser.Scene {
   usePower(name) {
     const pl = this.player;
     if (pl.dead || this.leaving) return; // a rollback mid walk-in would teleport the player
+    this.lastPower = name;
     if (name === 'ship') {
       this.shout('ship it');
       this.sfx('ship', 0.6);

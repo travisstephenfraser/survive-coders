@@ -5,6 +5,7 @@ import { Founder, VestedBro } from '../entities/enemies.js';
 import { TILE, floatText, worldText } from '../util.js';
 import { run } from '../run.js';
 import { TOUCH } from '../touch.js';
+import { cardMs, lineMs, sequence } from '../pacing.js';
 
 // Legend: # ground (lawn over the Transit Center roof), = planter, P player, * star, F founder,
 // V vested bro, J Zone 2 jogger, W bus fountain jet, [ ] the amphitheater's walls (demo day
@@ -284,24 +285,31 @@ export default class Park extends PlayScene {
     this.gondola = this.add.image(FROM.x, FROM.y, 'gondola').setDepth(6);
     this.tweens.add({ targets: this.gondola, x: DOCK.x, y: DOCK.y, duration: 4200, ease: 'Sine.out' });
 
+    // Each line stays up long enough to read (pacing.js); you hop out a beat into the second,
+    // before the founder promises to circle back.
+    const LINES = ["Since we're stuck in this gondola for 90 seconds...", 'ever heard of Uber for gondolas?', "We're pre-revenue but post-vibes. I'll circle back!"];
+    const PING = 'are you close?? demo is in 20 min';
+    const lines = sequence(400, LINES.map(lineMs));
     const at = (ms, fn) => this.introEvents.push(this.time.delayedCall(ms, fn));
     this.introEvents = [];
-    at(400, () => cine.say('FOUNDER', "Since we're stuck in this gondola for 90 seconds..."));
-    at(2700, () => cine.say('FOUNDER', 'ever heard of Uber for gondolas?'));
-    at(4400, () => {
+    at(lines.starts[0], () => cine.say('FOUNDER', LINES[0]));
+    at(lines.starts[1], () => cine.say('FOUNDER', LINES[1]));
+    at(lines.starts[1] + 1700, () => {
       this.sfx('start', 0.4);
       p.setPosition(DOCK.x + 12, 150).setVisible(true);
       p.body.enable = true;
       p.setVelocity(40, -140);
       p.laptop.setPosition(p.x, p.y + 6).setVisible(true);
     });
-    at(5000, () => cine.say('FOUNDER', "We're pre-revenue but post-vibes. I'll circle back!"));
-    at(6900, () => {
+    // Landed: stop there, rather than slide on toward the first founder while the intro plays out.
+    at(lines.starts[1] + 1700 + 500, () => p.setVelocityX(0));
+    at(lines.starts[2], () => cine.say('FOUNDER', LINES[2]));
+    at(lines.end, () => {
       cine.say(null, null);
       this.tweens.add({ targets: this.gondola, x: FROM.x, y: FROM.y, duration: 2400, ease: 'Sine.in' });
     });
-    at(7300, () => cine.phone('are you close?? demo is in 20 min'));
-    at(9200, () => this.endIntro());
+    at(lines.end + 400, () => cine.phone(PING));
+    at(lines.end + 400 + cardMs(PING), () => this.endIntro());
 
     // A skip key stops here: the HUD also binds ESC (pause) further down the scene list, and
     // would pause the level the moment the skip clears the cutscene flag.

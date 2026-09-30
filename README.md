@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      51 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      69 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -73,14 +73,15 @@ mode (the first ping is shown).
 ![Slack ping during the intro](docs/screenshots/02-intro-slack-ping.png)
 
 **3. The drop-off.** The car stops at the edge of its service area, roof lidar sweeping; Anthropic
-HQ is 9.4 miles away. The intro hands over control after about 12 seconds; Enter, or a tap,
+HQ is 9.4 miles away. The intro hands over control after about 17 seconds, each line up long enough to read; Enter, or a tap,
 skips it.
 
 ![Waymo dialogue: edge of the service area](docs/screenshots/03-intro-edge-of-service-area.png)
 
 **4. Powers are taught at the moment of need.** When a cluster of Bad Prompt Blobs comes into
 view, a tip explains `refactor` and the matching slot in the terminal bar flashes. `rollback`
-is taught the first time you actually lose health, not at a fixed spot.
+is taught the first time you actually lose health, not at a fixed spot. The first two tips, fire and
+`refactor`, stay up until you do the thing.
 
 ![Contextual tip for the refactor power](docs/screenshots/04-voice-power-tip.png)
 
@@ -186,7 +187,10 @@ sliding doors.
 ![Dropped off at Anthropic HQ: "You have arrived at Anthropic HQ."](docs/screenshots/08l-hq-dropoff.png)
 
 **9. The Context Rot Hydra.** Inside, the office goes quiet, the terminal types
-`make one small change`, the heads answer, and the boss card lands. The body is a heap of H100s
+`make one small change`, the heads answer, and the boss card lands. Your controls come back when
+the card clears. The image-flood head fights alone at first; gaslight wakes 5 seconds in and the
+notification head at 10, bringing both its skulls. A sleeping head shrugs off shots, and the
+context keeps growing on its own clock. The body is a heap of H100s
 with their fans spinning, and the necks are pipes streaming tokens up into the heads; every
 growth turn drops another card on the heap. The HUD shows boss health and, separately, context
 growth.
@@ -242,17 +246,17 @@ A dated design review with before and after screenshots is in
 
 ## Features
 
-- A skippable, 12-second robotaxi intro cutscene with Slack `#demo-day` messages, and a matching payoff on the win screen
+- A skippable, 17-second robotaxi intro cutscene with Slack `#demo-day` messages, and a matching payoff on the win screen
 - A side-scrolling run from Daly City to SoMa, with the HUD path following the neighborhood signs, over a parallax San Francisco skyline (Sutro Tower, the Golden Gate Bridge, Coit Tower, the Transamerica Pyramid, the Salesforce Tower, the Painted Ladies, moving cable cars), ending at the Salesforce Transit Center
 - Salesforce Park on the Transit Center's roof, laid out like the real one, with the bus fountain's geysers, a gondola intro, and a demo-day arena
 - Three floors of the Salesforce Tower, joined by elevator rides, ending when the whole sales team drops in on the Ohana Floor and their contracts crack the window you leap through
 - A free fall down the tower's face against an altimeter, where you type three lines into Claude Code for a parachute (it gets it wrong twice), then a canopy ride over SoMa through arcs of stars onto a Waymo's roof, and the ride to HQ from its back seat: empty front seats, a wheel that turns itself, a rider screen to press, and Slack while a 47-minute ETA time-lapses away
-- Enemies by district: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat) in the city; founders, vested bros, and Zone 2 joggers in the park; CRM agents (contracts that lock your fire) and chatbots (popups you shoot closed) in the tower
+- Enemies by district: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, hops with heat and vents arcing steam) in the city; founders, vested bros, and Zone 2 joggers in the park; CRM agents (contracts that lock your fire) and chatbots (popups you shoot closed) in the tower
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
-- The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies, worth no stars so stalling can't farm them); growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
+- The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies, worth no stars so stalling can't farm them); the heads wake one at a time; growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
 - Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard and tap equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
-- Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
+- Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, camera lookahead, and a camera that holds its height in the street levels
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
 - Pause (with a restart for the level you are on), mute, and a checkpoint at every level after the first (the park, each tower floor, the fall, the boss) that restores your star total on retry
 - A title menu (PLAY NOW, LEADERBOARD, SETTINGS) driven by the arrow keys, a click, or a tap
@@ -275,7 +279,7 @@ A dated design review with before and after screenshots is in
 | Powers without voice | 1 ship it, 2 rollback, 3 refactor | Tap the power in the terminal bar |
 | Type a line (the fall) | Type it; Tab fills it in, Enter sends, Backspace fixes | Every tap types the next letter; or hold *talk*, say it, release |
 | Steer the canopy | Arrow keys or A / D | ← → bottom left |
-| Pause / mute / restart | P or Esc / N / R (while paused) restarts the level | Pause button at the top; *sound* and *restart level* on the pause screen |
+| Pause / mute / restart | P or Esc / N / R (while paused) restarts the level; the pause screen lists the controls and powers | Pause button at the top; *sound* and *restart level* on the pause screen, with the controls and powers |
 | Title screen | ↑ ↓ or W / S choose, Enter picks; V sets up the microphone | Tap PLAY NOW, LEADERBOARD, or SETTINGS; tap *set up mic* |
 | Settings | ↑ ↓ choose, ← → change, Enter toggles, Esc back | Tap a setting to change it; tap the volume dots to set a level |
 | Leaderboard | ↑ ↓ choose, Enter opens the selected profile, Esc back | Tap a name to see its link, tap again to open it |
@@ -457,8 +461,10 @@ never production.
 
 ## Tests
 
-`npm test` runs 64 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 69 unit tests on Node's built-in runner (no test framework):
 
+- the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
+  stay up, checked against lines from the game
 - `shared/leaderboard.js`: the star ceiling, the time and milestone checks, names, profile
   handles, and pasted-URL parsing
 - the profanity check on names and handles: a list that must be refused (disguised
@@ -477,8 +483,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 64
-ℹ pass 64
+ℹ tests 69
+ℹ pass 69
 ℹ fail 0
 ```
 

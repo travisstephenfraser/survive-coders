@@ -50,6 +50,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.lockGraceUntil = 0;
     this.launchedUntil = 0;
     this.touchFireWas = false;
+    this.fireLatched = false; // fire held since an intro: needs a fresh press (swallowEdges)
     this.coyoteUntil = 0;
     this.jumpBufferedUntil = 0;
     this.wasOnFloor = true;
@@ -85,6 +86,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   tick(time) {
     if (this.dead) return;
+    if (this.scene.inputLocked) {
+      this.holdStill(time);
+      return;
+    }
     const k = this.keys;
     if (this.trapped) {
       this.tickTrapped(time);
@@ -141,7 +146,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     const locked = time < this.lockedUntil;
     this.lockChip.setVisible(locked).setPosition(this.x, this.y - 22);
     this.lockFine.setVisible(locked).setPosition(this.x, this.y - 14);
-    const firing = !locked && (k.fire.isDown || k.fire2.isDown || k.fire3.isDown || touch.fire);
+    const fireHeld = k.fire.isDown || k.fire2.isDown || k.fire3.isDown || touch.fire;
+    if (!fireHeld) this.fireLatched = false; // let go since an intro: fire works again
+    const firing = !locked && !this.fireLatched && fireHeld;
     const tokens = () => this.scene.registry.get('maxTokens') > 0;
     if (firing && tokens()) {
       // MAX streams in fixed steps and catches up within a frame, so the rate is the same at
@@ -173,6 +180,30 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.setAlpha(time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.35 : 1);
+    this.laptop.follow(time);
+  }
+
+  // An intro owns the controls: presses made meanwhile are dropped, and fire held through its
+  // end needs a fresh press (a SPACE that skipped an intro used to fire a prompt as well).
+  // Velocity is left alone: the intros script the player's hop out of the car and the gondola.
+  swallowEdges() {
+    const k = this.keys;
+    const JD = Phaser.Input.Keyboard.JustDown;
+    for (const key of [k.jump, k.jump2, k.jump3]) JD(key);
+    touch.takeJump();
+    this.jumpBufferedUntil = 0;
+    this.fireLatched = true;
+  }
+
+  // Controls held with the player in play (the Hydra's entrance): stand where you are.
+  holdStill(time) {
+    this.swallowEdges();
+    this.setVelocityX(0);
+    this.body.setGravityY(0);
+    if (this.body.blocked.down) {
+      this.stop();
+      this.setTexture('player_idle');
+    }
     this.laptop.follow(time);
   }
 

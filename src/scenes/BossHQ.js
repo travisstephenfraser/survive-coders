@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import Hydra from '../entities/Hydra.js';
-import { floatText, worldText } from '../util.js';
+import { floatText, jokeText, worldText } from '../util.js';
 import { run } from '../run.js';
 import { shake } from '../fx.js';
 
@@ -34,6 +34,8 @@ export default class BossHQ extends PlayScene {
     this.buildWorld(ARENA, 'hq');
     this.decorate();
     this.hydra = new Hydra(this, 272, 160);
+    this.introLock = true; // until the title card clears (introCard)
+    this.hydra.dormantUntil = Infinity; // the fight starts when the title card clears (introCard)
     if (this.registry.get('bossIntroSeen')) {
       this.playMusic('music_boss', 0.3);
       this.introCard(1100); // retries: short card only
@@ -41,6 +43,13 @@ export default class BossHQ extends PlayScene {
       this.registry.set('bossIntroSeen', true);
       this.stagedEntrance();
     }
+  }
+
+  // The entrance and the title card own the controls until the card clears: no moving, firing or
+  // powers while the office is dimmed (a playtest found shots landing on the dormant heads). A
+  // flag rather than a timestamp, so a pause can't run the lock out while the entrance stands still.
+  get inputLocked() {
+    return super.inputLocked || this.introLock;
   }
 
   // First attempt only: the office goes quiet, the terminal asks for one small change, and
@@ -55,7 +64,6 @@ export default class BossHQ extends PlayScene {
     const cmd = '$ claude "make one small change"';
     const typedAt = 300 + cmd.length * TYPE_MS;
     const cardAt = typedAt + 500 + REPLIES.length * 650;
-    this.hydra.dormantUntil = this.time.now + cardAt + 2600;
 
     const hush = this.add.rectangle(0, 0, 320, 192, 0x0d0d0d, 0.6).setOrigin(0).setDepth(55);
     const line = worldText(this, 24, 64, '', { color: '#d97757', ox: 0, depth: 60 });
@@ -87,7 +95,6 @@ export default class BossHQ extends PlayScene {
 
   // Boss title card; the Hydra holds its attacks until it clears.
   introCard(INTRO_MS) {
-    this.hydra.dormantUntil = Math.max(this.hydra.dormantUntil, this.time.now + INTRO_MS);
     const card = worldText(this, 160, 84, 'CONTEXT ROT HYDRA', { color: '#e5534b', size: 14, bg: '#0d0d0d', depth: 60 });
     const sub = worldText(this, 160, 104, 'it remembers everything. wrongly.', { color: '#f5f5f5', bg: '#0d0d0d', depth: 60 });
     shake(this.cameras.main, 300, 0.004);
@@ -98,6 +105,8 @@ export default class BossHQ extends PlayScene {
       delay: INTRO_MS - 500,
       duration: 500,
       onComplete: () => {
+        this.introLock = false;
+        this.hydra.startFight();
         card.destroy();
         sub.destroy();
         this.toast('Heads grow every turn. "refactor" shrinks them', 'refactor', 4500);
@@ -147,7 +156,7 @@ export default class BossHQ extends PlayScene {
 
   furbyChatter(f = Phaser.Utils.Array.GetRandom(this.furbies)) {
     const phrase = Phaser.Utils.Array.GetRandom(['kah may-may!', 'u-nye loo-lay doo?', 'dah a-loh u-tye!', 'wee-tah-kah-loo-loo', 'kah dah boh-bay!']);
-    floatText(this, f.x, f.y - 20, phrase, '#ff9ecf');
+    jokeText(this, f.x, f.y - 20, phrase, '#ff9ecf');
     this.tweens.add({ targets: f, y: f.y - 3, duration: 120, yoyo: true, repeat: 1 });
   }
 

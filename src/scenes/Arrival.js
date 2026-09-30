@@ -6,6 +6,10 @@ import { applyScreenFX, pop } from '../fx.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
 import { FACADE } from '../hqArt.js';
 import { placeLidar } from '../sprites.js';
+import { lineMs } from '../pacing.js';
+
+const ARRIVED = 'You have arrived at Anthropic HQ.';
+const RATE = 'Rate your ride: ★★★★★?';
 
 // The drop-off at Anthropic HQ after the ride (Ride), letterboxed like the intro it answers: the
 // Waymo pulls up with you in the back, you hop out, and you walk in through HQ's sliding doors
@@ -55,7 +59,14 @@ export default class Arrival extends Phaser.Scene {
     this.tweens.add({ targets: this.waymo, x: STOP, duration: 2200, ease: 'Cubic.out' });
     this.time.delayedCall(2400, () => this.hopOut(cine));
     this.time.delayedCall(3600, () => this.shutDoor());
-    this.time.delayedCall(4300, () => this.state !== 'leaving' && cine.say('WAYMO', 'Rate your ride: ★★★★★?'));
+    // The rating follows once the arrival has been read; the scene holds the walk-in's fade until
+    // it has been read too (walkIn).
+    this.readBy = 0;
+    this.time.delayedCall(2400 + lineMs(ARRIVED), () => {
+      if (this.state === 'leaving') return;
+      cine.say('WAYMO', RATE);
+      this.readBy = this.time.now + lineMs(RATE);
+    });
     this.time.delayedCall(4700, () => this.walk());
 
     const skip = () => this.leave();
@@ -85,7 +96,7 @@ export default class Arrival extends Phaser.Scene {
     if (this.state !== 'arriving') return;
     this.state = 'out';
     this.waymo.setTexture('waymo_open');
-    cine.say('WAYMO', 'You have arrived at Anthropic HQ.');
+    cine.say('WAYMO', ARRIVED);
     const p = this.player.setVisible(true).setPosition(this.waymo.x - 5, SY - 12);
     this.laptop.setVisible(true).setPosition(p.x + 10, p.y);
     this.sfx('jump', 0.4);
@@ -122,7 +133,7 @@ export default class Arrival extends Phaser.Scene {
     this.tweens.add({ targets: this.laptop, x: DOOR + 2, y: SY - 9, duration: 220, ease: 'Sine.out' });
     this.time.delayedCall(220, () => this.setDoors(false));
     this.tweens.add({ targets: [p, this.laptop], alpha: 0, scale: 0.8, y: SY - 11, delay: 220, duration: 480, ease: 'Sine.in' });
-    this.time.delayedCall(620, () => this.leave());
+    this.time.delayedCall(Math.max(620, this.readBy - this.time.now), () => this.leave());
   }
 
   setDoors(open) {

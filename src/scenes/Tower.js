@@ -3,7 +3,7 @@ import PlayScene from './PlayScene.js';
 import { TOWER_VIEW } from '../backdrops.js';
 import { CEILING } from '../towerArt.js';
 import { ChatbotAgent, CrmAgent } from '../entities/enemies.js';
-import { TILE, floatText, worldText } from '../util.js';
+import { TILE, floatText, jokeText, worldText } from '../util.js';
 import { run } from '../run.js';
 import { flash, shake } from '../fx.js';
 import { TOUCH } from '../touch.js';
@@ -290,7 +290,7 @@ export default class Tower extends PlayScene {
   logOff(bot) {
     bot.dying = true;
     bot.body.enable = false;
-    floatText(this, bot.x, bot.y - 12, 'brb', '#8fd0ff');
+    jokeText(this, bot.x, bot.y - 12, 'brb', '#8fd0ff');
     this.tweens.add({ targets: bot, y: CEILING - 24, alpha: 0, duration: 600, ease: 'Sine.in', onComplete: () => bot.destroy() });
   }
 
