@@ -15,6 +15,8 @@ import Terminal from './scenes/Terminal.js';
 import BossHQ from './scenes/BossHQ.js';
 import HUD from './scenes/HUD.js';
 import End from './scenes/End.js';
+import Settings from './scenes/Settings.js';
+import Leaderboard from './scenes/Leaderboard.js';
 import Cine from './scenes/Cine.js';
 import { params } from './util.js';
 import { CRTPipeline } from './fx.js';
@@ -35,7 +37,8 @@ window.game = new Phaser.Game({
   input: { activePointers: 3 }, // canvas taps (powers, talk, pause) alongside other fingers
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   pipeline: { CRTPipeline },
-  scene: [Boot, Songs, Title, Level1, Park, Tower, Elevator, Chute, Landing, Ride, Arrival, BossHQ, HUD, Cine, Terminal, End],
+  dom: { createContainer: true }, // real links and inputs over the canvas (leaderboard, score form)
+  scene: [Boot, Songs, Title, Settings, Leaderboard, Level1, Park, Tower, Elevator, Chute, Landing, Ride, Arrival, BossHQ, HUD, Cine, Terminal, End],
 });
 
 // Keep the canvas fitted after a phone turns. Phaser's orientation listener refits using the

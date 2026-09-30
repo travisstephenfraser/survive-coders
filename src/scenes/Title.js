@@ -5,13 +5,14 @@ import { applyScreenFX } from '../fx.js';
 import { sfx as playSfx } from '../audio.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
 import { TOUCH, enterFullscreen } from '../touch.js';
+import { menu, textRow } from '../menu.js';
 
 export default class Title extends Phaser.Scene {
   constructor() {
     super('Title');
   }
 
-  create() {
+  create(data) {
     applyScreenFX(this.cameras.main);
     const win = terminalWindow(this, 'vibecoder@sf: ~/survive-coders - zsh');
     const left = win.x + 30;
@@ -77,8 +78,6 @@ export default class Title extends Phaser.Scene {
       this.tweens.add({ targets: godNote, alpha: 0, delay: 900, duration: 400 });
     });
 
-    const prompt = uiText(this, left, 446, TOUCH ? '$ tap to start_' : '$ press ENTER to start_', { size: 24, color: '#3fb950' });
-    this.tweens.add({ targets: prompt, alpha: 0.35, duration: 600, yoyo: true, repeat: -1 });
     uiText(this, 480, 530, CREDITS, { size: 8, color: '#555555', ox: 0.5, oy: 1 });
     uiText(this, win.x + win.w - 16, win.y + win.h - 12, 'travisfraser.com', { size: 16, color: '#8b8b8b', ox: 1, oy: 1 });
 
@@ -94,19 +93,25 @@ export default class Title extends Phaser.Scene {
       if (params.has('tower')) this.scene.start('Tower', { floor: [59, 60, 61].includes(floor) ? floor : 59 });
       else this.scene.start({ park: 'Park', chute: 'Chute', landing: 'Landing', ride: 'Ride', boss: 'BossHQ' }[['park', 'chute', 'landing', 'ride', 'boss'].find((k) => params.has(k))] ?? 'Level1', {});
     };
-    this.input.keyboard.once('keydown-ENTER', go);
-    // Start on release of a tap that began here (a tap that left another screen can't start a
-    // run), except on the mic line. Release, not press: Android only grants fullscreen from it.
-    let armed = false;
+    // A row picks on the release of a press that began on it, so a tap that left another screen
+    // can't start a run. PLAY NOW's tap also takes a phone fullscreen: Android only grants it
+    // from a tap's release.
+    menu(
+      this,
+      [
+        textRow(this, left, 414, 'PLAY NOW', {
+          onPick: (via) => {
+            if (via === 'pointer') enterFullscreen();
+            go();
+          },
+        }),
+        textRow(this, left, 446, 'LEADERBOARD', { onPick: () => this.scene.start('Leaderboard') }),
+        textRow(this, left, 478, 'SETTINGS', { onPick: () => this.scene.start('Settings') }),
+      ],
+      { start: { leaderboard: 1, settings: 2 }[data?.from] ?? 0 },
+    );
+    // On a phone, a tap on the mic line sets up the mic.
     const onMic = (p) => voice.supported && !voice.primed && Phaser.Geom.Rectangle.Inflate(micText.getBounds(), 16, 16).contains(p.x, p.y);
-    this.input.on('pointerdown', (p) => {
-      armed = !(TOUCH && onMic(p));
-      if (!armed && TOUCH) primeMic();
-    });
-    this.input.on('pointerup', () => {
-      if (!armed) return;
-      enterFullscreen();
-      go();
-    });
+    this.input.on('pointerdown', (p) => TOUCH && onMic(p) && primeMic());
   }
 }
