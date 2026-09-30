@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { voice } from '../voice.js';
+import { POWERS, voice } from '../voice.js';
 import { params, uiText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
@@ -47,7 +47,7 @@ export default class Title extends Phaser.Scene {
     // Command table in aligned columns (the font is proportional).
     uiText(this, left + 40, 296, '"ship it"\n"rollback"\n"refactor"', { size: 16, color: '#d97757' });
     if (!TOUCH) uiText(this, left + 230, 296, '1\n2\n3', { size: 16, color: '#8b8b8b' });
-    uiText(this, left + 280, 296, 'big forward blast\nrewind 3s, heal\nclear enemies; shrink the Hydra', { size: 16, color: '#f5f5f5' });
+    uiText(this, left + 280, 296, Object.values(POWERS).map((p) => p.does).join('\n'), { size: 16, color: '#f5f5f5' });
 
     // Demo god mode: no damage (pits still respawn you). Remembered across reloads. Deliberately
     // unlisted: typing GOD here toggles it, and only the in-game HUD badge shows it's on.

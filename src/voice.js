@@ -3,9 +3,9 @@ import { TOUCH } from './touch.js';
 
 // "Wispr Flow": spoken keywords fire powers.
 export const POWERS = {
-  ship: { label: 'ship it', key: '1', cooldown: 6000, re: /\bship(ped|ping|s)?\b|\bshipit\b/ },
-  rollback: { label: 'rollback', key: '2', cooldown: 8000, re: /\broll ?backs?\b|\brole ?back\b|\broll bag\b|\brollback\b/ },
-  refactor: { label: 'refactor', key: '3', cooldown: 10000, re: /\bre-? ?factor(ed|ing|s)?\b|\breactor\b|\brefractor\b/ },
+  ship: { label: 'ship it', does: 'big forward blast', key: '1', cooldown: 6000, re: /\bship(ped|ping|s)?\b|\bshipit\b/ },
+  rollback: { label: 'rollback', does: 'rewind 3s, heal', key: '2', cooldown: 8000, re: /\broll ?backs?\b|\brole ?back\b|\broll bag\b|\brollback\b/ },
+  refactor: { label: 'refactor', does: 'clear enemies; shrink the Hydra', key: '3', cooldown: 10000, re: /\bre-? ?factor(ed|ing|s)?\b|\breactor\b|\brefractor\b/ },
 };
 
 const TALK = TOUCH ? 'talk' : 'M'; // the push-to-talk control: the M key, or the HUD's talk slot

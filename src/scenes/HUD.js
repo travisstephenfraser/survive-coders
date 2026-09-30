@@ -15,9 +15,9 @@ const STRIP_Y = 474; // top of the bottom terminal strip
 // Touch only: the pause button (between the level name and the star badge) and, while
 // paused, a sound toggle.
 const PAUSE_BTN = { x: 684, y: 12, w: 36, h: 36 };
-const SOUND_BTN = { x: 390, y: 318, w: 180, h: 42 };
+const SOUND_BTN = { x: 390, y: 246, w: 180, h: 42 };
 // Paused, on every device: restart the level (under the sound toggle on touch).
-const RESTART_BTN = { x: 390, y: TOUCH ? 372 : 318, w: 180, h: 42 };
+const RESTART_BTN = { x: 390, y: TOUCH ? 300 : 246, w: 180, h: 42 };
 const hit = (p, r, pad = 0) => p.x >= r.x - pad && p.x < r.x + r.w + pad && p.y >= r.y - pad && p.y < r.y + r.h + pad;
 
 // Segmented pixel bar with 3-tone shading, drawn in world-pixel units.
@@ -99,7 +99,17 @@ export default class HUD extends Phaser.Scene {
     this.toastText = uiText(this, 480, 158, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
     // Paused: the scene dims so the text reads over the busy city.
     this.dim = this.add.rectangle(0, 0, 960, 540, 0x0d0d0d, 0.6).setOrigin(0).setDepth(2).setVisible(false);
-    this.pausedText = uiText(this, 480, 250, TOUCH ? 'PAUSED\n\ntap to resume' : 'PAUSED\n\nP: resume   N: mute   R: restart level', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+    this.pausedText = uiText(this, 480, 190, TOUCH ? 'PAUSED\n\ntap to resume' : 'PAUSED\n\nP: resume   N: mute   R: restart level', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+      .setCenterAlign()
+      .setDepth(3)
+      .setVisible(false);
+    // Paused: the controls and powers, for anyone the tips missed (a playtester spent three
+    // minutes taking SPACE for "ship it"). Under the buttons, clear of the terminal strip.
+    const powerLines = Object.values(POWERS).map((p) => `${TOUCH ? '' : `${p.key}  `}${p.label}: ${p.does}`);
+    const help = TOUCH
+      ? [`>_ fire   ↑ jump   powers: tap the bar${voice.supported ? ', or hold talk and say one' : ''}`, ...powerLines]
+      : ['←→ move   ↑ W Z jump   SPACE fire', ...powerLines, ...(voice.supported ? ['or hold M, say the power, let go'] : [])];
+    this.helpText = uiText(this, 480, TOUCH ? 352 : 316, help.join('\n'), { size: 16, color: '#c9d1d9', ox: 0.5, lineSpacing: 4 })
       .setCenterAlign()
       .setDepth(3)
       .setVisible(false);
@@ -166,6 +176,7 @@ export default class HUD extends Phaser.Scene {
     this.soundText.setVisible(on && TOUCH);
     this.restartBox.setVisible(on);
     this.restartText.setVisible(on);
+    this.helpText.setVisible(on);
   }
 
   // From the pause screen: back to the start of this level with the stars it began with. The
@@ -310,7 +321,7 @@ export default class HUD extends Phaser.Scene {
 
     // Left: what the mic heard. Right: what actually happened (ran / cooling down) for ~2s,
     // otherwise the mic state. Speech recognized is not the same as a power firing.
-    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? 'hold M: "ship it"');
+    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? (voice.supported ? 'powers: 1 2 3, or hold M and say one' : 'powers: press 1 2 3'));
     this.heard.setText(`$ ${heard}`).setTint(!voice.heard && !voice.listening && cta ? 0xe5534b : 0xf5f5f5);
     if (fresh && ev.type === 'fired') {
       this.mic.setText(`✓ ran: ${POWERS[ev.name].label}`);
