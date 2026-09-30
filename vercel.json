@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/s/:key/card.png", "destination": "/api/share?kind=s&key=:key&as=png" },
+    { "source": "/s/:key", "destination": "/api/share?kind=s&key=:key" },
+    { "source": "/r/:key/card.png", "destination": "/api/share?kind=r&key=:key&as=png" },
+    { "source": "/r/:key", "destination": "/api/share?kind=r&key=:key" }
+  ]
+}

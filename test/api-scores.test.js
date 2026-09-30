@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { createStore } from '../api/_lib/store.js';
 import { scoresHandlers } from '../api/_lib/scores.js';
+import { readToken } from '../api/_lib/shareToken.js';
 import { SEGMENT_FLOOR_MS, SPLITS } from '../shared/leaderboard.js';
 
 // The API against real Postgres (PGlite) running the real schema.
@@ -78,6 +79,20 @@ test('a valid run is stored and ranked', async () => {
   assert.deepEqual(body.you, { rank: 1, total: 1, best: true });
   assert.deepEqual(body.top, [{ rank: 1, name: 'ada_l', stars: 300, timeMs: body.top[0].timeMs, platform: 'github', handle: 'ada' }]);
   assert.equal(res.headers.get('cache-control'), 'no-store');
+});
+
+test("a post's share token carries the rank it posted at, and only a best run's rank", async () => {
+  const first = entry({ name: 'first', stars: 300 });
+  const one = await (await post(first)).json();
+  assert.deepEqual(readToken('s'.repeat(40), one.share), { placeKey: 'hq', name: 'first', stars: 300, timeMs: first.timeMs, rank: 1, total: 1 });
+  // Someone better posts: the first run's token still says #1 (it's signed, not looked up).
+  const better = await (await post(entry({ name: 'better', stars: 350, splitStars: [98, 172, 206, 246, 275, 275, 287] }))).json();
+  assert.equal(readToken('s'.repeat(40), better.share).rank, 1);
+  assert.equal(readToken('s'.repeat(40), one.share).rank, 1);
+  // A player's worse run shares no rank: the board ranks their best, not this one.
+  const worse = await (await post(entry({ name: 'first', playerId: first.playerId, stars: 200, splitStars: [90, 160, 190, 190, 190, 190, 190] }))).json();
+  assert.equal(worse.you.best, false);
+  assert.deepEqual(readToken('s'.repeat(40), worse.share), { placeKey: 'hq', name: 'first', stars: 200, timeMs: first.timeMs, rank: null, total: 2 });
 });
 
 test('requests from other sites, or not JSON, are refused before anything else', async () => {

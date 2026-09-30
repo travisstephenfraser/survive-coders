@@ -59,7 +59,7 @@ export async function getBoard() {
 }
 
 // Posts a finished run (the run clock's summary) with the player's name and link.
-// → { state: 'ok', you: { rank, total, best }, board } | { state: 'error', status, error } |
+// → { state: 'ok', you: { rank, total, best }, board, share } | { state: 'error', status, error } |
 //   { state: 'offline' }. The database can take a few seconds to wake after a quiet spell, so
 // the wait is long, and a network failure gets one retry (a retry of a post that did land
 // comes back 409).
@@ -82,6 +82,10 @@ export async function submitScore(summary, profile, playerId, { retryDelayMs = 1
     r = await send();
   }
   if (r.state === 'offline') return r;
-  if (r.status === 201) return { state: 'ok', you: r.body.you, board: newest({ state: 'ok', ...board(r.body) }) };
+  if (r.status === 201) {
+    // The signed token for this run's /r/ link: base64url, a dot, base64url (api/_lib/share.js).
+    const share = typeof r.body.share === 'string' && /^[\w-]+\.[\w-]+$/.test(r.body.share) ? r.body.share : null;
+    return { state: 'ok', you: r.body.you, board: newest({ state: 'ok', ...board(r.body) }), share };
+  }
   return { state: 'error', status: r.status, error: r.body?.error ?? null };
 }

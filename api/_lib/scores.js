@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { RULES_VERSION, checkLink, checkName, checkRun, profileUrl } from '../../shared/leaderboard.js';
 import { clientIp, json, logFail } from './http.js';
 import { offensive } from './words.js';
+import { shareToken } from './shareToken.js';
 
 const KEYS = ['runId', 'playerId', 'name', 'stars', 'timeMs', 'splits', 'splitStars', 'platform', 'handle'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -84,7 +85,10 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
           logFail(log, 'alert', 0, err);
         }
       }
-      return json(201, { you, ...board(rows, at) });
+      // The run's /r/ link, signed now so the card keeps the rank it posted at and link previews
+      // never wake the database. The rank is this run's only if it's the player's best.
+      const share = shareToken(cfg.ipHashSecret, { name: run.name, stars: run.stars, timeMs: run.timeMs, rank: you.best ? you.rank : null, total: you.total });
+      return json(201, { you, ...board(rows, at), share });
     } catch (err) {
       logFail(log, 'POST api/scores', 503, err);
       return json(503, { error: 'unavailable' });
