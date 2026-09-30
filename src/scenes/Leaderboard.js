@@ -34,8 +34,8 @@ export default class Leaderboard extends Phaser.Scene {
     uiText(this, COL.tag, ROW_Y - 22, 'profile', head);
 
     this.status = uiText(this, COL.name, ROW_Y, 'fetching..._', { size: 16, color: '#8b8b8b' });
-    this.dest = uiText(this, 70, win.y + win.h - 94, '', { size: 16, color: '#58a6ff' });
-    this.best = uiText(this, 70, win.y + win.h - 68, bestLine(), { size: 16, color: '#f5f5f5' });
+    this.dest = uiText(this, 70, win.y + win.h - 84, '', { size: 16, color: '#58a6ff' });
+    this.best = uiText(this, 70, win.y + win.h - 58, bestLine(), { size: 16, color: '#f5f5f5' });
     const hint = TOUCH ? 'tap a name to see its profile, tap again to open it' : '↑↓ choose   ENTER open profile   ESC back';
     uiText(this, 70, win.y + win.h - 16, hint, { size: 8, color: '#8b8b8b' });
 

@@ -14,16 +14,18 @@ demo fires nothing, because `src/voice.js` only acts on release and only on a re
 command. It plays with a keyboard or, on phones and tablets, with touch controls.
 
 Status: hackathon demo: the city, Salesforce Park, three floors of the Salesforce Tower, the fall
-from its top, and one boss. Built with Claude Code (Claude Opus 5.5) as a pair programmer;
-commits carry `Co-Authored-By` trailers.
+from its top, and one boss, plus an online leaderboard (most stars, then fastest) and a settings
+screen. Built with Claude Code (Claude Opus 5.5) as a pair programmer; commits carry
+`Co-Authored-By` trailers.
 
 **Live app: <https://survive-coders.vercel.app>**
 
 ```
-Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel (static)
+Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
+Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      0 automated; scripted browser checks recorded in docs/review/
+Tests      51 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -51,10 +53,19 @@ Live URL checked 2026-09-27: HTTP 200.
 Desktop, 960x540 at 2x. Every frame is the running game, staged by script and frozen on the
 frame shown.
 
-**1. Title screen.** A terminal window with the controls, the vibe coder as key art, and `V` to
-set up the microphone.
+**1. Title screen.** A terminal window with the controls, the vibe coder as key art, `V` to set
+up the microphone, and a menu: PLAY NOW, LEADERBOARD, SETTINGS.
 
 ![Title screen](docs/screenshots/01-title.png)
+
+Settings holds music and sound-effect volume, sound on or off, the CRT filter, screen shake,
+flashes, fullscreen, and a run timer, all saved in the browser. The leaderboard ranks finished
+runs by stars, then time, and each of the top ten can link a profile (shown here with sample
+entries).
+
+![Settings](docs/screenshots/01a-settings.png)
+
+![The leaderboard, with sample entries](docs/screenshots/01b-leaderboard.png)
 
 **2. The hook.** The robotaxi pulls up as `#demo-day` asks for one small change, then dark
 mode (the first ping is shown).
@@ -194,7 +205,8 @@ Hydra's base.
 ![Hydra at full context: rain over the arena, flood lanes marked, refactor called out in the terminal bar](docs/screenshots/10-boss-context-overflow.png)
 
 **11. The payoff.** The robotaxi comes back (HQ is inside its service area), `#demo-day` asks
-for one more small change, and an original chiptune victory song plays.
+for one more small change, and an original chiptune victory song plays. The run's stars and
+time are on the screen, and a ranked run can post to the leaderboard from here.
 
 ![Win screen with the robotaxi and the last Slack ping](docs/screenshots/11-win-payoff.png)
 
@@ -202,8 +214,8 @@ for one more small change, and an original chiptune victory song plays.
 
 iPhone-size landscape (844x390) at 2x, in Chrome's device emulation.
 
-**12. Touch title.** The same terminal, with touch instructions; a tap starts the run, and on
-Android it goes fullscreen.
+**12. Touch title.** The same terminal, with touch instructions; a tap on PLAY NOW starts the
+run, and on Android it goes fullscreen.
 
 ![Title screen on a phone](docs/screenshots/12-phone-title.png)
 
@@ -237,12 +249,15 @@ A dated design review with before and after screenshots is in
 - A free fall down the tower's face against an altimeter, where you type three lines into Claude Code for a parachute (it gets it wrong twice), then a canopy ride over SoMa through arcs of stars onto a Waymo's roof, and the ride to HQ from its back seat: empty front seats, a wheel that turns itself, a rider screen to press, and Slack while a 47-minute ETA time-lapses away
 - Enemies by district: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, vents arcing heat) in the city; founders, vested bros, and Zone 2 joggers in the park; CRM agents (contracts that lock your fire) and chatbots (popups you shoot closed) in the tower
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
-- The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies); growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
+- The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies, worth no stars so stalling can't farm them); growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
 - Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard and tap equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, and camera lookahead
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
 - Pause, mute, and a checkpoint at every level after the first (the park, each tower floor, the fall, the boss) that restores your star total on retry
+- A title menu (PLAY NOW, LEADERBOARD, SETTINGS) driven by the arrow keys, a click, or a tap
+- Settings: music and sound-effect volume, sound on or off, the CRT filter, screen shake, flashes (shake and flashes start off when the system asks for reduced motion), fullscreen where the browser has it, and a run timer in the HUD; saved in the browser
+- An online leaderboard: most stars first (382 is the most one run can earn), then the time from PLAY NOW to the Hydra's fall, pauses excluded. A finished run posts a name and, optionally, a GitHub, LinkedIn, X, or Bluesky handle, which each of the top ten links to
 - Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
 - A song for each stretch of the run (the city, the park, the tower, the fall, the ride to HQ, and the Hydra), the new ones loudness-matched to the city's so none jumps out, plus two originals written as MIDI note data and synthesized in the browser: the elevator's bossa nova and the chiptune victory song on the win screen
 - Link previews and a favicon drawn from the game's own pixels
@@ -260,9 +275,12 @@ A dated design review with before and after screenshots is in
 | Type a line (the fall) | Type it; Tab fills it in, Enter sends, Backspace fixes | Every tap types the next letter; or hold *talk*, say it, release |
 | Steer the canopy | Arrow keys or A / D | ← → bottom left |
 | Pause / mute | P or Esc / N | Pause button at the top; sound toggle on the pause screen |
-| Title screen | Enter start, V set up microphone | Tap to start, tap *set up mic* |
+| Title screen | ↑ ↓ or W / S choose, Enter picks; V sets up the microphone | Tap PLAY NOW, LEADERBOARD, or SETTINGS; tap *set up mic* |
+| Settings | ↑ ↓ choose, ← → change, Enter toggles, Esc back | Tap a setting to change it; tap the volume dots to set a level |
+| Leaderboard | ↑ ↓ choose, Enter opens the selected profile, Esc back | Tap a name to see its link, tap again to open it |
 | Intro | Enter, Space, or Esc skips | Tap skips |
 | End screen | Enter retry (from the park, the floor, the fall, or the boss you died on), T title | Tap retries; *title* button |
+| Posting a win | Type a name and an optional handle or profile URL; Enter posts, Esc skips; then Enter plays again | The same form, with the phone's keyboard; tap the prompt to play again |
 
 Touch controls appear on devices whose main pointer is a finger. A thumb on the seam between
 `>_` and ↑ presses both. The game plays in landscape and pauses if the phone turns portrait.
@@ -271,7 +289,7 @@ fullscreen, but *Add to Home Screen* runs the game fullscreen from its web manif
 
 Nine URL flags help when testing: `?park`, `?tower=59` (or `60`, `61`), `?chute`, `?landing`,
 `?ride`, and `?boss` start at Salesforce Park, a tower floor, the fall, the canopy, the ride to
-HQ, or the boss after you press Enter on the title screen, `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
+HQ, or the boss after you pick PLAY NOW (a run started this way never goes on the leaderboard), `?debug` draws the physics bodies, `?fx=off` turns off the CRT effect, and `?touch` shows
 the touch controls on a desktop (they work with a mouse).
 
 ---
@@ -289,7 +307,9 @@ the touch controls on a desktop (they work with a mouse).
 | Voice | The browser's Web Speech API, push-to-talk | No API key, no server, and no cost; the browser handles recognition. Keyboard keys cover browsers without it. |
 | Input | Phaser keyboard input; touch buttons as DOM elements over the canvas (pointer events) | The canvas is letterboxed at 16:9, so buttons anchored to the screen's corners sit partly in the side bars on wide phones instead of over the game. |
 | Audio | Ninja Adventure sound effects, six songs converted to MP3, and two originals synthesized with WebAudio | CC0 licensed; MP3 plays in every major browser. Only the first level's song loads before the title and the other five load behind it, so the new songs didn't lengthen the wait to play. The originals are MIDI note data on small WebAudio synths, so they ship as code, not files. |
-| Hosting | Vercel, static, Git-linked | Every push to `master` builds and deploys; no server code to run. |
+| Hosting | Vercel, Git-linked: the static build plus one function, `api/scores.js` | Every push to `master` builds and deploys. The function sits next to the game, so the page talks to its own origin. |
+| Leaderboard database | Neon Postgres (free plan) through `@neondatabase/serverless` over HTTP | It scales to zero and wakes on the next query, where Supabase's free plan pauses a project after a week without traffic. The HTTP driver needs no connection pool in a serverless function. |
+| Alerts | Resend's REST API, one `fetch` | An email per new top-ten entry, carrying the SQL that hides it; no SDK. |
 
 ---
 
@@ -309,7 +329,10 @@ the touch controls on a desktop (they work with a mouse).
 │  Art: drawn to canvas textures at boot (sprites.js, backdrops.js,       │
 │       hqArt.js, parkArt.js, towerArt.js, chuteArt.js, rideArt.js)       │
 │       + public/assets                                                   │
-│  Storage: one localStorage key (a demo setting)                         │
+│  Scenes too: Settings, Leaderboard (from the title)                     │
+│  src/run.js: the run clock (PLAY NOW to the Hydra's fall, milestones)   │
+│  Storage (localStorage, all optional): settings, an anonymous player    │
+│    id, the last name and link posted, the best finish, a demo setting   │
 │                                                                         │
 │  src/touch.js ── DOM buttons over the canvas ──→ Player.tick, HUD taps  │
 │  src/elevatorSong.js, victorySong.js ── note data ──→ songPlayer.js     │
@@ -322,7 +345,17 @@ the touch controls on a desktop (they work with a mouse).
                                ▼
                     browser speech recognition service
 
-Vercel: serves the static dist/ build; there is no backend.
+Vercel: serves the static dist/ build, and one function:
+
+  GET  /api/scores ── top ten, edge-cached 15 min ──┐
+  POST /api/scores ── a finished run ───────────────┼──→ Neon Postgres (role sc_app:
+       origin + JSON checks → shared rules          │       read and add scores only)
+       → rate limit → insert + rank ────────────────┘
+       a new top-ten best ──→ Resend ──→ an email to Travis
+
+  shared/leaderboard.js: one set of rules for the game, the API, and (as CHECK constraints)
+  the table: at most 382 stars, time floors, names, profile handles.
+  trust boundary: a posted name and handle are public; addresses are kept only as an HMAC.
 ```
 
 ### The design decision worth explaining
@@ -340,7 +373,18 @@ one wins.
 What the design does not claim: recognition accuracy, offline use, or that audio stays on the
 device. Chrome's recognition runs on the browser vendor's servers.
 
-Not in this project: backend, database, authentication, environment variables, secrets.
+### What the leaderboard does and doesn't claim
+
+The game runs in the player's browser, so the browser reports the score, and a determined
+player can post a fake one: a script can send the maximum stars at a plausible time. The
+server doesn't pretend otherwise. It turns away runs that can't happen (more than 382 stars,
+milestones out of order or faster than the level allows, a run posted twice), keeps one
+address to five posts a minute, and only takes posts from the game's own pages, which stops
+other sites from using their visitors' browsers but not a script. The rest is moderation:
+every new top-ten entry emails Travis with the one line of SQL that hides it, and the public
+board refreshes within 15 minutes. God mode and the level-jump flags are never ranked.
+
+There are no accounts: a player is an anonymous id kept in their browser.
 
 ---
 
@@ -360,12 +404,41 @@ that build locally, and `npm run images` redraws the favicon, home-screen icons,
 card in `public/` from the game's sprites (`scripts/make-images.mjs`, no dependencies). The microphone only works in a secure context, so use `localhost` (not a
 LAN IP over plain HTTP) when testing voice.
 
+The leaderboard API runs under the Vercel CLI, not Vite. Copy `.env.example` to `.env`, fill
+it with the Neon **dev** branch's `sc_app` connection string and a throwaway `IP_HASH_SECRET`,
+and run `vercel dev --listen 3000`: it serves the game and `/api` together, and it reads
+`.env`, not `.env.local`. The API refuses to start if a non-production environment points at
+the production branch. Plain `npm run dev` still plays; its leaderboard just reads *offline*.
+`npm run smoke` checks a running API end to end (it posts two runs named `smoke-*`).
+
 ---
 
 ## Tests
 
-There is no automated test suite yet; `package.json` has no test script, and there are no test
-files. The production build is the only command-line check:
+`npm test` runs 51 unit tests on Node's built-in runner (no test framework):
+
+- `shared/leaderboard.js`: the star ceiling, the time and milestone checks, names, profile
+  handles, and pasted-URL parsing
+- the run clock (pauses, milestones, and the check that catches a clock running short), the
+  settings store, the mute toggle, the saved player profile, and the game's API client
+- the API against real Postgres: PGlite (Postgres compiled to WebAssembly, a dev dependency)
+  runs `db/schema.sql`, then every refusal, the rate limit, the ranking (ties, one row per
+  player, hidden rows), the alert email, and what the `sc_app` role can and can't do. This is
+  how a CHECK constraint that let a NULL through was caught.
+
+```console
+$ npm test
+ℹ tests 51
+ℹ pass 51
+ℹ fail 0
+```
+
+`npm run stars` recounts every star source straight from the level source and fails unless
+the total matches the leaderboard's per-level maximums (98, 74, 34, 40, 29, 0, 12, 95: 382)
+and every place that grants stars is one it knows. Run it after changing a map, a wave, an
+enemy's reward, or a bonus.
+
+The production build is the other command-line check:
 
 ```console
 $ npm run build
@@ -401,6 +474,10 @@ against the running game, recorded with screenshots in
 | Ohana finale (2026-09-27) | A wave agent left alive at the far wall no longer holds the exit: the last 8 tiles drop 18 closers right behind you (13 within 120 px at 1.5 s), the stray joins them, the third contract into the window breaks it at about 2 s, and the crowd shoves an idle player through; clearing the lounge mid-floor drops them behind you there |
 | Contracts and popups (2026-09-27) | A contract locks fire without damage, `refactor` voids it, and a new lock waits out a 1 s grace; a popup shot closed asks *Was this helpful?* once; `refactor` clears popups and on-screen chatbots |
 | Push-to-talk parsing | The four cases in [Architecture](#the-design-decision-worth-explaining) pass with a simulated recognizer |
+| Title menu, settings, leaderboard (2026-09-29) | The menu answers to arrows and Enter, a click, and a tap; a click off the menu no longer starts a run. Settings flips the CRT filter live, previews the music at the chosen level, and a saved setting (CRT off, no shake or flash, music at 50%) holds after a reload with the song at 0.14 instead of 0.28. The leaderboard shows its offline state with no API, and a ten-row board with its links laid exactly over their rows; Enter opens the selected profile |
+| Run clock (2026-09-29) | Paused for a second, it gains 0 ms; it resumes on unpause. A run fast-forwarded through every milestone summarizes as ranked; the same run in god mode shows *not ranked* on the win screen. *Play again* after a win starts a fresh run |
+| Posting a win (2026-09-29) | Typed into the name field, `Jaz Wd XZ m123 T` arrives whole, with no power fired and no restart; a pasted LinkedIn URL becomes the platform and handle; with no API the post says it can't reach the board; a stubbed 201 shows the rank and opens the returned board; Esc then Enter plays again. On touch a stray tap leaves the form up and a tap on the prompt restarts |
+| Skipping the intro (2026-09-29) | Esc skips the intro without pausing the level (it used to do both); P, three keys in one frame, pauses once; N mutes once |
 | Production build | Loads with no failed requests and no console errors or warnings, locally and on the live URL |
 | Touch controls (iPhone landscape emulation, synthetic touch and pointer events) | The D-pad moves at full speed and slides between directions; a tapped jump peaks at 24 px and a held one at 70 px; holding jump jumps once, as the keyboard does; each power fires from its slot; pause, resume, the sound toggle, and auto-pause on a hidden tab or a portrait turn all work |
 | Touch-only playthrough | A scripted run using only the touch controls finished Level 1, cable car included, and the Hydra; it checks the controls, not the difficulty |
@@ -408,8 +485,10 @@ against the running game, recorded with screenshots in
 | Victory song | Offline render at -27.4 dB RMS against -27.9 dB for the level music; silent within 0.8 s of leaving the win screen |
 | A song per level (2026-09-27) | One song at a time from Level 1 through the park, the tower, both elevator rides, the fall and `ship it` (the fall's song stops, and the ride's is the same sound through the landing) to the Hydra; three falls onto the roof leave no song playing and none held by the sound manager. A song still loading when its level starts plays the moment it arrives, and never after a splat or once you've left. The four new pack songs encode at -21.1 LUFS, the same as the city's, and the elevator's bossa nova renders at -32.0 LUFS against -32.2 for the city's at its in-game volume. The elevator song resumes on the next ride at the bar where it stopped, and N mutes in the elevator and the landing |
 
-Not verified by automation: real spoken commands through a microphone, the audio mix, and
-difficulty with first-time players (the fall's 24 seconds included).
+Not verified by automation: real spoken commands through a microphone, the audio mix,
+difficulty with first-time players (the fall's 24 seconds included), and a full run timed
+against a stopwatch (the run clock is unit tested and checked in the browser, not over a
+real run).
 
 ---
 
@@ -422,6 +501,30 @@ difficulty with first-time players (the fall's 24 seconds included).
    Vercel CLI installed and logged in.
 3. Verify with `curl -sI https://survive-coders.vercel.app/ | head -1` (expect `HTTP/2 200`),
    then open the URL in Chrome, press V on the title screen, hold M, and say *ship it*.
+
+**The leaderboard** needs a database and four settings before the first deploy that has it:
+
+1. In the Neon console, create a project in AWS us-east-1 (next to Vercel's default function
+   region). In its SQL editor, as the owner, run `db/schema.sql`, then
+   `ALTER ROLE sc_app PASSWORD '…';` with a fresh `openssl rand -base64 30`. Create the role
+   this way, not in the console: console roles can read and write everything.
+2. Create a `dev` branch, **unticking "Automatically delete branch after"** (the console
+   deletes new branches after a day by default), and set `sc_app` a different password
+   there. A branch starts with its parent's passwords; set it again after any reset.
+3. In Vercel, add Sensitive environment variables. Production: `DATABASE_URL` (the prod
+   branch's pooled `sc_app` URL), `IP_HASH_SECRET` (`openssl rand -base64 48`),
+   `NEON_PROD_HOST` (the prod branch's host), and, for the alert email, `RESEND_API_KEY` (a
+   sending-only key) and `NOTIFY_EMAIL`. Preview: the same names with the `dev` branch's
+   URL and their own secret. Leave Development empty: `vercel env pull` can't read Sensitive
+   values back, so local work uses a hand-written `.env`.
+4. Deploy (environment variables apply to new deployments only), then `npm run smoke --
+   https://survive-coders.vercel.app`.
+
+To hide a cheat, run the `UPDATE` from its alert email in the Neon SQL editor; the public
+board catches up within 15 minutes (purge the CDN cache in the Vercel dashboard if it can't
+wait). Nothing may query the database more often than every few minutes around the clock:
+the free plan's compute sleeps after five idle minutes, and one that never sleeps uses up the
+month's hours in about 17 days.
 
 **Link previews** (Slack, iMessage, X, LinkedIn) come from the Open Graph tags in
 `index.html`, not from a Vercel setting; they point at `public/og.png` by absolute URL because
@@ -440,15 +543,12 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
 - **Voice needs Chrome or Edge and a network connection**, and Chrome sends the audio to its
   speech service. Next: on-device recognition in the browser, so voice works offline and
   audio never leaves the machine.
-- **No automated tests.** The checks above are scripted browser runs. Next: unit tests for
-  the command parsing in `src/voice.js` and a headless smoke test (title, level, boss, win) in CI.
+- **No gameplay tests in CI.** The unit tests cover the rules, the clock, and the API; the
+  gameplay checks above are scripted browser runs. Next: unit tests for the command parsing
+  in `src/voice.js` and a headless smoke test (title, level, boss, win) in CI.
 - **One route through the city.** Next: more neighborhoods and the two unused enemies from the
   original monster sheet (a Pixel Nudger that moves platforms and a Breach Wraith that leaks
   keys).
-- **No reduced-effects option.** The CRT effect, camera flashes, and screen shake cannot be
-  turned off, which matters for photosensitive players and projectors. Next: a toggle on
-  the title screen.
-- **One mute for everything.** Next: separate music and sound-effect volumes.
 - **Touch is verified in emulation only.** Level 1 and the Hydra were finished touch-only in
   Chrome's iPhone emulation, driven by synthetic touch and pointer events; nobody has played it
   on a real phone yet. iPhone Safari keeps its toolbar unless the game is added to the home
@@ -457,8 +557,13 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   dead, and platforms are solid from below. Next: corner correction and one-way platforms.
 - **A 1.3 MB JavaScript bundle**, mostly Phaser, triggers Vite's chunk-size warning. It loads
   once and is cached. Next: split Phaser into its own vendor chunk.
-- **No sign-in or leaderboard.** Stars reset each session; accounts and a shared leaderboard were
-  deferred past the demo.
+- **The leaderboard trusts the browser.** A script can post a fake top score; the server only
+  turns away the impossible (see [what the leaderboard claims](#what-the-leaderboard-does-and-doesnt-claim)),
+  and cheats are hidden by hand after the alert email. Next: an occasional offline audit of
+  the stored milestones (times and stars at each), first as rules, later as a model.
+- **A player is a browser.** Clearing site data, or another browser, is a new player. Inside
+  the travisfraser.com embed, storage belongs to that site (and Safari keeps it only in
+  memory), so the embed and the direct link count as two players.
 
 ---
 
