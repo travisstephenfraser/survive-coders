@@ -7,7 +7,8 @@ import { PLATFORMS, checkLink, checkName, parseProfile } from '../shared/leaderb
 // scene all listen on window: a keystroke that got there would fire a power, start a run
 // (ENTER, T), or be swallowed by the keys Phaser captures for play (W A D Z X J, space).
 //
-// `submit(profile)` posts and resolves to the API result; `view(board)` opens the leaderboard.
+// `submit(profile)` posts and resolves to the API result; `view(board)` opens the leaderboard;
+// `share(r)`, after a post, shares the posted run (called inside the click, a user gesture).
 
 const CSS = `
 .sc-form { box-sizing: border-box; width: 380px; padding: 10px 14px; background: #0d0d0d; border: 2px solid #d97757;
@@ -30,7 +31,7 @@ const CSS = `
 .sc-form .sc-hint { color: #8b8b8b; font-size: 12px; }
 `;
 
-function el(tag, props = {}, ...children) {
+export function el(tag, props = {}, ...children) {
   const node = Object.assign(document.createElement(tag), props);
   node.append(...children);
   return node;
@@ -47,8 +48,22 @@ const REASON = {
   id: 'the server refused this run (id)',
 };
 
-export function scoreForm({ profile, touch, submit, view, close }) {
+export function ensureFormCss() {
   if (!document.getElementById('sc-form-css')) document.head.append(el('style', { id: 'sc-form-css', textContent: CSS }));
+}
+
+// Keys, clicks and taps stop at a panel over the canvas (see the note at the top).
+export function isolate(node) {
+  for (const type of ['keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'pointerdown', 'pointerup']) {
+    node.addEventListener(type, (e) => e.stopPropagation());
+  }
+}
+
+// What sharing reports back (src/share.js shareRun).
+export const SHARED = { shared: 'shared ✓', copied: 'copied ✓: paste it anywhere', manual: "couldn't share: copy the line below by hand", cancelled: null };
+
+export function scoreForm({ profile, touch, submit, view, close, share }) {
+  ensureFormCss();
 
   const name = el('input', { name: 'name', value: profile.name, maxLength: 16, autocomplete: 'off', autocapitalize: 'off', spellcheck: false, enterKeyHint: 'send', placeholder: 'your name' });
   const platform = el(
@@ -75,9 +90,7 @@ export function scoreForm({ profile, touch, submit, view, close }) {
     status,
   );
 
-  for (const type of ['keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'pointerdown', 'pointerup']) {
-    form.addEventListener(type, (e) => e.stopPropagation());
-  }
+  isolate(form);
   // The font only draws printable ASCII, so that's all a name can hold.
   name.addEventListener('input', () => {
     const clean = name.value.replace(/[^ -~]/g, '').replace(/^ +/, '');
@@ -140,7 +153,11 @@ export function scoreForm({ profile, touch, submit, view, close }) {
     board.addEventListener('click', () => view(r.board));
     const shut = el('button', { type: 'button', textContent: 'close' });
     shut.addEventListener('click', close);
-    buttons.replaceChildren(board, shut);
+    const shareBtn = el('button', { type: 'button', className: 'sc-go', textContent: touch ? 'share' : 'copy link' });
+    shareBtn.addEventListener('click', async () => {
+      status.textContent = SHARED[await share(r)] ?? status.textContent;
+    });
+    buttons.replaceChildren(shareBtn, board, shut);
     for (const input of [name, platform, handle]) input.disabled = true;
     hint.textContent = touch ? '' : 'ESC close';
     board.focus();

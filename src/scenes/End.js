@@ -10,6 +10,9 @@ import { MAX_STARS, formatTime } from '../../shared/leaderboard.js';
 import { scoreForm } from '../scoreForm.js';
 import { submitScore } from '../api.js';
 import { loadProfile, playerId, saveBest, saveProfile } from '../profile.js';
+import { placeOf } from '../../shared/share.js';
+import { drawCard, runLine, runLink, shareRun } from '../share.js';
+import { sharePanel } from '../sharePanel.js';
 
 // Every level after the first is a checkpoint: a death there retries that level.
 const RETRY = { Park: 'retry the park', Tower: 'retry this floor', Chute: 'retry the fall', BossHQ: 'retry the boss' };
@@ -35,6 +38,8 @@ export default class End extends Phaser.Scene {
 
   create({ win, retry }) {
     this.form = null;
+    this.panel = null;
+    this.won = win;
     applyScreenFX(this.cameras.main);
     const stars = this.registry.get('stars') ?? 0;
     const w = terminalWindow(this, win ? 'git push origin main - success' : 'process exited with code 1');
@@ -52,7 +57,13 @@ export default class End extends Phaser.Scene {
     if (win && !this.result.eligible) {
       uiText(this, 520, 176, `not ranked: ${UNRANKED[this.result.reasons[0]]}`, { size: 16, color: '#8b8b8b', wrap: 380 });
     }
+    // What this run shares: where it ended, its stars and time (a death's is the clock so far);
+    // a posted win adds its name, rank and signed link once the board answers.
+    const placeKey = placeOf({ win, retry, level: this.registry.get('level'), towerFloor: this.registry.get('towerFloor') });
+    this.share = { run: { placeKey, stars, timeMs: win ? (this.result.timeMs ?? 0) : Math.round(run.elapsed()) }, token: null, file: null, drawn: 0 };
+    this.time.delayedCall(250, () => this.redrawCard()); // off the transition, so the screen doesn't hitch
     if (win && this.result.eligible) this.offerSubmit();
+    else this.offerShare();
     // Cuphead-style progress on a boss death: show how close the run got.
     const boss = this.registry.get('boss');
     if (!win && retry === 'BossHQ' && boss) {
@@ -60,7 +71,7 @@ export default class End extends Phaser.Scene {
     }
     const checkpoint = !win && RETRY[retry] ? retry : null;
     const retryLabel = checkpoint ? RETRY[checkpoint] : 'play again';
-    const again = uiText(this, left, 430, TOUCH ? `$ tap to ${retryLabel}_` : `$ ENTER ${retryLabel}   T title_`, { size: 24, color: '#d97757' });
+    const again = uiText(this, left, 430, TOUCH ? `$ tap to ${retryLabel}_` : `$ ENTER ${retryLabel}   S share   T title_`, { size: 24, color: '#d97757' });
     // On touch the title screen gets its own button; a tap anywhere else retries (only a tap on
     // the prompt while the leaderboard form is up, so closing the phone keyboard can't).
     const titleBtn = TOUCH ? uiText(this, w.x + w.w - 30, 424, 'title', { size: 24, color: '#f5f5f5', ox: 1, bg: '#21262d', pad: 9 }) : null;
@@ -85,6 +96,14 @@ export default class End extends Phaser.Scene {
     const toTitle = once(() => this.scene.start('Title'));
     this.input.keyboard.once('keydown-ENTER', playAgain);
     this.input.keyboard.once('keydown-T', toTitle);
+    // S shares. A native listener, not Phaser's (which runs on the next frame), so the share
+    // sheet or clipboard sees the keypress as the user gesture it is. The panels stop keys
+    // typed into them from getting here.
+    const onKey = (e) => {
+      if ((e.key === 's' || e.key === 'S') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) this.shareNow();
+    };
+    window.addEventListener('keydown', onKey);
+    this.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
     // Touch: taps act on release and only if they began on this screen. (Desktop keeps keys
     // only, so a stray click can't cut the win screen short.)
     if (TOUCH) {
@@ -107,16 +126,65 @@ export default class End extends Phaser.Scene {
         saveProfile(entry);
         const r = await submitScore(this.result, entry, playerId());
         if (r.state === 'ok' && r.you.best) saveBest({ name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs });
+        // A posted run shares its signed record: the name, and the rank it posted at if it's
+        // the player's best (otherwise the board ranks their better run, not this one).
+        if (r.state === 'ok' && r.share) {
+          Object.assign(this.share.run, { name: entry.name, rank: r.you.best ? r.you.rank : null, total: r.you.total });
+          this.share.token = r.share;
+          this.redrawCard();
+        }
         return r;
       },
       view: (board) => this.scene.start('Leaderboard', { board }),
+      share: () => this.shareNow(),
       close: () => {
         this.form?.destroy();
         this.form = null;
+        this.offerShare();
       },
     });
     this.form = this.add.dom(520, 166, form.root).setOrigin(0);
     if (!TOUCH) form.focus();
+  }
+
+  // The share panel in the right-hand column: under the unranked note (or where the form was)
+  // after a win, and clear of the wide star count after a death.
+  offerShare() {
+    if (this.panel) return this.panel;
+    this.panel = sharePanel({ touch: TOUCH, get: () => this.shareData() });
+    this.add.dom(520, this.won ? 230 : 178, this.panel.root).setOrigin(0);
+    return this.panel;
+  }
+
+  shareData() {
+    const { run: r, token, file } = this.share;
+    return { text: runLine(r, runLink(r, token)), file };
+  }
+
+  // The card as a PNG, drawn ahead of any tap (see src/share.js); a newer draw wins.
+  redrawCard() {
+    const n = ++this.share.drawn;
+    this.share.file = null;
+    drawCard(this, { ...this.share.run }).then((file) => {
+      if (n === this.share.drawn) this.share.file = file;
+    });
+  }
+
+  // Share from a click or key (a user gesture): the panel if it's up, else straight from here,
+  // bringing the panel up only to show the line if nothing could share it.
+  shareNow() {
+    if (this.panel) return this.panel.share();
+    const { text, file } = this.shareData();
+    return shareRun({ text, file, touch: TOUCH }).then((result) => {
+      // Nothing could share it: swap the form (its rank already shown) for the panel, which
+      // holds the line to copy by hand.
+      if (result === 'manual') {
+        this.form?.destroy();
+        this.form = null;
+        this.offerShare().showManual(text);
+      }
+      return result;
+    });
   }
 
   // Story bookend for the Waymo intro: the robotaxi comes back (HQ is in its service area),
