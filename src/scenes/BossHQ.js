@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import PlayScene from './PlayScene.js';
 import Hydra from '../entities/Hydra.js';
-import { floatText, worldText } from '../util.js';
+import { floatText, jokeText, worldText } from '../util.js';
 import { run } from '../run.js';
 import { shake } from '../fx.js';
 
@@ -147,7 +147,7 @@ export default class BossHQ extends PlayScene {
 
   furbyChatter(f = Phaser.Utils.Array.GetRandom(this.furbies)) {
     const phrase = Phaser.Utils.Array.GetRandom(['kah may-may!', 'u-nye loo-lay doo?', 'dah a-loh u-tye!', 'wee-tah-kah-loo-loo', 'kah dah boh-bay!']);
-    floatText(this, f.x, f.y - 20, phrase, '#ff9ecf');
+    jokeText(this, f.x, f.y - 20, phrase, '#ff9ecf');
     this.tweens.add({ targets: f, y: f.y - 3, duration: 120, yoyo: true, repeat: 1 });
   }
 

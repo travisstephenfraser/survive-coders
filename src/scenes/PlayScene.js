@@ -5,7 +5,7 @@ import { T } from '../sprites.js';
 import { FACADE } from '../hqArt.js';
 import { addParallax, panParallax } from '../backdrops.js';
 import { voice } from '../voice.js';
-import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, worldText } from '../util.js';
+import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, jokeText, worldText } from '../util.js';
 import { applyScreenFX, flash, shake } from '../fx.js';
 import { sfx as playSfx } from '../audio.js';
 import { TOUCH } from '../touch.js';
@@ -382,9 +382,11 @@ export default class PlayScene extends Phaser.Scene {
     return s;
   }
 
-  addStars(n, x, y) {
+  // A kill's reward (hold) holds and rises with the kill's line, so the two never cross; a
+  // pickup's pops at once.
+  addStars(n, x, y, hold = false) {
     this.registry.set('stars', (this.registry.get('stars') ?? 0) + n);
-    floatText(this, x, y, `+${n}★`, '#e3b341');
+    (hold ? jokeText : floatText)(this, x, y, `+${n}★`, '#e3b341');
   }
 
   // MAX power-up: a token budget that turns held fire into a character stream.

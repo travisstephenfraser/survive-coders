@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy, FlamingSkull } from './enemies.js';
 import ContextOverflow, { DEPTH as RAIN_DEPTH } from './ContextOverflow.js';
-import { worldText, floatText } from '../util.js';
+import { worldText, floatText, jokeText } from '../util.js';
 import { flash, shake } from '../fx.js';
 import { settings } from '../settings.js';
 
@@ -299,7 +299,7 @@ export default class Hydra {
       const orb = scene.spawnHazard(ox, oy, 'orb', Math.cos(a) * v, Math.sin(a) * v, false, (p) => {
         p.reverseControls(3000);
         scene.sfx('gaslight', 0.5);
-        floatText(scene, p.x, p.y - 20, 'controls? what controls?', '#bc8cff', 6);
+        jokeText(scene, p.x, p.y - 20, 'controls? what controls?', '#bc8cff');
       });
       // As this head grows it drifts onto the middle platform; a solid orb broke on it at launch.
       orb.ghost = true;
@@ -325,7 +325,7 @@ export default class Hydra {
   }
 
   headDied(head) {
-    floatText(this.scene, head.x, head.y - 10, 'head -1', '#e5534b', 7);
+    jokeText(this.scene, head.x, head.y - 18, 'head -1', '#e5534b');
     if (head.role === 'spawn') {
       const left = this.minions.filter((m) => m.active && !m.dying);
       if (left.length) floatText(this.scene, head.x, head.y + 6, 'notifications cleared', '#3fb950');
