@@ -350,6 +350,7 @@ Vercel: serves the static dist/ build, and one function:
   GET  /api/scores ── top ten, edge-cached 15 min ──┐
   POST /api/scores ── a finished run ───────────────┼──→ Neon Postgres (role sc_app:
        origin + JSON checks → shared rules          │       read and add scores only)
+       → profanity check (api/_lib/words.js)        │
        → rate limit → insert + rank ────────────────┘
        a new top-ten best ──→ Resend ──→ an email to Travis
 
@@ -380,7 +381,10 @@ player can post a fake one: a script can send the maximum stars at a plausible t
 server doesn't pretend otherwise. It turns away runs that can't happen (more than 382 stars,
 milestones out of order or faster than the level allows, a run posted twice), keeps one
 address to five posts a minute, and only takes posts from the game's own pages, which stops
-other sites from using their visitors' browsers but not a script. The rest is moderation:
+other sites from using their visitors' browsers but not a script. A name or profile handle
+that reads as profanity or a slur is refused on the server: the `obscenity` word list, which
+sees through leetspeak and look-alike characters, plus a pass of our own for spelled-out
+letters (`f.u.c.k`); a creative enough spelling still gets through. The rest is moderation:
 every new top-ten entry emails Travis with the one line of SQL that hides it. The public
 board is an edge-cached copy, fresh for 15 minutes at a time; after a quiet spell the first
 visitor can still get an older copy while it refreshes. God mode and the level-jump flags are never ranked.
@@ -418,10 +422,12 @@ never production.
 
 ## Tests
 
-`npm test` runs 51 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 54 unit tests on Node's built-in runner (no test framework):
 
 - `shared/leaderboard.js`: the star ceiling, the time and milestone checks, names, profile
   handles, and pasted-URL parsing
+- the profanity check on names and handles: a list that must be refused (disguised
+  spellings too) and a list that must pass (surnames, places, and words that contain one)
 - the run clock (pauses, milestones, and the check that catches a clock running short), the
   settings store, the mute toggle, the saved player profile, and the game's API client
 - the API against real Postgres: PGlite (Postgres compiled to WebAssembly, a dev dependency)
@@ -431,8 +437,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 51
-ℹ pass 51
+ℹ tests 54
+ℹ pass 54
 ℹ fail 0
 ```
 

@@ -16,6 +16,7 @@
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
     "@vercel/analytics": "^2.0.1",
+    "obscenity": "0.4.6",
     "phaser": "^3.90.0"
   },
   "devDependencies": {

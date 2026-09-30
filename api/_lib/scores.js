@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { RULES_VERSION, checkLink, checkName, checkRun, profileUrl } from '../../shared/leaderboard.js';
 import { clientIp, json, logFail } from './http.js';
+import { offensive } from './words.js';
 
 const KEYS = ['runId', 'playerId', 'name', 'stars', 'timeMs', 'splits', 'splitStars', 'platform', 'handle'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -61,6 +62,8 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
     if (!shaped) return json(400, { error: 'shape' });
     const reason = !UUID.test(run.runId) || !UUID.test(run.playerId) ? 'id' : (checkRun(run) ?? checkName(run.name) ?? checkLink(run.platform, run.handle));
     if (reason) return json(422, { error: reason });
+    if (offensive(run.name)) return json(422, { error: 'rude-name' });
+    if (run.handle != null && offensive(run.handle)) return json(422, { error: 'rude-link' });
 
     // Everything above is free; from here the database wakes, so junk never gets this far.
     const at = now();

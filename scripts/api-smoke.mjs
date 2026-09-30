@@ -44,6 +44,8 @@ check('POST from another site: 403', (await post(run(), { origin: 'https://evil.
 check('POST as text/plain: 415', (await post(run(), { 'content-type': 'text/plain' })).status === 415, '');
 const r422 = await post(run({ stars: 383 }));
 check('POST 383 stars: 422 stars', r422.status === 422 && (await r422.json()).error === 'stars', r422.status);
+const rude = await post(run({ name: 'f.u.c.k' }));
+check('POST a profane name: 422 rude-name', rude.status === 422 && (await rude.json()).error === 'rude-name', rude.status);
 const first = run();
 const r201 = await post(first);
 const body = await r201.json().catch(() => ({}));

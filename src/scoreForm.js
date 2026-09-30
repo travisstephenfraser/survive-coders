@@ -39,6 +39,8 @@ function el(tag, props = {}, ...children) {
 const REASON = {
   name: 'name: 1-16 letters, digits or symbols (plain ASCII)',
   link: "that profile handle doesn't look right",
+  'rude-name': 'profanity? elon is that you?',
+  'rude-link': 'profanity? elon is that you?',
   stars: 'the server refused this run (stars)',
   time: 'the server refused this run (time)',
   splits: 'the server refused this run (splits)',
@@ -122,7 +124,11 @@ export function scoreForm({ profile, touch, submit, view, close }) {
     else if (r.status === 429) {
       status.textContent = 'busy: try again in a minute';
       busyUntil = Date.now() + 60000;
-    } else if (r.status === 422) status.textContent = REASON[r.error] ?? 'the server refused this run';
+    } else if (r.status === 422) {
+      status.textContent = REASON[r.error] ?? 'the server refused this run';
+      if (r.error === 'rude-name') name.focus();
+      if (r.error === 'rude-link') handle.focus();
+    }
     else status.textContent = `leaderboard unavailable (HTTP ${r.status}): try again`;
   });
 

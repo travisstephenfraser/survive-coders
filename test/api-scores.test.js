@@ -102,6 +102,8 @@ test('impossible runs, names and links are rejected with a reason', async () => 
     [{ platform: 'github', handle: 'a--b' }, 'link'],
     [{ platform: 'myspace', handle: 'tom' }, 'link'],
     [{ runId: 'not-a-uuid' }, 'id'],
+    [{ name: 'f.u.c.k' }, 'rude-name'],
+    [{ platform: 'x', handle: 'big_ass' }, 'rude-link'],
   ];
   for (const [overrides, error] of cases) {
     const res = await post(entry(overrides));
