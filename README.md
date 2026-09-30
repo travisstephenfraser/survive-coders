@@ -381,8 +381,9 @@ server doesn't pretend otherwise. It turns away runs that can't happen (more tha
 milestones out of order or faster than the level allows, a run posted twice), keeps one
 address to five posts a minute, and only takes posts from the game's own pages, which stops
 other sites from using their visitors' browsers but not a script. The rest is moderation:
-every new top-ten entry emails Travis with the one line of SQL that hides it, and the public
-board refreshes within 15 minutes. God mode and the level-jump flags are never ranked.
+every new top-ten entry emails Travis with the one line of SQL that hides it. The public
+board is an edge-cached copy, fresh for 15 minutes at a time; after a quiet spell the first
+visitor can still get an older copy while it refreshes. God mode and the level-jump flags are never ranked.
 
 There are no accounts: a player is an anonymous id kept in their browser.
 
@@ -409,7 +410,9 @@ it with the Neon **dev** branch's `sc_app` connection string and a throwaway `IP
 and run `vercel dev --listen 3000`: it serves the game and `/api` together, and it reads
 `.env`, not `.env.local`. The API refuses to start if a non-production environment points at
 the production branch. Plain `npm run dev` still plays; its leaderboard just reads *offline*.
-`npm run smoke` checks a running API end to end (it posts two runs named `smoke-*`).
+`npm run smoke` checks a running API end to end. It posts one run named `smoke-NNNNN` to
+whichever database that API uses, so point it at `vercel dev` or a Preview (the `dev` branch),
+never production.
 
 ---
 
@@ -518,12 +521,17 @@ real run).
    sending-only key) and `NOTIFY_EMAIL`. Preview: the same names with the `dev` branch's
    URL and their own secret. Leave Development empty: `vercel env pull` can't read Sensitive
    values back, so local work uses a hand-written `.env`.
-4. Deploy (environment variables apply to new deployments only), then `npm run smoke --
-   https://survive-coders.vercel.app`.
+4. Push the branch for a Preview (it uses the `dev` branch) and run `npm run smoke --
+   <preview URL>` (with `VERCEL_PROTECTION_BYPASS` set to the project's bypass secret if the
+   Preview is protected). Then
+   deploy to production (environment variables apply to new deployments only) and check the
+   board with a GET only: `curl -s https://survive-coders.vercel.app/api/scores` should
+   return JSON. Smoke-testing production would put a `smoke-*` run at #1 on the live board.
 
-To hide a cheat, run the `UPDATE` from its alert email in the Neon SQL editor; the public
-board catches up within 15 minutes (purge the CDN cache in the Vercel dashboard if it can't
-wait). Nothing may query the database more often than every few minutes around the clock:
+To hide a cheat, run the `UPDATE` from its alert email in the Neon SQL editor. The public
+board serves a cached copy for up to 15 minutes, and after a quiet spell the first visitor
+can get an older one while it refreshes; purge the CDN cache in the Vercel dashboard when a
+hide has to show at once. Nothing may query the database more often than every few minutes around the clock:
 the free plan's compute sleeps after five idle minutes, and one that never sleeps uses up the
 month's hours in about 17 days.
 

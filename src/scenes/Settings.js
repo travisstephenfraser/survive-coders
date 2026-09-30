@@ -49,7 +49,9 @@ export default class Settings extends Phaser.Scene {
     document.addEventListener('fullscreenchange', redraw);
     this.events.once('shutdown', () => {
       document.removeEventListener('fullscreenchange', redraw);
+      // Phaser reuses this scene object: a destroyed preview left here breaks the next visit.
       this.preview?.destroy();
+      this.preview = null;
     });
 
     const hint = TOUCH ? 'tap a setting to change it' : '↑↓ choose   ←→ change   ENTER toggle   ESC back';

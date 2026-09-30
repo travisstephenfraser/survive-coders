@@ -1,12 +1,16 @@
 // Checks a running leaderboard API end to end: `vercel dev` (default) or a deployment.
 //   npm run smoke                       # http://localhost:3000, the Neon dev branch
-//   npm run smoke -- https://<preview>  # a preview (add ?x-vercel-protection-bypass=… if protected)
-// Posts two runs named smoke-*; hide them afterwards if they land somewhere that matters:
+//   npm run smoke -- https://<preview>  # a preview; if it is protected, set VERCEL_PROTECTION_BYPASS
+//                                       # to the project's bypass secret (sent as a header)
+// Posts one run named smoke-NNNNN to whatever database the API uses: never run it against
+// production. To hide smoke runs where they don't belong:
 //   UPDATE scores SET hidden = true WHERE name LIKE 'smoke-%';
 import { SEGMENT_FLOOR_MS, SPLITS } from '../shared/leaderboard.js';
 
 const base = new URL(process.argv[2] ?? 'http://localhost:3000');
 const origin = base.origin;
+const bypass = process.env.VERCEL_PROTECTION_BYPASS ? { 'x-vercel-protection-bypass': process.env.VERCEL_PROTECTION_BYPASS } : {};
+const get = (path) => fetch(new URL(path, base), { headers: bypass });
 const results = [];
 const check = (name, ok, got) => results.push([ok ? 'ok  ' : 'FAIL', name, ok ? '' : `(got ${got})`]);
 
@@ -29,13 +33,13 @@ function run(overrides = {}) {
 const post = (body, headers = {}) =>
   fetch(new URL('/api/scores', base), {
     method: 'POST',
-    headers: { origin, 'content-type': 'application/json', ...headers },
+    headers: { origin, 'content-type': 'application/json', ...bypass, ...headers },
     body: JSON.stringify(body),
   });
 
-const board = await fetch(new URL('/api/scores', base));
+const board = await get('/api/scores');
 check('GET board: 200 JSON', board.status === 200 && (board.headers.get('content-type') ?? '').includes('json'), board.status);
-check('GET ?x=1: 400', (await fetch(new URL('/api/scores?x=1', base))).status === 400, '');
+check('GET ?x=1: 400', (await get('/api/scores?x=1')).status === 400, '');
 check('POST from another site: 403', (await post(run(), { origin: 'https://evil.example' })).status === 403, '');
 check('POST as text/plain: 415', (await post(run(), { 'content-type': 'text/plain' })).status === 415, '');
 const r422 = await post(run({ stars: 383 }));

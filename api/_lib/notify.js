@@ -20,7 +20,8 @@ export function resendNotifier(settings, { fetch: send = fetch, log = console } 
       `  UPDATE scores SET hidden = true WHERE player_id = '${e.playerId}';`,
       `  UPDATE scores SET hidden = true WHERE ip_hash = '${e.ipHash}';`,
       '',
-      'The public board caches for up to 15 minutes.',
+      'The public board is an edge-cached copy (fresh for 15 minutes; after a quiet spell the',
+      'first visitor can get an older one). Purge the CDN cache in Vercel if a hide must show now.',
     ];
     try {
       const res = await send('https://api.resend.com/emails', {

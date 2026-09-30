@@ -46,10 +46,16 @@ const board = (body) => ({
   asOf: typeof body?.asOf === 'string' ? body.asOf : null,
 });
 
+// The newest board this page has seen. For up to 15 minutes the public board is an edge-cached
+// copy, older than the board a post just returned, so the leaderboard shows whichever is newer
+// (asOf is an ISO timestamp: newer sorts later).
+let latest = null;
+const newest = (b) => (latest = !latest || (b.asOf ?? '') >= (latest.asOf ?? '') ? b : latest);
+
 // { state: 'ok', top, total, asOf } | { state: 'offline' } | { state: 'error', status }
 export async function getBoard() {
   const r = await call('/api/scores');
-  return r.state === 'ok' ? { state: 'ok', ...board(r.body) } : r;
+  return r.state === 'ok' ? newest({ state: 'ok', ...board(r.body) }) : r;
 }
 
 // Posts a finished run (the run clock's summary) with the player's name and link.
@@ -76,6 +82,6 @@ export async function submitScore(summary, profile, playerId, { retryDelayMs = 1
     r = await send();
   }
   if (r.state === 'offline') return r;
-  if (r.status === 201) return { state: 'ok', you: r.body.you, board: { state: 'ok', ...board(r.body) } };
+  if (r.status === 201) return { state: 'ok', you: r.body.you, board: newest({ state: 'ok', ...board(r.body) }) };
   return { state: 'error', status: r.status, error: r.body?.error ?? null };
 }

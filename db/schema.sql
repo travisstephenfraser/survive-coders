@@ -73,8 +73,9 @@ ALTER ROLE sc_app SET statement_timeout = '5s';
 --   UPDATE scores SET hidden = true WHERE id = '<id>';
 --   UPDATE scores SET hidden = true WHERE player_id = '<player_id>';   -- everything from one browser
 --   UPDATE scores SET hidden = true WHERE ip_hash = '<ip_hash>';       -- everything from one address
--- The public board is cached at the edge for up to 15 minutes; purge the CDN cache in the
--- Vercel dashboard if a hide can't wait.
+-- The public board is an edge-cached copy, fresh for 15 minutes; after a quiet spell the first
+-- visitor can get an older one while it refreshes. Purge the CDN cache in the Vercel dashboard
+-- when a hide has to show at once.
 --
 -- Recent runs, newest first, for a look at what's plausible:
 --   SELECT id, name, stars, time_ms, splits, split_stars, left(ip_hash, 8) AS ip, created_at

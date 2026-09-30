@@ -10,3 +10,6 @@ feed/*/
 .env
 .env.*
 !.env.example
+
+# red-team reports describe how to forge a score: never publish them
+redteam-*.html
