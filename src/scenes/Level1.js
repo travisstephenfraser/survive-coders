@@ -153,7 +153,12 @@ export default class Level1 extends PlayScene {
     });
     at(11900, () => this.endIntro());
 
-    this.skipIntro = () => this.endIntro();
+    // A skip key stops here: the HUD also binds ESC (pause) further down the scene list, and
+    // would pause the level the moment the skip clears the cutscene flag.
+    this.skipIntro = (e) => {
+      e?.stopPropagation?.();
+      this.endIntro();
+    };
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.once(k, this.skipIntro);
     this.input.once('pointerdown', this.skipIntro);
   }

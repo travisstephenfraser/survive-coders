@@ -301,7 +301,12 @@ export default class Park extends PlayScene {
     at(7300, () => cine.phone('are you close?? demo is in 20 min'));
     at(9200, () => this.endIntro());
 
-    this.skipIntro = () => this.endIntro();
+    // A skip key stops here: the HUD also binds ESC (pause) further down the scene list, and
+    // would pause the level the moment the skip clears the cutscene flag.
+    this.skipIntro = (e) => {
+      e?.stopPropagation?.();
+      this.endIntro();
+    };
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.once(k, this.skipIntro);
     this.input.once('pointerdown', this.skipIntro);
   }
