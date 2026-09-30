@@ -478,7 +478,7 @@ against the running game, recorded with screenshots in
 | Contracts and popups (2026-09-27) | A contract locks fire without damage, `refactor` voids it, and a new lock waits out a 1 s grace; a popup shot closed asks *Was this helpful?* once; `refactor` clears popups and on-screen chatbots |
 | Push-to-talk parsing | The four cases in [Architecture](#the-design-decision-worth-explaining) pass with a simulated recognizer |
 | Title menu, settings, leaderboard (2026-09-29) | The menu answers to arrows and Enter, a click, and a tap; a click off the menu no longer starts a run. Settings flips the CRT filter live, previews the music at the chosen level, and a saved setting (CRT off, no shake or flash, music at 50%) holds after a reload with the song at 0.14 instead of 0.28. The leaderboard shows its offline state with no API, and a ten-row board with its links laid exactly over their rows; Enter opens the selected profile |
-| Run clock (2026-09-29) | Paused for a second, it gains 0 ms; it resumes on unpause. A run fast-forwarded through every milestone summarizes as ranked; the same run in god mode shows *not ranked* on the win screen. *Play again* after a win starts a fresh run |
+| Run clock (2026-09-29) | Against a stopwatch (the page's own Date.now): 20.131 s of play read 20.131 s, and 40.4 s with a real 20.4 s pause (P, both edges stamped in the page) read 19.998 s against 20.004 s expected. It resumes on unpause. A run fast-forwarded through every milestone summarizes as ranked; the same run in god mode shows *not ranked* on the win screen. *Play again* after a win starts a fresh run |
 | Posting a win (2026-09-29) | Typed into the name field, `Jaz Wd XZ m123 T` arrives whole, with no power fired and no restart; a pasted LinkedIn URL becomes the platform and handle; with no API the post says it can't reach the board; a stubbed 201 shows the rank and opens the returned board; Esc then Enter plays again. On touch a stray tap leaves the form up and a tap on the prompt restarts |
 | Skipping the intro (2026-09-29) | Esc skips the intro without pausing the level (it used to do both); P, three keys in one frame, pauses once; N mutes once |
 | Restart from the pause screen (2026-09-29) | R in Level 1 starts a new run (a new run id, 0 stars, no intro); the *restart level* button on floor 60 restarts the floor with the stars it began with, in the same run, the clock still counting; a death in Level 1 retries as a new run. No console errors |
@@ -490,9 +490,10 @@ against the running game, recorded with screenshots in
 | A song per level (2026-09-27) | One song at a time from Level 1 through the park, the tower, both elevator rides, the fall and `ship it` (the fall's song stops, and the ride's is the same sound through the landing) to the Hydra; three falls onto the roof leave no song playing and none held by the sound manager. A song still loading when its level starts plays the moment it arrives, and never after a splat or once you've left. The four new pack songs encode at -21.1 LUFS, the same as the city's, and the elevator's bossa nova renders at -32.0 LUFS against -32.2 for the city's at its in-game volume. The elevator song resumes on the next ride at the bar where it stopped, and N mutes in the elevator and the landing |
 
 Not verified by automation: real spoken commands through a microphone, the audio mix,
-difficulty with first-time players (the fall's 24 seconds included), and a full run timed
-against a stopwatch (the run clock is unit tested and checked in the browser, not over a
-real run).
+difficulty with first-time players (the fall's 24 seconds included), a full run timed against
+a stopwatch (the clock was checked over 40 s with a pause, not a whole run), and a hidden tab
+(the automated browser never reports one, so the visibility path is covered by a unit test
+only).
 
 ---
 
