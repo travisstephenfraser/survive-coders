@@ -34,6 +34,7 @@ export default class BossHQ extends PlayScene {
     this.buildWorld(ARENA, 'hq');
     this.decorate();
     this.hydra = new Hydra(this, 272, 160);
+    this.introLock = true; // until the title card clears (introCard)
     if (this.registry.get('bossIntroSeen')) {
       this.playMusic('music_boss', 0.3);
       this.introCard(1100); // retries: short card only
@@ -41,6 +42,13 @@ export default class BossHQ extends PlayScene {
       this.registry.set('bossIntroSeen', true);
       this.stagedEntrance();
     }
+  }
+
+  // The entrance and the title card own the controls until the card clears: no moving, firing or
+  // powers while the office is dimmed (a playtest found shots landing on the dormant heads). A
+  // flag rather than a timestamp, so a pause can't run the lock out while the entrance stands still.
+  get inputLocked() {
+    return super.inputLocked || this.introLock;
   }
 
   // First attempt only: the office goes quiet, the terminal asks for one small change, and
@@ -98,6 +106,7 @@ export default class BossHQ extends PlayScene {
       delay: INTRO_MS - 500,
       duration: 500,
       onComplete: () => {
+        this.introLock = false;
         card.destroy();
         sub.destroy();
         this.toast('Heads grow every turn. "refactor" shrinks them', 'refactor', 4500);

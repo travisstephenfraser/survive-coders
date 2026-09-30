@@ -176,15 +176,23 @@ export default class PlayScene extends Phaser.Scene {
     applyScreenFX(cam);
 
     this.onPower = (name) => this.usePower(name);
+    this.powerGate = () => this.inputLocked;
     voice.on('power', this.onPower);
+    voice.gate = this.powerGate; // powers held during intros (1/2/3 used to fire under the Waymo's)
     this.events.once('shutdown', () => {
       voice.off('power', this.onPower);
+      if (voice.gate === this.powerGate) voice.gate = null;
       this.music?.destroy();
     });
 
     if (!this.scene.isActive('HUD')) this.scene.launch('HUD');
     this.scene.bringToTop('HUD');
     cam.fadeIn(300);
+  }
+
+  // Whether an intro owns the controls. BossHQ adds its entrance and title card.
+  get inputLocked() {
+    return this.cutscene;
   }
 
   // One-shot contextual tip in the HUD; `power` pulses that power's slot (teach at the moment
@@ -219,6 +227,7 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   update(time) {
+    if (this.cutscene) this.player.swallowEdges(); // presses during an intro don't fire after it
     if (this.cutscene || this.leaving) return; // an intro or the walk-in owns the player
     this.player.tick(time);
     if (this.tipDone?.()) {
