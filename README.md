@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      69 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      70 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -461,7 +461,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 69 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 70 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -478,13 +478,13 @@ never production.
 - sharing: where each kind of death maps to, the exact one-liners, `/s/` codes that decode
   only in their one canonical spelling, a posted run's token keeping the rank it posted at
   after a better run lands, and the card function: absolute preview tags, escaped names, a
-  1200x630 PNG, year-long caching, 404 for anything unsigned or tampered with, and death
-  links still working with no secret set
+  1200x630 PNG, year-long caching, 404 for anything unsigned or tampered with, a redirect to the plain link for any extra
+  query parameter, and death links still working with no secret set
 
 ```console
 $ npm test
-ℹ tests 69
-ℹ pass 69
+ℹ tests 70
+ℹ pass 70
 ℹ fail 0
 ```
 
