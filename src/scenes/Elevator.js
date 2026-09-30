@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { ZOOM, floatText, worldText } from '../util.js';
+import { ZOOM, floatText, worldText, freshKey } from '../util.js';
+import { toggleMute } from '../audio.js';
 import { applyScreenFX } from '../fx.js';
 import { playElevatorSong } from '../elevatorSong.js';
 
@@ -70,7 +71,7 @@ export default class Elevator extends Phaser.Scene {
     // The building's music, picking up where the last ride left off. N mutes here too, since
     // the HUD that owns it is stopped for the ride.
     this.song = playElevatorSong(this, { from: this.registry.get('elevatorSongAt') ?? 0 });
-    this.input.keyboard.on('keydown-N', () => (this.sound.mute = !this.sound.mute));
+    this.input.keyboard.on('keydown-N', freshKey(() => toggleMute(this.sound)));
     this.events.once('shutdown', () => this.stopSong(0.05));
   }
 

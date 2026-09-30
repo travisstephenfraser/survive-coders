@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
-import { MAX_HP, MAX_TOKENS, uiText } from '../util.js';
+import { MAX_HP, MAX_TOKENS, freshKey, uiText } from '../util.js';
+import { isMuted, toggleMute } from '../audio.js';
 import { TOUCH, dimPad, showPad, touch } from '../touch.js';
 import PlayScene from './PlayScene.js';
 
@@ -102,9 +103,9 @@ export default class HUD extends Phaser.Scene {
     // Pause / mute live here because the HUD keeps running while the play scene is paused.
     const kb = this.input.keyboard;
     const togglePause = () => this.setPaused(!this.playScene()?.sys.isPaused());
-    kb.on('keydown-P', togglePause);
-    kb.on('keydown-ESC', togglePause);
-    kb.on('keydown-N', () => (this.sound.mute = !this.sound.mute));
+    kb.on('keydown-P', freshKey(togglePause));
+    kb.on('keydown-ESC', freshKey(togglePause));
+    kb.on('keydown-N', freshKey(() => toggleMute(this.sound)));
 
     // Taps: power slots (any pointer, so a mouse can click them too), and on touch the
     // hold-to-talk slot, the pause button and the pause screen.
@@ -154,7 +155,7 @@ export default class HUD extends Phaser.Scene {
     if (!play || this.registry.get('cutscene')) return;
     if (play.sys.isPaused()) {
       if (!TOUCH) return;
-      if (hit(p, SOUND_BTN, 12)) this.sound.mute = !this.sound.mute;
+      if (hit(p, SOUND_BTN, 12)) toggleMute(this.sound);
       else this.setPaused(false);
       return;
     }
@@ -267,7 +268,7 @@ export default class HUD extends Phaser.Scene {
         frame(g, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.w, PAUSE_BTN.h, 0x444c56, 0x21262d);
         g.fillStyle(0xf5f5f5).fillRect(PAUSE_BTN.x + 9, PAUSE_BTN.y + 9, 6, 18).fillRect(PAUSE_BTN.x + 21, PAUSE_BTN.y + 9, 6, 18);
       }
-      this.soundText.setText(this.sound.mute ? 'sound: off' : 'sound: on');
+      this.soundText.setText(isMuted() ? 'sound: off' : 'sound: on');
       const idle = !voice.heard && !voice.listening && !fresh;
       let line = voice.heard ? `$ heard "${voice.heard.slice(-26)}"` : voice.listening ? '$ listening... let go to run it' : cta ? `$ ${cta}` : this.talk ? '$ tap a power, or hold talk and say it' : '$ tap a power to run it';
       if (fresh && ev.type === 'fired') line = `✓ ran: ${POWERS[ev.name].label}`;

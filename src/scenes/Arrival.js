@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
-import { ZOOM } from '../util.js';
+import { ZOOM, freshKey } from '../util.js';
+import { toggleMute } from '../audio.js';
 import { applyScreenFX, pop } from '../fx.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
 import { FACADE } from '../hqArt.js';
@@ -60,7 +61,7 @@ export default class Arrival extends Phaser.Scene {
     const skip = () => this.leave();
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.on(k, skip);
     this.input.on('pointerdown', skip);
-    this.input.keyboard.on('keydown-N', () => (this.sound.mute = !this.sound.mute)); // the HUD, which owns N, sits this out
+    this.input.keyboard.on('keydown-N', freshKey(() => toggleMute(this.sound))); // the HUD, which owns N, sits this out
     this.events.once('shutdown', () => {
       voice.keysSuspended = false;
       this.scene.stop('Cine');

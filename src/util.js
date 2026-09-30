@@ -58,3 +58,10 @@ export function uiText(scene, x, y, str, opts = {}) {
 }
 
 export const params = new URLSearchParams(window.location.search);
+
+// Phaser replays a frame's queued key events each time another one arrives, so with three in
+// one frame an earlier keydown fires again after its DOM dispatch is over (eventPhase 0).
+// Toggles wrap their handler in this so a replay can't flip them back.
+export const freshKey = (fn) => (e) => {
+  if (e?.eventPhase !== 0) fn(e);
+};
