@@ -8,6 +8,9 @@ import { playVictorySong } from '../victorySong.js';
 import { TOUCH } from '../touch.js';
 import { beginRun, run } from '../run.js';
 import { MAX_STARS, formatTime } from '../../shared/leaderboard.js';
+import { scoreForm } from '../scoreForm.js';
+import { submitScore } from '../api.js';
+import { loadProfile, playerId, saveBest, saveProfile } from '../profile.js';
 
 // Every level after the first is a checkpoint: a death there retries that level.
 const RETRY = { Park: 'retry the park', Tower: 'retry this floor', Chute: 'retry the fall', BossHQ: 'retry the boss' };
@@ -32,6 +35,7 @@ export default class End extends Phaser.Scene {
   }
 
   create({ win, retry }) {
+    this.form = null;
     applyScreenFX(this.cameras.main);
     const stars = this.registry.get('stars') ?? 0;
     const w = terminalWindow(this, win ? 'git push origin main - success' : 'process exited with code 1');
@@ -49,6 +53,7 @@ export default class End extends Phaser.Scene {
     if (win && !this.result.eligible) {
       uiText(this, 520, 176, `not ranked: ${UNRANKED[this.result.reasons[0]]}`, { size: 16, color: '#8b8b8b', wrap: 380 });
     }
+    if (win && this.result.eligible) this.offerSubmit();
     // Cuphead-style progress on a boss death: show how close the run got.
     const boss = this.registry.get('boss');
     if (!win && retry === 'BossHQ' && boss) {
@@ -57,7 +62,8 @@ export default class End extends Phaser.Scene {
     const checkpoint = !win && RETRY[retry] ? retry : null;
     const retryLabel = checkpoint ? RETRY[checkpoint] : 'play again';
     const again = uiText(this, left, 430, TOUCH ? `$ tap to ${retryLabel}_` : `$ ENTER ${retryLabel}   T title_`, { size: 24, color: '#d97757' });
-    // On touch the title screen gets its own button; a tap anywhere else retries.
+    // On touch the title screen gets its own button; a tap anywhere else retries (only a tap on
+    // the prompt while the leaderboard form is up, so closing the phone keyboard can't).
     const titleBtn = TOUCH ? uiText(this, w.x + w.w - 30, 424, 'title', { size: 24, color: '#f5f5f5', ox: 1, bg: '#21262d', pad: 9 }) : null;
     titleBtn?.list[0].setStrokeStyle(3, 0x444c56); // the HUD's badge frame
     this.tweens.add({ targets: again, alpha: 0.35, duration: 600, yoyo: true, repeat: -1 });
@@ -97,9 +103,30 @@ export default class End extends Phaser.Scene {
       this.input.on('pointerup', (p) => {
         if (!armed) return;
         if (Phaser.Geom.Rectangle.Inflate(titleBtn.getBounds(), 12, 12).contains(p.x, p.y)) toTitle();
-        else playAgain();
+        else if (!this.form || Phaser.Geom.Rectangle.Inflate(again.getBounds(), 12, 12).contains(p.x, p.y)) playAgain();
       });
     }
+  }
+
+  // A ranked win: the leaderboard form in the right-hand panel, under where the Slack card lands.
+  offerSubmit() {
+    const form = scoreForm({
+      profile: loadProfile(),
+      touch: TOUCH,
+      submit: async (entry) => {
+        saveProfile(entry);
+        const r = await submitScore(this.result, entry, playerId());
+        if (r.state === 'ok' && r.you.best) saveBest({ name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs });
+        return r;
+      },
+      view: (board) => this.scene.start('Leaderboard', { board }),
+      close: () => {
+        this.form?.destroy();
+        this.form = null;
+      },
+    });
+    this.form = this.add.dom(520, 166, form.root).setOrigin(0);
+    if (!TOUCH) form.focus();
   }
 
   // Story bookend for the Waymo intro: the robotaxi comes back (HQ is in its service area),

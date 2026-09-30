@@ -51,3 +51,31 @@ export async function getBoard() {
   const r = await call('/api/scores');
   return r.state === 'ok' ? { state: 'ok', ...board(r.body) } : r;
 }
+
+// Posts a finished run (the run clock's summary) with the player's name and link.
+// → { state: 'ok', you: { rank, total, best }, board } | { state: 'error', status, error } |
+//   { state: 'offline' }. The database can take a few seconds to wake after a quiet spell, so
+// the wait is long, and a network failure gets one retry (a retry of a post that did land
+// comes back 409).
+export async function submitScore(summary, profile, playerId, { retryDelayMs = 1500 } = {}) {
+  const body = JSON.stringify({
+    runId: summary.runId,
+    playerId,
+    name: profile.name,
+    stars: summary.stars,
+    timeMs: summary.timeMs,
+    splits: summary.splits,
+    splitStars: summary.splitStars,
+    platform: profile.platform,
+    handle: profile.handle,
+  });
+  const send = () => call('/api/scores', { method: 'POST', headers: { 'content-type': 'application/json' }, body }, 15000);
+  let r = await send();
+  if (r.state === 'offline') {
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    r = await send();
+  }
+  if (r.state === 'offline') return r;
+  if (r.status === 201) return { state: 'ok', you: r.body.you, board: { state: 'ok', ...board(r.body) } };
+  return { state: 'error', status: r.status, error: r.body?.error ?? null };
+}

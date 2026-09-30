@@ -5,6 +5,7 @@ import { terminalWindow } from '../terminal.js';
 import { TOUCH } from '../touch.js';
 import { menu, textRow } from '../menu.js';
 import { getBoard } from '../api.js';
+import { readBest } from '../profile.js';
 import { PLATFORMS, formatTime } from '../../shared/leaderboard.js';
 
 const ROW_Y = 158;
@@ -125,17 +126,8 @@ export default class Leaderboard extends Phaser.Scene {
   }
 }
 
-// The player's best finish on this browser, saved when a submission comes back (End).
-function readBest() {
-  try {
-    return JSON.parse(localStorage.getItem('sc_best') ?? 'null');
-  } catch {
-    return null;
-  }
-}
-
 function bestLine() {
   const b = readBest();
   if (!b) return 'finish a run to get on the board';
-  return `your best: ★ ${b.stars} in ${formatTime(b.timeMs)}, #${b.rank} of ${b.total}`;
+  return `your best: ★ ${b.stars} in ${formatTime(b.timeMs)}`;
 }
