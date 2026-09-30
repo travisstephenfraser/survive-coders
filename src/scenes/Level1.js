@@ -32,6 +32,7 @@ const HOODS = [
   [1610, 'THE MISSION'],
   [1812, 'SOMA'],
 ];
+const SWARM_PAST_X = 920; // just past the first swarm's last blob (x 776-872): the refactor tip gives up here
 const slug = (name) => name.toLowerCase().replace(/ /g, '-');
 const DEST = slug(HOODS.at(-1)[1]);
 
@@ -73,12 +74,12 @@ export default class Level1 extends PlayScene {
     const door = this.buildExit('transit_facade', 'Park');
     worldText(this, door.x - 16, door.ground - 108, 'TRANSIT CENTER · PARK ↑', { color: '#39c5cf', bg: '#0d0d0d', depth: 0 });
     this.playMusic('music_level', 0.28);
-    this.registry.set('toast', null);
     if (!this.registry.get('introSeen')) this.playIntro();
-    // x-position beats: [worldX, keyboard text, touch text (if different), power to pulse]
+    // x-position beats: [worldX, keyboard text, touch text (if different), power to pulse, done].
+    // With `done`, the tip stays until you've done it (the first two), not for a fixed time.
     this.beats = [
-      [70, 'SPACE fires prompts at bad prompts', '>_ fires prompts at bad prompts', null],
-      [640, 'Swarmed? HOLD M, say "refactor" (or press 3)', 'Swarmed? Tap "refactor" below', 'refactor'],
+      [70, 'SPACE fires prompts at bad prompts', '>_ fires prompts at bad prompts', null, () => this.shots > 0],
+      [640, 'Swarmed? HOLD M, say "refactor" (or press 3)', 'Swarmed? Tap "refactor" below', 'refactor', () => this.lastPower === 'refactor' || this.player.x > SWARM_PAST_X],
       [1372, 'Too far to jump. Hop on the cable car roof', null, null],
       [1760, 'Save a big one for the park: HOLD M, "ship it" (or 1)', 'Save a big one for the park: tap "ship it"', 'ship'],
     ];
@@ -95,8 +96,8 @@ export default class Level1 extends PlayScene {
     const label = routeLabel(p.x);
     if (label !== this.registry.get('level')) this.registry.set('level', label);
     while (this.beats.length && this.player.x >= this.beats[0][0]) {
-      const [, keys, taps, power] = this.beats.shift();
-      this.toast(TOUCH && taps ? taps : keys, power);
+      const [, keys, taps, power, done] = this.beats.shift();
+      this.toast(TOUCH && taps ? taps : keys, power, undefined, done);
     }
     this.scrollParallax(time);
     const x = this.cameras.main.worldView.x;
