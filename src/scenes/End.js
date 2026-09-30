@@ -1,12 +1,11 @@
 import Phaser from 'phaser';
-import { MAX_HP, uiText } from '../util.js';
-import { voice } from '../voice.js';
+import { uiText } from '../util.js';
 import { applyScreenFX } from '../fx.js';
 import { CREDITS, phoneCard, terminalWindow } from '../terminal.js';
 import { placeLidar } from '../sprites.js';
 import { playVictorySong } from '../victorySong.js';
 import { TOUCH } from '../touch.js';
-import { beginRun, run } from '../run.js';
+import { beginRun, retryLevel, run } from '../run.js';
 import { MAX_STARS, formatTime } from '../../shared/leaderboard.js';
 import { scoreForm } from '../scoreForm.js';
 import { submitScore } from '../api.js';
@@ -80,18 +79,9 @@ export default class End extends Phaser.Scene {
       done = true;
       fn();
     };
-    const playAgain = once(() => {
-      if (win) return beginRun(this); // a new run, on a fresh clock; a retry keeps the clock going
-      this.registry.set({
-        hp: MAX_HP,
-        boss: null,
-        toast: null,
-        stars: checkpoint ? (this.registry.get('checkpointStars') ?? 0) : 0,
-        maxTokens: checkpoint ? (this.registry.get('checkpointTokens') ?? 0) : 0,
-      });
-      voice.resetCooldowns();
-      this.scene.start(checkpoint ?? 'Level1');
-    });
+    // After a win, a new run on a fresh clock; after a death, the checkpoint (the clock keeps
+    // going), or a new run if the death was in the first level.
+    const playAgain = once(() => (win ? beginRun(this) : retryLevel(this, checkpoint ?? 'Level1')));
     const toTitle = once(() => this.scene.start('Title'));
     this.input.keyboard.once('keydown-ENTER', playAgain);
     this.input.keyboard.once('keydown-T', toTitle);

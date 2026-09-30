@@ -3,7 +3,7 @@ import { POWERS, voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, freshKey, uiText } from '../util.js';
 import { isMuted, toggleMute } from '../audio.js';
 import { settings } from '../settings.js';
-import { run } from '../run.js';
+import { retryLevel, run } from '../run.js';
 import { formatTime } from '../../shared/leaderboard.js';
 import { TOUCH, dimPad, showPad, touch } from '../touch.js';
 import PlayScene from './PlayScene.js';
@@ -16,6 +16,8 @@ const STRIP_Y = 474; // top of the bottom terminal strip
 // paused, a sound toggle.
 const PAUSE_BTN = { x: 684, y: 12, w: 36, h: 36 };
 const SOUND_BTN = { x: 390, y: 318, w: 180, h: 42 };
+// Paused, on every device: restart the level (under the sound toggle on touch).
+const RESTART_BTN = { x: 390, y: TOUCH ? 372 : 318, w: 180, h: 42 };
 const hit = (p, r, pad = 0) => p.x >= r.x - pad && p.x < r.x + r.w + pad && p.y >= r.y - pad && p.y < r.y + r.h + pad;
 
 // Segmented pixel bar with 3-tone shading, drawn in world-pixel units.
@@ -97,13 +99,16 @@ export default class HUD extends Phaser.Scene {
     this.toastText = uiText(this, 480, 158, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
     // Paused: the scene dims so the text reads over the busy city.
     this.dim = this.add.rectangle(0, 0, 960, 540, 0x0d0d0d, 0.6).setOrigin(0).setDepth(2).setVisible(false);
-    this.pausedText = uiText(this, 480, 250, TOUCH ? 'PAUSED\n\ntap to resume' : 'PAUSED\n\nP: resume   N: mute', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+    this.pausedText = uiText(this, 480, 250, TOUCH ? 'PAUSED\n\ntap to resume' : 'PAUSED\n\nP: resume   N: mute   R: restart level', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
       .setCenterAlign()
       .setDepth(3)
       .setVisible(false);
     const { x: sx, y: sy, w: sw, h: sh } = SOUND_BTN;
     this.soundBox = this.add.rectangle(sx, sy, sw, sh, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
     this.soundText = uiText(this, sx + sw / 2, sy + sh / 2, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
+    const { x: rx, y: ry, w: rw, h: rh } = RESTART_BTN;
+    this.restartBox = this.add.rectangle(rx, ry, rw, rh, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
+    this.restartText = uiText(this, rx + rw / 2, ry + rh / 2, 'restart level', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
 
     // Pause / mute live here because the HUD keeps running while the play scene is paused.
     const kb = this.input.keyboard;
@@ -111,6 +116,7 @@ export default class HUD extends Phaser.Scene {
     kb.on('keydown-P', freshKey(togglePause));
     kb.on('keydown-ESC', freshKey(togglePause));
     kb.on('keydown-N', freshKey(() => toggleMute(this.sound)));
+    kb.on('keydown-R', freshKey(() => this.restartLevel()));
 
     // Taps: power slots (any pointer, so a mouse can click them too), and on touch the
     // hold-to-talk slot, the pause button and the pause screen.
@@ -122,6 +128,11 @@ export default class HUD extends Phaser.Scene {
       voice.release();
     };
     this.input.on('pointerup', untap);
+    // The restart button acts on release, and only for a press that began on it.
+    this.input.on('pointerup', (p) => {
+      if (this.restartArmed && hit(p, RESTART_BTN, 12)) this.restartLevel();
+      this.restartArmed = false;
+    });
     this.input.on('pointerupoutside', untap);
 
     // Auto-pause when the tab hides (a phone call, an app switch) or the phone turns
@@ -153,13 +164,25 @@ export default class HUD extends Phaser.Scene {
     this.dim.setVisible(on);
     this.soundBox.setVisible(on && TOUCH);
     this.soundText.setVisible(on && TOUCH);
+    this.restartBox.setVisible(on);
+    this.restartText.setVisible(on);
+  }
+
+  // From the pause screen: back to the start of this level with the stars it began with. The
+  // run clock keeps going (a restart costs time, as a death does); in the first level it's a
+  // new run on a fresh clock (run.js retryLevel). For perfecting a run.
+  restartLevel() {
+    const play = this.playScene();
+    if (!play?.sys.isPaused()) return;
+    retryLevel(this, play.scene.key);
   }
 
   tap(p) {
     const play = this.playScene();
     if (!play || this.registry.get('cutscene')) return;
     if (play.sys.isPaused()) {
-      if (!TOUCH) return;
+      this.restartArmed = hit(p, RESTART_BTN, 12);
+      if (this.restartArmed || !TOUCH) return;
       if (hit(p, SOUND_BTN, 12)) toggleMute(this.sound);
       else this.setPaused(false);
       return;

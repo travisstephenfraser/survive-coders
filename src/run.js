@@ -20,8 +20,20 @@ export function installRunClock(game) {
 // Level-jump flags start a run mid-game: fine for testing, never ranked.
 const JUMPS = ['park', 'tower', 'chute', 'landing', 'ride', 'boss'];
 
-// A new run, from PLAY NOW or from "play again" after a win: fresh stats, a fresh clock, and
-// the first level (or the one a level-jump flag names). God mode is read from the registry.
+// Back to the start of a level with what the player brought into it (its checkpoint), from a
+// death's retry or the pause screen's restart. The run clock keeps going, so a retry costs
+// time. The first level has no checkpoint: going back to its start is a new run instead.
+export function retryLevel(scene, key) {
+  if (key === 'Level1') return beginRun(scene);
+  const reg = scene.registry;
+  reg.set({ hp: MAX_HP, boss: null, toast: null, stars: reg.get('checkpointStars') ?? 0, maxTokens: reg.get('checkpointTokens') ?? 0 });
+  voice.resetCooldowns();
+  scene.scene.start(key);
+}
+
+// A new run, from PLAY NOW, "play again" after a win, or going back to the first level: fresh
+// stats, a fresh clock, and the first level (or the one a level-jump flag names). God mode is
+// read from the registry.
 export function beginRun(scene) {
   const reg = scene.registry;
   voice.resetCooldowns();
