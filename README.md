@@ -417,8 +417,10 @@ Anthropic HQ. Can you get further? https://survive-coders.vercel.app/s/1-a-3x-ky
 - **No database.** A death's link (`/s/1-a-3x-ky`) is the run itself: place, stars and
   seconds. A posted win's link (`/r/<token>`) carries the name, stars, time and rank the POST
   returned, signed with a key derived from `IP_HASH_SECRET`, so the card keeps the rank it
-  posted at and no crawler wakes the database. The trade-off: a run hidden later as a cheat
-  keeps any card already shared.
+  posted at and no crawler wakes the database. The trade-offs: a run hidden later as a cheat
+  keeps any card already shared, and rotating `IP_HASH_SECRET` breaks every `/r/` link already
+  shared (they 404 once cached copies expire). A link with any other query parameter (a
+  tracking tag) redirects to its plain form instead of drawing the card again.
 - **What a link reveals:** a death link, a place and two numbers; a posted run's link, what
   the board already shows. Neither carries an id.
 - **Did it work?** Arrivals from shared links count in Vercel Web Analytics as page views of

@@ -84,3 +84,16 @@ test('HEAD answers like GET, without a body', async () => {
   assert.equal(res.headers.get('content-type'), 'image/png');
   assert.equal(res.body, null);
 });
+
+test('extra query parameters get the canonical URL, not a fresh render', async () => {
+  const code = encodeRun(death);
+  for (const [as, path] of [['png', `/s/${code}/card.png`], [undefined, `/s/${code}`], ['json', `/s/${code}?as=json`]]) {
+    const res = await h.GET(new Request(`${ORIGIN}/api/share?kind=s&key=${code}${as ? `&as=${as}` : ''}&utm_source=x`));
+    assert.equal(res.status, 308, `as=${as}`);
+    assert.equal(res.headers.get('location'), `${ORIGIN}${path}`);
+    assert.equal(res.headers.get('cache-control'), FOREVER);
+  }
+  // The banner's own request (kind, key, as) still answers, and a bad key is still a 404.
+  assert.equal((await get('s', code, 'json')).status, 200);
+  assert.equal((await h.GET(new Request(`${ORIGIN}/api/share?kind=s&key=nope&x=1`))).status, 404);
+});

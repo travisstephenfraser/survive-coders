@@ -90,6 +90,13 @@ export function shareHandlers({ secret, log = console }) {
     if (!run || !['page', 'png', 'json'].includes(as)) return text(404, 'no such run', CACHE_MISS);
 
     const self = `${url.origin}/${kind}/${key}`;
+    // Anything besides kind, key and as is a new cache key on the same answer (a tracking tag, or
+    // someone making the function draw the card again and again): send it to the canonical URL,
+    // which is cached, instead of rendering. /api/scores refuses query strings for the same reason.
+    if ([...url.searchParams.keys()].some((k) => !['kind', 'key', 'as'].includes(k))) {
+      const canonical = `${self}${as === 'png' ? '/card.png' : as === 'json' ? '?as=json' : ''}`;
+      return new Response(null, { status: 308, headers: { location: canonical, 'cache-control': CACHE_FOREVER } });
+    }
     const headers = { 'cache-control': CACHE_FOREVER, 'x-content-type-options': 'nosniff' };
     if (as === 'png') {
       return new Response(encodePng(runCard(cardFont(), run), { level: 6 }), { headers: { ...headers, 'content-type': 'image/png' } });
