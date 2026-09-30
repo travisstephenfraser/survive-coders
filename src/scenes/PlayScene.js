@@ -464,7 +464,7 @@ export default class PlayScene extends Phaser.Scene {
     let target = null;
     let best = Infinity;
     for (const e of this.enemies.getChildren()) {
-      if (e.dying || !e.body) continue;
+      if (e.dying || !e.body || e.asleep) continue; // a sleeping Hydra head can't be hurt
       const dx = (e.body.center.x - b.x) * dir;
       const dy = e.body.center.y - b.y;
       if (dx < 6 || dx > 200 || Math.abs(dy) > 30) continue;

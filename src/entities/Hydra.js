@@ -26,6 +26,15 @@ const STAGGER = { flood: 0, gaslight: 1100, spawn: 2200 };
 const BASE_HP = 14;
 const MAX_MINIONS = 2;
 const RESPAWN_MS = 1000;
+// The heads wake one at a time once the title card clears: image flood at once, gaslight 5s in,
+// notifications 10s in (bringing both its skulls), so each is met alone before they fight
+// together. Wakes run on scene timers, which pause with the game. Growth keeps its own clock
+// (TURN_MS), so the full context window lands when it always has. A sleeping head can't be hurt,
+// and a head's death wakes the rest.
+const WAKE_MS = { flood: 0, gaslight: 5000, spawn: 10000 };
+const ROLE_NAMES = { flood: 'IMAGE FLOOD', gaslight: 'GASLIGHT', spawn: 'NOTIFICATIONS' };
+const ROLE_COLORS = { flood: '#58a6ff', gaslight: '#bc8cff', spawn: '#d97757' };
+const SLEEP_TINT = 0x6b6b78;
 
 // The body: a heap of H100s with their fans spinning, as [dx, dy, angle, flipX] from the floor
 // under it, back to front. Each growth turn drops another card on top ("I just need more GPUs"),
@@ -73,6 +82,12 @@ class Head extends Enemy {
     // Role icon so players can tell the heads apart: image flood, gaslight (<->), notifications.
     this.icon = scene.add.image(ax, ay, `icon_${role}`).setDepth(6);
     this.plan = null;
+    // Asleep until its turn (Hydra.startFight): dimmed, and it neither attacks nor lies.
+    this.asleep = WAKE_MS[role] > 0;
+    if (this.asleep) {
+      this.setTint(SLEEP_TINT);
+      this.icon.setAlpha(0.4);
+    }
   }
 
   update(time) {
@@ -86,6 +101,11 @@ class Head extends Enemy {
       // First attacks after the intro are staggered per head so they never land together.
       const earliest = this.hydra.dormantUntil + 600 + STAGGER[this.role];
       if (this.nextAttack < earliest) this.nextAttack = earliest + Math.random() * 400;
+      this.setPosition(x, y);
+      this.icon.setPosition(x + 9 * this.scale, y - 9 * this.scale);
+      return;
+    }
+    if (this.asleep) {
       this.setPosition(x, y);
       this.icon.setPosition(x + 9 * this.scale, y - 9 * this.scale);
       return;
@@ -127,6 +147,16 @@ class Head extends Enemy {
     this.hp = Math.min(this.hp, BASE_HP);
     this.scene.tweens.add({ targets: this, scale: 1, duration: 300 });
     this.scene.burst(this.x, this.y, 'px_green', 8);
+  }
+
+  // Asleep, it shrugs shots off (a spark, no damage) until its turn, and auto-aim skips it
+  // (PlayScene.firePrompt), so no head is worn down or woken early from the floor.
+  hurt(dmg) {
+    if (this.asleep) {
+      this.scene.burst(this.x, this.y, 'px_white', 2);
+      return;
+    }
+    super.hurt(dmg);
   }
 
   onDie() {
@@ -224,8 +254,37 @@ export default class Hydra {
     shake(this.scene.cameras.main, 150, 0.004);
   }
 
+  // The title card has cleared (BossHQ.introCard): the fight starts now. First wind-ups keep
+  // their stagger; sleeping heads wake on scene timers, which pause with the game.
+  startFight() {
+    const now = this.scene.time.now;
+    this.dormantUntil = now;
+    for (const h of this.alive) {
+      h.nextAttack = now + 600 + STAGGER[h.role] + Math.random() * 400;
+      if (h.asleep) this.scene.time.delayedCall(WAKE_MS[h.role], () => this.wake(h));
+    }
+  }
+
+  wake(head) {
+    if (!head.asleep || !head.active || head.dying) return;
+    head.asleep = false;
+    head.clearTint();
+    head.icon.setAlpha(1);
+    // A beat, then its first wind-up (TELEGRAPH_MS of warning before the attack lands).
+    head.nextAttack = this.scene.time.now + TELEGRAPH_MS + 600 + Math.random() * 400;
+    jokeText(this.scene, Phaser.Math.Clamp(head.x, 60, 260), this.bubbleY(head), `${ROLE_NAMES[head.role]} online`, ROLE_COLORS[head.role]);
+    this.scene.burst(head.x, head.y, 'px_white', 8);
+    this.scene.sfx('grow', 0.35);
+    if (head.role === 'spawn') {
+      // Both notifications arrive with it, a second apart, so the fight past 10s is as busy
+      // as it always was.
+      this.spawnMinion(head);
+      this.scene.time.delayedCall(RESPAWN_MS, () => this.spawnMinion(head));
+    }
+  }
+
   lie() {
-    const alive = this.alive;
+    const alive = this.alive.filter((h) => !h.asleep); // a sleeping head doesn't talk
     if (!alive.length || this.scene.time.now < this.dormantUntil) return;
     this.bubble?.destroy();
     const h = Phaser.Utils.Array.GetRandom(alive);
@@ -335,6 +394,7 @@ export default class Hydra {
     this.scene.sfx('headkill', 0.5);
     shake(this.scene.cameras.main, 200, 0.01);
     this.scene.time.delayedCall(0, () => {
+      for (const h of this.alive) this.wake(h); // one down: the rest stop waiting their turn
       this.publish();
       if (!this.alive.length) this.collapse();
       else if (this.alive.length === 1) {
