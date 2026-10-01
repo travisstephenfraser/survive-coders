@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      72 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      75 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -463,7 +463,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 72 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 75 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -473,9 +473,13 @@ never production.
   spellings too) and a list that must pass (surnames, places, and words that contain one)
 - the run clock (pauses, milestones, and the check that catches a clock running short), the
   settings store, the mute toggle, the saved player profile, and the game's API client
+  (including an older API's answer, with no time board, as after a rollback)
+- the database wrapper's request to Neon (driver fetch stubbed): both boards in one round
+  trip, as one read-only, repeatable-read transaction
 - the API against real Postgres: PGlite (Postgres compiled to WebAssembly, a dev dependency)
   runs `db/schema.sql`, then every refusal, the rate limit, both rankings (ties, one row per
-  player, each player's best run for that board, hidden rows), the alert email, and what the `sc_app` role can and can't do. This is
+  player, each player's best run for that board, hidden rows), the alert email (a rank named
+  only on the boards where it's the run's own), and what the `sc_app` role can and can't do. This is
   how a CHECK constraint that let a NULL through was caught.
 - sharing: where each kind of death maps to, the exact one-liners, `/s/` codes that decode
   only in their one canonical spelling, a posted run's token keeping the rank it posted at
@@ -485,8 +489,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 72
-ℹ pass 72
+ℹ tests 75
+ℹ pass 75
 ℹ fail 0
 ```
 
@@ -584,6 +588,13 @@ only).
    deploy to production (environment variables apply to new deployments only) and check the
    board with a GET only: `curl -s https://survive-coders.vercel.app/api/scores` should
    return JSON. Smoke-testing production would put a `smoke-*` run at #1 on the live board.
+
+**The time board** (2026-10-01) reads the same `scores` table, so it needs no migration: the
+runs already stored are on it from the first request. Two owner steps, both in the Neon SQL
+editor: once it's live, run the time-board review query from the comments at the end of
+`db/schema.sql` and hide anything implausible, because runs posted before it were only
+alerted on when they made the stars board; and, when convenient, run `db/schema.sql` again
+(it's idempotent) to add the `scores_fastest` index, which the board reads correctly without.
 
 To hide a cheat, run the `UPDATE` from its alert email in the Neon SQL editor. The public
 board serves a cached copy for up to 15 minutes, and after a quiet spell the first visitor
