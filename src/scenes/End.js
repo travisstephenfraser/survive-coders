@@ -127,10 +127,13 @@ export default class End extends Phaser.Scene {
         const r = await submitScore(this.result, entry, playerId());
         const posted = { name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs };
         if (r.state === 'ok' && r.you.best) saveBest(posted);
-        if (r.state === 'ok' && r.you.fastest?.best) saveFastest(posted);
-        // An older API's answer has no time rank (as after a rollback), so nothing says whether
-        // this run is the player's fastest; but a saved fastest that it beats is out of date.
-        else if (r.state === 'ok' && !r.you.fastest && posted.timeMs < (readFastest()?.timeMs ?? Infinity)) forgetFastest();
+        // The server names the player's fastest run, whichever game posted it; failing that, this
+        // run if it says this is the one. An older API's answer has no time rank (as after a
+        // rollback), so nothing says; but a saved fastest that this run beats is out of date.
+        const fast = r.state === 'ok' ? r.you.fastest : undefined;
+        if (fast?.run) saveFastest(fast.run);
+        else if (fast?.best) saveFastest(posted);
+        else if (fast === null && posted.timeMs < (readFastest()?.timeMs ?? Infinity)) forgetFastest();
         // A posted run shares its signed record: the name, and the rank it posted at if it's
         // the player's best (otherwise the board ranks their better run, not this one).
         if (r.state === 'ok' && r.share) {

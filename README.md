@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      76 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      77 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -463,7 +463,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 76 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 77 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -490,8 +490,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 76
-ℹ pass 76
+ℹ tests 77
+ℹ pass 77
 ℹ fail 0
 ```
 
@@ -656,7 +656,9 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   loses time (Phaser caps a frame's step after a focus change or a long frame).
 - **Older runs on the time board were timed without pauses.** Runs posted before 2026-10-01
   (rules version 1) left pauses out of their time; later runs count them. An honest early run
-  that paused reads a little short of how it would be timed now.
+  that paused reads a little short of how it would be timed now. A rollback to a build from
+  before the time board stores every run as version 1 (that API doesn't read the version the
+  game sends), so runs posted during one can't be told apart.
 - **A player is a browser.** Clearing site data, or another browser, is a new player. Inside
   the travisfraser.com embed, storage belongs to that site (and Safari keeps it only in
   memory), so the embed and the direct link count as two players.

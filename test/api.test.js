@@ -42,7 +42,7 @@ test('a submission posts exactly the run and profile, and a 201 comes back as ra
     headers = init.headers;
     sent.push([url, init.method, JSON.parse(init.body)]);
     return reply(201, {
-      you: { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true } },
+      you: { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true, name: 'ada_l', stars: 5, timeMs: 300000 } },
       top: [{ rank: 1, name: 'x', stars: 9, timeMs: 1000, platform: null, handle: null }],
       fastest: [{ rank: 1, name: 'y', stars: 5, timeMs: 900, platform: null, handle: null }],
       total: 9,
@@ -54,7 +54,7 @@ test('a submission posts exactly the run and profile, and a 201 comes back as ra
     ['/api/scores', 'POST', { runId: 'r-1', playerId: 'p-1', name: 'ada_l', stars: 5, timeMs: 300000, splits: [1, 2, 3, 4, 5, 6, 7], splitStars: [0, 0, 0, 0, 0, 0, 1], platform: 'github', handle: 'ada' }],
   ]);
   assert.equal(headers['x-rules-version'], '2');
-  assert.deepEqual(r.you, { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true } });
+  assert.deepEqual(r.you, { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true, run: { name: 'ada_l', stars: 5, timeMs: 300000 } } });
   assert.equal(r.board.state, 'ok');
   assert.equal(r.board.top[0].name, 'x');
   assert.equal(r.board.fastest[0].name, 'y');
@@ -78,10 +78,36 @@ test("an answer without a time board or time rank (an older API's) reads as miss
     globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 8, best: true, fastest }, ...old });
     assert.equal((await submitScore(summary, profile, 'p-1')).you.fastest, null, JSON.stringify(fastest));
   }
+  // no total to check the time rank against: no time rank
+  globalThis.fetch = async () => reply(201, { you: { rank: 1, best: true, fastest: { rank: 2, best: true } }, ...old });
+  assert.equal((await submitScore(summary, profile, 'p-1')).you.fastest, null);
+  // a time rank but no drawable fastest run: the rank stands, the run doesn't
+  globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 8, best: true, fastest: { rank: 2, best: false, name: 'José', stars: 5, timeMs: 1 } }, ...old });
+  assert.deepEqual((await submitScore(summary, profile, 'p-1')).you.fastest, { rank: 2, best: false, run: null });
   globalThis.fetch = async () => reply(200, { fastest: old.top, total: 1, asOf: '2026-10-01T00:01:00Z' });
   const noTop = await getBoard();
   assert.equal(noTop.top, null);
   assert.equal(noTop.fastest.length, 1);
+});
+
+test("a board that can't be right reads as missing: all junk, ranks out of order, more rows than players", async () => {
+  const { getBoard } = await import('../src/api.js?boards=1');
+  const r = (rank, name) => ({ rank, name, stars: 9, timeMs: 1000, platform: null, handle: null });
+  const at = (n) => `2026-10-01T01:00:0${n}Z`;
+  const cases = [
+    [[{ rank: 'x' }], 5, null],
+    [[r(1, 'a'), r(1, 'b')], 5, null],
+    [[r(2, 'a'), r(1, 'b')], 5, null],
+    [[r(1, 'a'), r(2, 'b'), r(3, 'c')], 2, null],
+    [[], 0, []],
+    [[r(1, 'a'), r(3, 'c')], 5, 2], // a gap (a row the game couldn't draw, dropped) is fine
+  ];
+  for (const [i, [fastest, total, want]] of cases.entries()) {
+    globalThis.fetch = async () => reply(200, { top: [], fastest, total, asOf: at(i) });
+    const got = (await getBoard()).fastest;
+    if (typeof want === 'number') assert.equal(got.length, want, JSON.stringify(fastest));
+    else assert.deepEqual(got, want, JSON.stringify(fastest));
+  }
 });
 
 test('refusals keep their status and reason; a network failure is retried once, then offline', async () => {

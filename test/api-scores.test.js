@@ -76,7 +76,7 @@ test('a valid run is stored and ranked', async () => {
   const res = await post(entry());
   assert.equal(res.status, 201);
   const body = await res.json();
-  assert.deepEqual(body.you, { rank: 1, total: 1, best: true, fastest: { rank: 1, best: true } });
+  assert.deepEqual(body.you, { rank: 1, total: 1, best: true, fastest: { rank: 1, best: true, name: 'ada_l', stars: 300, timeMs: body.top[0].timeMs } });
   assert.deepEqual(body.top, [{ rank: 1, name: 'ada_l', stars: 300, timeMs: body.top[0].timeMs, platform: 'github', handle: 'ada' }]);
   assert.deepEqual(body.fastest, body.top);
   assert.equal(res.headers.get('cache-control'), 'no-store');
@@ -228,13 +228,15 @@ test('the time board: fastest, then most stars, then first; each player\'s faste
 test("a post reports the player's rank on both boards, and whether this run is a best on each", async () => {
   const run = entry({ name: 'racer', stars: 300, timeMs: 800000 });
   await post(entry({ name: 'rival', stars: 250, timeMs: 700000, splitStars: [90, 160, 190, 190, 190, 190, 190] }));
-  assert.deepEqual((await (await post(run)).json()).you, { rank: 1, total: 2, best: true, fastest: { rank: 2, best: true } });
+  const fastestRun = (r) => ({ name: 'racer', stars: r.stars, timeMs: r.timeMs });
+  assert.deepEqual((await (await post(run)).json()).you, { rank: 1, total: 2, best: true, fastest: { rank: 2, best: true, ...fastestRun(run) } });
   // faster with fewer stars: a new fastest, not a new best
   const quick = entry({ playerId: run.playerId, name: 'racer', stars: 200, timeMs: 600000, splitStars: [90, 160, 190, 190, 190, 190, 190] });
-  assert.deepEqual((await (await post(quick)).json()).you, { rank: 1, total: 2, best: false, fastest: { rank: 1, best: true } });
+  assert.deepEqual((await (await post(quick)).json()).you, { rank: 1, total: 2, best: false, fastest: { rank: 1, best: true, ...fastestRun(quick) } });
   // slower and fewer stars: neither
   const slow = entry({ playerId: run.playerId, name: 'racer', stars: 100, timeMs: 900000, splitStars: [50, 60, 70, 80, 90, 90, 95] });
-  assert.deepEqual((await (await post(slow)).json()).you, { rank: 1, total: 2, best: false, fastest: { rank: 1, best: false } });
+  // ...and the answer still names the player's fastest run, the earlier quick one
+  assert.deepEqual((await (await post(slow)).json()).you, { rank: 1, total: 2, best: false, fastest: { rank: 1, best: false, ...fastestRun(quick) } });
 });
 
 test('a run stores the rules its game timed it under; a game too old to say timed it under the first', async () => {

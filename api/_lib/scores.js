@@ -84,7 +84,10 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
       if (!id) return json(409, { error: 'duplicate' });
       const mine = boards.stars.find((r) => r.mine);
       const fast = boards.time.find((r) => r.mine);
-      const you = { rank: mine.rank, total: mine.total, best: mine.run_id === run.runId, fastest: { rank: fast.rank, best: fast.run_id === run.runId } };
+      // `fastest` names the player's fastest run too (it may be an earlier one), so the game can
+      // keep its record of it right whatever posted that run.
+      const fastest = { rank: fast.rank, best: fast.run_id === run.runId, name: fast.name, stars: fast.stars, timeMs: fast.time_ms };
+      const you = { rank: mine.rank, total: mine.total, best: mine.run_id === run.runId, fastest };
       // A new top-ten best on either board: tell Travis, with the line that hides it if it's a cheat.
       if ((you.best && you.rank <= 10) || (you.fastest.best && you.fastest.rank <= 10)) {
         try {
