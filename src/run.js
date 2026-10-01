@@ -17,12 +17,13 @@ const JUMPS = ['park', 'tower', 'chute', 'landing', 'ride', 'boss'];
 
 // Back to the start of a level with what the player brought into it (its checkpoint), from a
 // death's retry or the pause screen's restart. The run clock keeps going, so a retry costs
-// time. The first level has no checkpoint: going back to its start is a new run instead.
+// time, and so do the powers' cooldowns: a restart used to refill them, so a restart at a
+// level's start could skip a cooldown the run would otherwise wait out. The first level has
+// no checkpoint: going back to its start is a new run instead.
 export function retryLevel(scene, key) {
   if (key === 'Level1') return beginRun(scene);
   const reg = scene.registry;
   reg.set({ hp: MAX_HP, boss: null, toast: null, stars: reg.get('checkpointStars') ?? 0, maxTokens: reg.get('checkpointTokens') ?? 0 });
-  voice.resetCooldowns();
   scene.scene.start(key);
 }
 

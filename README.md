@@ -651,9 +651,14 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   board, kept up to date on insert, so a read sorts players rather than runs.
 - **A faster screen finishes frame-timed waits a little sooner.** Scene changes, delayed
   calls and a few timers land on the first frame after they're due, so each can take up to one
-  frame longer at 60 Hz than at 240 Hz: about 0.1 to 0.3 s over a whole run. Fire rate and the
+  frame longer at 60 Hz than at 240 Hz: about 0.2 to 0.5 s over a whole run, depending on the
+  route (hit-stops on kills take back a little). Fire rate and the
   vesting clock carry their timing over, so they're the same at any rate; a slow machine only
   loses time (Phaser caps a frame's step after a focus change or a long frame).
+- **"Play again" and a first-level restart skip the two skippable intros.** A run from the
+  title gets the first level's and the park's intros, each skipped with a key press; a run
+  started any other way starts past them, saving those two presses (a fraction of a second
+  each). The boss's entrance, which can't be skipped, plays once in every run.
 - **Older runs on the time board were timed without pauses.** Runs posted before 2026-10-01
   (rules version 1) left pauses out of their time; later runs count them. An honest early run
   that paused reads a little short of how it would be timed now. A rollback to a build from

@@ -180,7 +180,8 @@ export default class PlayScene extends Phaser.Scene {
     applyScreenFX(cam);
 
     this.onPower = (name) => this.usePower(name);
-    this.powerGate = () => this.inputLocked || this.sys.isPaused();
+    this.pauseAsked = false; // set by the HUD the moment a pause is asked for (HUD.setPaused)
+    this.powerGate = () => this.inputLocked || this.sys.isPaused() || this.pauseAsked;
     voice.on('power', this.onPower);
     // Powers held during intros (1/2/3 used to fire under the Waymo's) and while paused (they
     // fired on the pause screen, killing what was on it).

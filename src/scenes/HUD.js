@@ -167,6 +167,9 @@ export default class HUD extends Phaser.Scene {
   setPaused(on) {
     const play = this.playScene();
     if (!play || this.registry.get('cutscene') || play.sys.isPaused() === on) return;
+    // Phaser pauses a scene on its next frame; the flag holds powers off from the moment of
+    // asking (a key pressed in that frame, or a hidden tab, which draws no frames, fired them).
+    play.pauseAsked = on;
     if (on) play.scene.pause();
     else play.scene.resume();
     touch.dropJump(); // held thumbs carry over like held keys; a jump tapped meanwhile doesn't
