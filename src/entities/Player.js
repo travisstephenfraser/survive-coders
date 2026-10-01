@@ -333,14 +333,18 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.reversedUntil = this.scene.time.now + ms;
   }
 
-  // Rewind to ~3s ago and heal at least one HP.
-  rollback() {
+  // Rewind to ~3s ago and heal at least one HP. `bounds` ({ x0, x1 }, or none) keeps the rewind
+  // inside walls the player is locked behind (the park's demo day): it goes to the oldest place
+  // within them, or stays put, since three seconds ago can be outside the walls (they close
+  // once you're in), and a rollback there left you shut out of the fight.
+  rollback(bounds) {
     const snap = this.history[0];
     if (!snap) return;
+    const place = bounds ? (this.history.find((s) => s.x >= bounds.x0 && s.x <= bounds.x1) ?? { x: this.x, y: this.y }) : snap;
     this.release();
     const ghost = this.scene.add.image(this.x, this.y, this.texture.key).setFlipX(this.flipX).setAlpha(0.6).setTint(0xd97757);
     this.scene.tweens.add({ targets: ghost, alpha: 0, duration: 500, onComplete: () => ghost.destroy() });
-    this.setPosition(snap.x, snap.y);
+    this.setPosition(place.x, place.y);
     this.setVelocity(0, 0);
     this.hp = Math.max(this.hp + 1, snap.hp);
     this.history = [];

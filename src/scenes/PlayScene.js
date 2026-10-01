@@ -525,7 +525,7 @@ export default class PlayScene extends Phaser.Scene {
       this.shout('rollback', '#58a6ff');
       this.registry.set('rollbackTaught', true);
       this.sfx('rollback', 0.6);
-      pl.rollback();
+      pl.rollback(this.rollbackBounds?.());
       flash(this.cameras.main, 200, 88, 166, 255);
     } else if (name === 'refactor') {
       this.shout('refactor', '#3fb950');

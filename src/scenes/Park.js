@@ -227,6 +227,13 @@ export default class Park extends PlayScene {
     }
   }
 
+  // While demo day holds you, a rollback stays between its walls: far enough in from each
+  // that the body (10 px) clears the wall's 6 px zone.
+  rollbackBounds() {
+    const a = this.arena;
+    return a?.state === 'locked' ? { x0: a.x0 + 10, x1: a.x1 - 10 } : null;
+  }
+
   lockArena(time) {
     const a = this.arena;
     a.state = 'locked';
