@@ -53,13 +53,19 @@ export function menu(scene, items, { onBack, start = 0 } = {}) {
   window.addEventListener('keydown', onKey);
   scene.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
 
-  // A row's own bounds first; the margin around them only where no row's bounds are hit, so
-  // the margin of one row never takes a point inside its neighbour.
-  const within = (p, padX, padY) =>
-    items.findIndex((it, i) => usable(i) && Phaser.Geom.Rectangle.Inflate(Phaser.Geom.Rectangle.Clone(it.bounds()), padX, padY).contains(p.x, p.y));
+  // A row's own bounds first, right and bottom edges excluded so rows that touch share no line;
+  // the margin around them only where no row's bounds are hit, so the margin of one row never
+  // takes a point inside its neighbour.
+  const exactly = (p) =>
+    items.findIndex((it, i) => {
+      const r = it.bounds();
+      return usable(i) && p.x >= r.x && p.x < r.right && p.y >= r.y && p.y < r.bottom;
+    });
+  const nearly = (p) =>
+    items.findIndex((it, i) => usable(i) && Phaser.Geom.Rectangle.Inflate(Phaser.Geom.Rectangle.Clone(it.bounds()), 6, 4).contains(p.x, p.y));
   const hitAt = (p) => {
-    const exact = within(p, 0, 0);
-    return exact >= 0 ? exact : within(p, 6, 4);
+    const exact = exactly(p);
+    return exact >= 0 ? exact : nearly(p);
   };
   let pressed = -1;
   scene.input.on('pointermove', (p) => {

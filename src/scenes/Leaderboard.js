@@ -205,9 +205,14 @@ export default class Leaderboard extends Phaser.Scene {
         const tint = focused ? 0x3fb950 : own ? 0xe3b341 : 0xf5f5f5;
         for (const k of ['rank', 'name', 'stars', 'time']) t[k].setTint(tint);
       },
-      // ENTER opens the link. A click or tap is the link's own (the menu's hit box is a little
-      // larger than the row, and a tap there mustn't open a profile on the first touch).
-      activate: (via) => via === 'key' && link?.node.click(),
+      // ENTER opens the link (armed first, so on a touch device with a keyboard it opens at
+      // once). A click or tap is the link's own (the menu's hit box is a little larger than the
+      // row, and a tap there mustn't open a profile on the first touch).
+      activate: (via) => {
+        if (via !== 'key' || !link) return;
+        armed = true;
+        link.node.click();
+      },
       adjust: (dir) => scene.flip(dir),
     };
     return row;
@@ -228,7 +233,12 @@ export default class Leaderboard extends Phaser.Scene {
     // links, and one drawn under a resting cursor mustn't take the keyboard's selection. A tap
     // selects through the click below instead.
     a.addEventListener('pointermove', (e) => e.pointerType === 'mouse' && (e.movementX !== 0 || e.movementY !== 0) && select());
-    a.addEventListener('mousedown', (e) => e.preventDefault());
+    // A press selects its row even with the mouse at rest (the keyboard may have moved the
+    // selection off it), so what opens is always the row the line names.
+    a.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      select();
+    });
     a.addEventListener('click', (e) => {
       if (TOUCH && !armed()) {
         e.preventDefault();
