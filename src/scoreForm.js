@@ -149,8 +149,8 @@ export function scoreForm({ profile, touch, submit, view, close, share }) {
   function done(r) {
     const { rank, total, best, fastest } = r.you;
     const mark = (b) => (b ? ' ✓' : '');
-    const ranks = `time #${fastest.rank}${mark(fastest.best)} · ★ #${rank}${mark(best)} of ${total}`;
-    status.textContent = best || fastest.best ? `${ranks} (✓ personal best)` : `your bests stand: ${ranks}`;
+    const ranks = fastest ? `time #${fastest.rank}${mark(fastest.best)} · ★ #${rank}${mark(best)} of ${total}` : `★ #${rank}${mark(best)} of ${total}`;
+    status.textContent = best || fastest?.best ? `${ranks} (✓ personal best)` : `your bests stand: ${ranks}`;
     const board = el('button', { type: 'button', className: 'sc-go', textContent: 'view the board' });
     board.addEventListener('click', () => view(r.board));
     const shut = el('button', { type: 'button', textContent: 'close' });

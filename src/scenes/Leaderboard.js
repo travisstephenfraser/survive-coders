@@ -71,8 +71,10 @@ export default class Leaderboard extends Phaser.Scene {
     this.menu = menu(this, items, { onBack: back, start: items.length - 1 });
     this.draw();
 
+    // The scene object is reused, so an answer from an earlier visit that arrives late is dropped.
+    const visit = (this.visit = {});
     if (data?.board) this.show(data.board);
-    else getBoard().then((b) => this.sys.isActive() && this.show(b));
+    else getBoard().then((b) => this.visit === visit && this.sys.isActive() && this.show(b));
   }
 
   show(board) {
@@ -87,16 +89,20 @@ export default class Leaderboard extends Phaser.Scene {
   }
 
   // Shows the open tab: its rule, its column lit in the header, its rows, the player's line.
+  // The link line clears too; a focused row writes its own again as it refills.
   draw() {
     const b = BOARDS[this.at];
     this.rule.setText(b.rule);
     for (const [key, text] of Object.entries(this.heads)) text.setTint(key === b.key ? ORANGE : GREY);
     this.best.setText(bestLine(b.key));
     this.tabs.forEach((t) => t.redraw());
+    this.dest.setText('');
     if (!this.board) return;
+    // A board missing from the answer (an older API's, say) says so rather than draw empty.
     const entries = this.board[b.field];
+    this.status.setText(entries ? '' : `the ${b.key} board is unavailable: try again later`);
     this.rows.forEach((row, i) => {
-      const e = entries[i] ?? null;
+      const e = entries?.[i] ?? null;
       row.fill(e, e !== null && this.mine.some((m) => sameRun(m, e)));
     });
     this.menu.refresh();
@@ -200,7 +206,10 @@ export default class Leaderboard extends Phaser.Scene {
     a.tabIndex = -1;
     a.setAttribute('aria-label', `${entry.name} on ${PLATFORMS[entry.platform].label}`);
     a.style.cssText = `display:block;width:800px;height:${ROW_H}px;`;
-    a.addEventListener('mouseenter', select);
+    // A mouse moving over a row selects it. Only a real move counts: a switch of tabs draws new
+    // links, and one drawn under a resting cursor mustn't take the keyboard's selection. A tap
+    // selects through the click below instead.
+    a.addEventListener('pointermove', (e) => e.pointerType === 'mouse' && (e.movementX !== 0 || e.movementY !== 0) && select());
     a.addEventListener('mousedown', (e) => e.preventDefault());
     a.addEventListener('click', (e) => {
       if (TOUCH && !selected()) {

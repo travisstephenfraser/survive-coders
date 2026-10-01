@@ -55,6 +55,22 @@ test('a submission posts exactly the run and profile, and a 201 comes back as ra
   assert.equal(r.board.fastest[0].name, 'y');
 });
 
+test("an answer without a time board or time rank (an older API's) reads as missing, not empty", async () => {
+  const { submitScore, getBoard } = await import('../src/api.js?older=1');
+  const old = { top: [{ rank: 1, name: 'x', stars: 9, timeMs: 1000, platform: null, handle: null }], total: 1, asOf: '2026-10-01T00:00:00Z' };
+  globalThis.fetch = async () => reply(200, old);
+  const b = await getBoard();
+  assert.equal(b.fastest, null);
+  assert.equal(b.top.length, 1);
+  globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 1, best: true }, ...old });
+  const r = await submitScore(summary, profile, 'p-1');
+  assert.deepEqual(r.you, { rank: 1, total: 1, best: true, fastest: null });
+  globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 1, best: true, fastest: { rank: 'x', best: 'yes' } }, ...old, fastest: [] });
+  const junk = await submitScore(summary, profile, 'p-1');
+  assert.equal(junk.you.fastest, null);
+  assert.deepEqual(junk.board.fastest, []);
+});
+
 test('refusals keep their status and reason; a network failure is retried once, then offline', async () => {
   const { submitScore } = await import('../src/api.js');
   for (const [status, error] of [[409, 'duplicate'], [422, 'name'], [429, 'busy']]) {

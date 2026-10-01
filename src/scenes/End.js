@@ -127,7 +127,7 @@ export default class End extends Phaser.Scene {
         const r = await submitScore(this.result, entry, playerId());
         const posted = { name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs };
         if (r.state === 'ok' && r.you.best) saveBest(posted);
-        if (r.state === 'ok' && r.you.fastest.best) saveFastest(posted);
+        if (r.state === 'ok' && r.you.fastest?.best) saveFastest(posted);
         // A posted run shares its signed record: the name, and the rank it posted at if it's
         // the player's best (otherwise the board ranks their better run, not this one).
         if (r.state === 'ok' && r.share) {

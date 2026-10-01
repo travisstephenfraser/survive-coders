@@ -40,10 +40,11 @@ export function cleanRows(rows) {
     }));
 }
 
-// `top` ranks by stars, `fastest` by time.
+// `top` ranks by stars, `fastest` by time; `fastest` is null when the answer has no time board
+// at all (an older API's), so the screen can say so rather than show it empty.
 const board = (body) => ({
   top: cleanRows(body?.top),
-  fastest: cleanRows(body?.fastest),
+  fastest: Array.isArray(body?.fastest) ? cleanRows(body.fastest) : null,
   total: Number.isInteger(body?.total) ? body.total : 0,
   asOf: typeof body?.asOf === 'string' ? body.asOf : null,
 });
@@ -61,7 +62,7 @@ export async function getBoard() {
 }
 
 // Posts a finished run (the run clock's summary) with the player's name and link.
-// → { state: 'ok', you: { rank, total, best, fastest: { rank, best } }, board, share } |
+// → { state: 'ok', you: { rank, total, best, fastest: { rank, best } | null }, board, share } |
 //   { state: 'error', status, error } |
 //   { state: 'offline' }. The database can take a few seconds to wake after a quiet spell, so
 // the wait is long, and a network failure gets one retry (a retry of a post that did land
@@ -88,7 +89,10 @@ export async function submitScore(summary, profile, playerId, { retryDelayMs = 1
   if (r.status === 201) {
     // The signed token for this run's /r/ link: base64url, a dot, base64url (api/_lib/share.js).
     const share = typeof r.body.share === 'string' && /^[\w-]+\.[\w-]+$/.test(r.body.share) ? r.body.share : null;
-    return { state: 'ok', you: r.body.you, board: newest({ state: 'ok', ...board(r.body) }), share };
+    // The time rank, or null if the answer has none (an older API's).
+    const fast = r.body.you?.fastest;
+    const you = { ...r.body.you, fastest: Number.isInteger(fast?.rank) ? { rank: fast.rank, best: fast.best === true } : null };
+    return { state: 'ok', you, board: newest({ state: 'ok', ...board(r.body) }), share };
   }
   return { state: 'error', status: r.status, error: r.body?.error ?? null };
 }

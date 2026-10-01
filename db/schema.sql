@@ -80,7 +80,8 @@ ALTER ROLE sc_app SET statement_timeout = '5s';
 -- when a hide has to show at once.
 --
 -- The time board's top ten, with the ids that hide each run. Look once after the time board
--- first deploys: runs posted before it were only alerted on when they made the stars board.
+-- first deploys (runs posted before it were only alerted on when they made the stars board),
+-- and after a hide (the run below moves up with no alert of its own).
 --   SELECT id, player_id, name, stars, time_ms, splits, created_at FROM (
 --     SELECT DISTINCT ON (player_id) * FROM scores WHERE NOT hidden
 --     ORDER BY player_id, time_ms, stars DESC, created_at, run_id
