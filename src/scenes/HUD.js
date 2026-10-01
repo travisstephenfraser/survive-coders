@@ -166,7 +166,9 @@ export default class HUD extends Phaser.Scene {
 
   setPaused(on) {
     const play = this.playScene();
-    if (!play || this.registry.get('cutscene') || play.sys.isPaused() === on) return;
+    // Not while the level is leaving: the next level starts on its own, and a pause asked in
+    // that gap was lost with the old scene, leaving PAUSED over a level that kept playing.
+    if (!play || this.registry.get('cutscene') || (on && play.leaving) || play.sys.isPaused() === on) return;
     // Phaser pauses a scene on its next frame; the flag holds powers off from the moment of
     // asking (a key pressed in that frame, or a hidden tab, which draws no frames, fired them).
     play.pauseAsked = on;
