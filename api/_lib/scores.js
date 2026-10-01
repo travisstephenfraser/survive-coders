@@ -76,7 +76,11 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
       const db = store();
       const hits = await db.hit(ipHash, at.toISOString(), IP_LIMIT);
       if (hits.ip > IP_LIMIT || hits.global > GLOBAL_LIMIT) return json(429, { error: 'busy' }, { 'retry-after': '60' });
-      const { id, boards } = await db.insert({ ...run, ipHash, rulesVersion: RULES_VERSION });
+      // The rules the run was timed under, as the game says; a game too old to say timed it
+      // under the first (its clock left pauses out).
+      const said = Number(request.headers.get('x-rules-version'));
+      const rulesVersion = Number.isInteger(said) && said >= 1 && said <= RULES_VERSION ? said : 1;
+      const { id, boards } = await db.insert({ ...run, ipHash, rulesVersion });
       if (!id) return json(409, { error: 'duplicate' });
       const mine = boards.stars.find((r) => r.mine);
       const fast = boards.time.find((r) => r.mine);

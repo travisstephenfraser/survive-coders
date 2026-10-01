@@ -65,8 +65,8 @@ function entry(overrides = {}) {
   };
 }
 
-function post(body, { origin = ORIGIN, type = 'application/json', ip = nextIp(), raw } = {}) {
-  const headers = { 'content-type': type, 'x-vercel-forwarded-for': ip };
+function post(body, { origin = ORIGIN, type = 'application/json', ip = nextIp(), raw, rules } = {}) {
+  const headers = { 'content-type': type, 'x-vercel-forwarded-for': ip, ...(rules && { 'x-rules-version': rules }) };
   if (origin) headers.origin = origin;
   return h.POST(new Request(`${ORIGIN}/api/scores`, { method: 'POST', headers, body: raw ?? JSON.stringify(body) }));
 }
@@ -235,6 +235,19 @@ test("a post reports the player's rank on both boards, and whether this run is a
   // slower and fewer stars: neither
   const slow = entry({ playerId: run.playerId, name: 'racer', stars: 100, timeMs: 900000, splitStars: [50, 60, 70, 80, 90, 90, 95] });
   assert.deepEqual((await (await post(slow)).json()).you, { rank: 1, total: 2, best: false, fastest: { rank: 1, best: false } });
+});
+
+test('a run stores the rules its game timed it under; a game too old to say timed it under the first', async () => {
+  const stored = async (rules) => {
+    const run = entry();
+    assert.equal((await post(run, { rules })).status, 201);
+    return (await pg.query('SELECT rules_version FROM scores WHERE run_id = $1', [run.runId])).rows[0].rules_version;
+  };
+  assert.equal(await stored(undefined), 1);
+  assert.equal(await stored('2'), 2);
+  assert.equal(await stored('1'), 1);
+  assert.equal(await stored('9'), 1); // a version this server doesn't know
+  assert.equal(await stored('x'), 1);
 });
 
 test('the board answers 400 to any query string (a cache-buster would reach the database)', async () => {

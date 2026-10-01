@@ -1,4 +1,4 @@
-import { MAX_STARS, checkName, profileUrl } from '../shared/leaderboard.js';
+import { MAX_STARS, RULES_VERSION, checkName, profileUrl } from '../shared/leaderboard.js';
 
 // The leaderboard API (api/scores.js). Anything that isn't a JSON answer from it, like no
 // network, the plain Vite dev server's HTML, or a proxy's error page, counts as offline.
@@ -22,6 +22,8 @@ export function cleanRows(rows) {
       (r) =>
         r &&
         Number.isInteger(r.rank) &&
+        r.rank >= 1 &&
+        r.rank <= 10 &&
         checkName(r.name) === null &&
         Number.isInteger(r.stars) &&
         r.stars >= 0 &&
@@ -79,7 +81,9 @@ export async function submitScore(summary, profile, playerId, { retryDelayMs = 1
     platform: profile.platform,
     handle: profile.handle,
   });
-  const send = () => call('/api/scores', { method: 'POST', headers: { 'content-type': 'application/json' }, body }, 15000);
+  // The rules the run was timed under, so the server stores the clock's version, not its own.
+  const headers = { 'content-type': 'application/json', 'x-rules-version': String(RULES_VERSION) };
+  const send = () => call('/api/scores', { method: 'POST', headers, body }, 15000);
   let r = await send();
   if (r.state === 'offline') {
     await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
@@ -89,9 +93,11 @@ export async function submitScore(summary, profile, playerId, { retryDelayMs = 1
   if (r.status === 201) {
     // The signed token for this run's /r/ link: base64url, a dot, base64url (api/_lib/share.js).
     const share = typeof r.body.share === 'string' && /^[\w-]+\.[\w-]+$/.test(r.body.share) ? r.body.share : null;
-    // The time rank, or null if the answer has none (an older API's).
+    // The time rank, or null if the answer has none (an older API's) or none that makes sense.
     const fast = r.body.you?.fastest;
-    const you = { ...r.body.you, fastest: Number.isInteger(fast?.rank) && fast.rank >= 1 ? { rank: fast.rank, best: fast.best === true } : null };
+    const total = r.body.you?.total;
+    const sane = Number.isInteger(fast?.rank) && fast.rank >= 1 && (!Number.isInteger(total) || fast.rank <= total) && typeof fast.best === 'boolean';
+    const you = { ...r.body.you, fastest: sane ? { rank: fast.rank, best: fast.best } : null };
     return { state: 'ok', you, board: newest({ state: 'ok', ...board(r.body) }), share };
   }
   return { state: 'error', status: r.status, error: r.body?.error ?? null };

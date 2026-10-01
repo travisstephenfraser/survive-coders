@@ -84,6 +84,7 @@ export default class Leaderboard extends Phaser.Scene {
   show(board) {
     if (board.state === 'offline') return this.status.setText("offline: can't reach the leaderboard");
     if (board.state !== 'ok') return this.status.setText(`leaderboard unavailable (HTTP ${board.status})`);
+    if (!board.top && !board.fastest) return this.status.setText('leaderboard unavailable: try again later');
     if (!board.top?.length && !board.fastest?.length) return this.status.setText('no finished runs yet: be the first');
     this.status.setText('');
     this.total.setText(`${board.total} ${board.total === 1 ? 'player' : 'players'}`);

@@ -63,3 +63,4 @@ export const readBest = () => readJson('sc_best');
 export const saveBest = (best) => write('sc_best', JSON.stringify(best));
 export const readFastest = () => readJson('sc_fastest');
 export const saveFastest = (fastest) => write('sc_fastest', JSON.stringify(fastest));
+export const forgetFastest = () => write('sc_fastest', 'null');

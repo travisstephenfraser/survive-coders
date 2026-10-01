@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      75 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      76 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -463,7 +463,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 75 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 76 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -490,8 +490,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 75
-ℹ pass 75
+ℹ tests 76
+ℹ pass 76
 ℹ fail 0
 ```
 
@@ -595,8 +595,9 @@ runs already stored are on it from the first request. One owner step, in the Neo
 once it's live, run the time-board review query from the comments at the end of
 `db/schema.sql` and hide anything implausible, because runs posted before it were only
 alerted on when they made the stars board. Those runs were also timed with pauses left out
-(rules version 1); runs from the time board on count them (rules version 2, stored with each
-run).
+(rules version 1); runs from the time board on count them, and each post says which rules its
+game timed it under (rules version 2), stored with the run; a game too old to say is stored
+as 1.
 
 To hide a cheat, run the `UPDATE` from its alert email in the Neon SQL editor. The public
 board serves a cached copy for up to 15 minutes, and after a quiet spell the first visitor

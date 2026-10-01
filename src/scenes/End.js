@@ -9,7 +9,7 @@ import { beginRun, retryLevel, run } from '../run.js';
 import { MAX_STARS, formatTime } from '../../shared/leaderboard.js';
 import { scoreForm } from '../scoreForm.js';
 import { submitScore } from '../api.js';
-import { loadProfile, playerId, readBest, readFastest, saveBest, saveFastest, saveProfile } from '../profile.js';
+import { forgetFastest, loadProfile, playerId, readFastest, saveBest, saveFastest, saveProfile } from '../profile.js';
 import { placeOf } from '../../shared/share.js';
 import { drawCard, runLine, runLink, shareRun } from '../share.js';
 import { sharePanel } from '../sharePanel.js';
@@ -126,11 +126,11 @@ export default class End extends Phaser.Scene {
         saveProfile(entry);
         const r = await submitScore(this.result, entry, playerId());
         const posted = { name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs };
-        // An older API's answer has no time rank (as after a rollback); then the browser's own
-        // runs decide, since one browser is one player: faster than every run it has saved.
-        const fastest = r.you?.fastest ? r.you.fastest.best : [readFastest(), readBest()].every((k) => !k || posted.timeMs < k.timeMs);
         if (r.state === 'ok' && r.you.best) saveBest(posted);
-        if (r.state === 'ok' && fastest) saveFastest(posted);
+        if (r.state === 'ok' && r.you.fastest?.best) saveFastest(posted);
+        // An older API's answer has no time rank (as after a rollback), so nothing says whether
+        // this run is the player's fastest; but a saved fastest that it beats is out of date.
+        else if (r.state === 'ok' && !r.you.fastest && posted.timeMs < (readFastest()?.timeMs ?? Infinity)) forgetFastest();
         // A posted run shares its signed record: the name, and the rank it posted at if it's
         // the player's best (otherwise the board ranks their better run, not this one).
         if (r.state === 'ok' && r.share) {

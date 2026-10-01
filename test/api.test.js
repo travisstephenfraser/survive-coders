@@ -10,6 +10,8 @@ test('board rows are re-checked before drawing, and links rebuilt from the platf
     { rank: 4, name: 'José', stars: 100, timeMs: 900000 },
     { rank: 5, name: 'toomany', stars: 999, timeMs: 900000 },
     { rank: 6, name: 'js', stars: 10, timeMs: 900000, platform: 'javascript', handle: 'alert(1)' },
+    { rank: 0, name: 'zero', stars: 10, timeMs: 900000 },
+    { rank: 11, name: 'eleven', stars: 10, timeMs: 900000 },
     null,
   ]);
   assert.deepEqual(
@@ -35,7 +37,9 @@ const reply = (status, body) => new Response(JSON.stringify(body), { status, hea
 test('a submission posts exactly the run and profile, and a 201 comes back as rank plus board', async () => {
   const { submitScore } = await import('../src/api.js');
   const sent = [];
+  let headers;
   globalThis.fetch = async (url, init) => {
+    headers = init.headers;
     sent.push([url, init.method, JSON.parse(init.body)]);
     return reply(201, {
       you: { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true } },
@@ -49,6 +53,7 @@ test('a submission posts exactly the run and profile, and a 201 comes back as ra
   assert.deepEqual(sent, [
     ['/api/scores', 'POST', { runId: 'r-1', playerId: 'p-1', name: 'ada_l', stars: 5, timeMs: 300000, splits: [1, 2, 3, 4, 5, 6, 7], splitStars: [0, 0, 0, 0, 0, 0, 1], platform: 'github', handle: 'ada' }],
   ]);
+  assert.equal(headers['x-rules-version'], '2');
   assert.deepEqual(r.you, { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true } });
   assert.equal(r.board.state, 'ok');
   assert.equal(r.board.top[0].name, 'x');
@@ -69,8 +74,10 @@ test("an answer without a time board or time rank (an older API's) reads as miss
   const junk = await submitScore(summary, profile, 'p-1');
   assert.equal(junk.you.fastest, null);
   assert.deepEqual(junk.board.fastest, []);
-  globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 1, best: true, fastest: { rank: -3, best: true } }, ...old });
-  assert.equal((await submitScore(summary, profile, 'p-1')).you.fastest, null);
+  for (const fastest of [{ rank: -3, best: true }, { rank: 999, best: true }, { rank: 1, best: 'true' }, { rank: 1 }]) {
+    globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 8, best: true, fastest }, ...old });
+    assert.equal((await submitScore(summary, profile, 'p-1')).you.fastest, null, JSON.stringify(fastest));
+  }
   globalThis.fetch = async () => reply(200, { fastest: old.top, total: 1, asOf: '2026-10-01T00:01:00Z' });
   const noTop = await getBoard();
   assert.equal(noTop.top, null);
