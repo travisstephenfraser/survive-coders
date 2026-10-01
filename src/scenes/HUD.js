@@ -167,8 +167,10 @@ export default class HUD extends Phaser.Scene {
   setPaused(on) {
     const play = this.playScene();
     // Not while the level is leaving: the next level starts on its own, and a pause asked in
-    // that gap was lost with the old scene, leaving PAUSED over a level that kept playing.
-    if (!play || this.registry.get('cutscene') || (on && play.leaving) || play.sys.isPaused() === on) return;
+    // that gap was lost with the old scene, leaving PAUSED over a level that kept playing. Nor
+    // once the encounter is decided: the pause screen's restart during the Hydra's fall replayed
+    // the boss room with the run clock already stopped, its stars still counting.
+    if (!play || this.registry.get('cutscene') || (on && (play.leaving || play.outcome)) || play.sys.isPaused() === on) return;
     // Phaser pauses a scene on its next frame; the flag holds powers off from the moment of
     // asking (a key pressed in that frame, or a hidden tab, which draws no frames, fired them).
     play.pauseAsked = on;

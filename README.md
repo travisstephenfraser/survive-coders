@@ -661,6 +661,13 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   title gets the first level's and the park's intros, each skipped with a key press; a run
   started any other way starts past them, saving those two presses (a fraction of a second
   each). The boss's entrance, which can't be skipped, plays once in every run.
+- **A machine slowed on purpose can gain a little.** Phaser averages the last ten frames' times,
+  so after a spell of very slow frames (100 to 200 ms, say from a CPU hog at the right moment:
+  just before a run starts, or while Claude types in the fall) the game catches up a little
+  faster than real time once frames speed up: up to about 0.8 s each time, measured. Next:
+  `fps: { deltaHistory: 1 }` in the game config, once it's been played on slow machines.
+- **Device sleep isn't counted on some platforms.** The clock reads `performance.now()`, which
+  some browsers stop while the device sleeps; the game is frozen with it, so nothing advances.
 - **Older runs on the time board were timed without pauses.** Runs posted before 2026-10-01
   (rules version 1) left pauses out of their time; later runs count them. An honest early run
   that paused reads a little short of how it would be timed now. A rollback to a build from
