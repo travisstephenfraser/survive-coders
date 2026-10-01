@@ -43,8 +43,8 @@ test('a submission posts exactly the run and profile, and a 201 comes back as ra
     sent.push([url, init.method, JSON.parse(init.body)]);
     return reply(201, {
       you: { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true, name: 'ada_l', stars: 5, timeMs: 300000 } },
-      top: [{ rank: 1, name: 'x', stars: 9, timeMs: 1000, platform: null, handle: null }],
-      fastest: [{ rank: 1, name: 'y', stars: 5, timeMs: 900, platform: null, handle: null }],
+      top: [{ rank: 1, name: 'x', stars: 9, timeMs: 100000, platform: null, handle: null }],
+      fastest: [{ rank: 1, name: 'y', stars: 5, timeMs: 90000, platform: null, handle: null }],
       total: 9,
       asOf: '2026-10-01T00:00:00Z',
     });
@@ -62,7 +62,7 @@ test('a submission posts exactly the run and profile, and a 201 comes back as ra
 
 test("an answer without a time board or time rank (an older API's) reads as missing, not empty", async () => {
   const { submitScore, getBoard } = await import('../src/api.js?older=1');
-  const old = { top: [{ rank: 1, name: 'x', stars: 9, timeMs: 1000, platform: null, handle: null }], total: 1, asOf: '2026-10-01T00:00:00Z' };
+  const old = { top: [{ rank: 1, name: 'x', stars: 9, timeMs: 100000, platform: null, handle: null }], total: 1, asOf: '2026-10-01T00:00:00Z' };
   globalThis.fetch = async () => reply(200, old);
   const b = await getBoard();
   assert.equal(b.fastest, null);
@@ -81,6 +81,13 @@ test("an answer without a time board or time rank (an older API's) reads as miss
   // no total to check the time rank against: no time rank
   globalThis.fetch = async () => reply(201, { you: { rank: 1, best: true, fastest: { rank: 2, best: true } }, ...old });
   assert.equal((await submitScore(summary, profile, 'p-1')).you.fastest, null);
+  // ranks that don't add up (no player count, no stars rank, no `you`) read as unknown
+  for (const you of [{ rank: 2, best: true, fastest: { rank: 2, best: true } }, { total: 3, best: true }, undefined]) {
+    globalThis.fetch = async () => reply(201, { you, ...old });
+    const got = (await submitScore(summary, profile, 'p-1')).you;
+    assert.equal(got.rank, null, JSON.stringify(you));
+    assert.equal(got.best, false);
+  }
   // a time rank but no drawable fastest run: the rank stands, the run doesn't
   globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 8, best: true, fastest: { rank: 2, best: false, name: 'José', stars: 5, timeMs: 1 } }, ...old });
   assert.deepEqual((await submitScore(summary, profile, 'p-1')).you.fastest, { rank: 2, best: false, run: null });
@@ -92,7 +99,7 @@ test("an answer without a time board or time rank (an older API's) reads as miss
 
 test("a board that can't be right reads as missing: all junk, ranks out of order, more rows than players", async () => {
   const { getBoard } = await import('../src/api.js?boards=1');
-  const r = (rank, name) => ({ rank, name, stars: 9, timeMs: 1000, platform: null, handle: null });
+  const r = (rank, name) => ({ rank, name, stars: 9, timeMs: 100000, platform: null, handle: null });
   const at = (n) => `2026-10-01T01:00:0${n}Z`;
   const cases = [
     [[{ rank: 'x' }], 5, null],
@@ -101,6 +108,8 @@ test("a board that can't be right reads as missing: all junk, ranks out of order
     [[r(1, 'a'), r(2, 'b'), r(3, 'c')], 2, null],
     [[], 0, []],
     [[r(1, 'a'), r(3, 'c')], 5, 2], // a gap (a row the game couldn't draw, dropped) is fine
+    [[r(1, 'a'), r(2, 'b'), r(9, 'c')], 3, null], // a rank past the player count
+    [[{ ...r(1, 'a'), timeMs: -5000 }], 5, null], // a time no run can have
   ];
   for (const [i, [fastest, total, want]] of cases.entries()) {
     globalThis.fetch = async () => reply(200, { top: [], fastest, total, asOf: at(i) });
@@ -127,7 +136,7 @@ test('refusals keep their status and reason; a network failure is retried once, 
 
 test('the leaderboard shows whichever is newer: the board a post returned, or the cached one', async () => {
   const { submitScore, getBoard } = await import('../src/api.js?isolated=1');
-  const row = (name) => [{ rank: 1, name, stars: 9, timeMs: 1000, platform: null, handle: null }];
+  const row = (name) => [{ rank: 1, name, stars: 9, timeMs: 100000, platform: null, handle: null }];
   const board = (asOf, name) => ({ top: row(name), fastest: row(name), total: 1, asOf });
   globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 1, best: true }, ...board('2026-10-01T12:00:00.000Z', 'posted') });
   await submitScore(summary, profile, 'p-1');

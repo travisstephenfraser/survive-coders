@@ -149,7 +149,9 @@ export function scoreForm({ profile, touch, submit, view, close, share }) {
   function done(r) {
     const { rank, total, best, fastest } = r.you;
     const mark = (b) => (b ? ' ✓' : '');
-    if (fastest) {
+    if (rank === null) {
+      status.textContent = 'posted ✓'; // the answer's ranks didn't add up: say only what's sure
+    } else if (fastest) {
       const ranks = `time #${fastest.rank}${mark(fastest.best)} · ★ #${rank}${mark(best)} of ${total}`;
       status.textContent = best || fastest.best ? `${ranks} (✓ personal best)` : `your bests stand: ${ranks}`;
     } else {

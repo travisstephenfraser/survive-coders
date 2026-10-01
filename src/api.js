@@ -1,4 +1,4 @@
-import { MAX_STARS, RULES_VERSION, checkName, profileUrl } from '../shared/leaderboard.js';
+import { MAX_STARS, MAX_TIME_MS, MIN_TIME_MS, RULES_VERSION, checkName, profileUrl } from '../shared/leaderboard.js';
 
 // The leaderboard API (api/scores.js). Anything that isn't a JSON answer from it, like no
 // network, the plain Vite dev server's HTML, or a proxy's error page, counts as offline.
@@ -28,7 +28,9 @@ export function cleanRows(rows) {
         Number.isInteger(r.stars) &&
         r.stars >= 0 &&
         r.stars <= MAX_STARS &&
-        Number.isInteger(r.timeMs),
+        Number.isInteger(r.timeMs) &&
+        r.timeMs >= MIN_TIME_MS &&
+        r.timeMs <= MAX_TIME_MS,
     )
     .slice(0, 10)
     .map(({ rank, name, stars, timeMs, platform = null, handle = null }) => ({
@@ -43,13 +45,14 @@ export function cleanRows(rows) {
 }
 
 // One board's rows, or null when the answer has no such board or one that can't be right: rows
-// sent but none drawable, ranks not strictly rising, or more rows than players. An older API's
-// answer has no `fastest`. The screen then says the board is unavailable rather than draw it.
+// sent but none drawable, ranks not strictly rising or past the player count, or more rows
+// than players. An older API's answer has no `fastest`. The screen then says the board is
+// unavailable rather than draw it.
 function rows(sent, total) {
   if (!Array.isArray(sent)) return null;
   const clean = cleanRows(sent);
   if (sent.length && !clean.length) return null;
-  if (clean.some((r, i) => i > 0 && r.rank <= clean[i - 1].rank) || clean.length > total) return null;
+  if (clean.some((r, i) => r.rank > total || (i > 0 && r.rank <= clean[i - 1].rank)) || clean.length > total) return null;
   return clean;
 }
 
@@ -77,7 +80,8 @@ export async function getBoard() {
 }
 
 // Posts a finished run (the run clock's summary) with the player's name and link.
-// → { state: 'ok', you: { rank, total, best, fastest: { rank, best, run } | null }, board, share } |
+// → { state: 'ok', you: { rank, total, best, fastest: { rank, best, run } | null }, board, share }
+//   (rank and total null when the answer's don't add up) |
 //   { state: 'error', status, error } |
 //   { state: 'offline' }. The database can take a few seconds to wake after a quiet spell, so
 // the wait is long, and a network failure gets one retry (a retry of a post that did land
@@ -106,13 +110,19 @@ export async function submitScore(summary, profile, playerId, { retryDelayMs = 1
   if (r.status === 201) {
     // The signed token for this run's /r/ link: base64url, a dot, base64url (api/_lib/share.js).
     const share = typeof r.body.share === 'string' && /^[\w-]+\.[\w-]+$/.test(r.body.share) ? r.body.share : null;
-    // The time rank, or null if the answer has none (an older API's) or none that makes sense;
-    // `run` is the player's fastest run, if the answer names one that could be on the board.
-    const fast = r.body.you?.fastest;
-    const total = r.body.you?.total;
-    const sane = Number.isInteger(fast?.rank) && Number.isInteger(total) && fast.rank >= 1 && fast.rank <= total && typeof fast.best === 'boolean';
-    const run = sane && cleanRows([{ ...fast, rank: 1 }]).length ? { name: fast.name, stars: fast.stars, timeMs: fast.timeMs } : null;
-    const you = { ...r.body.you, fastest: sane ? { rank: fast.rank, best: fast.best, run } : null };
+    // The ranks, each only if it makes sense: a rank from 1 to the player count, and a yes or
+    // no for best. The time rank is null if the answer has none (an older API's); `run` is the
+    // player's fastest run, if the answer names one that could be on the board.
+    const { rank, best, fastest: fast } = r.body.you ?? {};
+    const total = Number.isInteger(r.body.you?.total) && r.body.you.total >= 1 ? r.body.you.total : null;
+    const ranked = (n, b) => total !== null && Number.isInteger(n) && n >= 1 && n <= total && typeof b === 'boolean';
+    const run = ranked(fast?.rank, fast?.best) && cleanRows([{ ...fast, rank: 1 }]).length ? { name: fast.name, stars: fast.stars, timeMs: fast.timeMs } : null;
+    const you = {
+      rank: ranked(rank, best) ? rank : null,
+      total,
+      best: ranked(rank, best) && best,
+      fastest: ranked(fast?.rank, fast?.best) ? { rank: fast.rank, best: fast.best, run } : null,
+    };
     return { state: 'ok', you, board: newest({ state: 'ok', ...board(r.body) }), share };
   }
   return { state: 'error', status: r.status, error: r.body?.error ?? null };
