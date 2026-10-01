@@ -180,9 +180,11 @@ export default class PlayScene extends Phaser.Scene {
     applyScreenFX(cam);
 
     this.onPower = (name) => this.usePower(name);
-    this.powerGate = () => this.inputLocked;
+    this.powerGate = () => this.inputLocked || this.sys.isPaused();
     voice.on('power', this.onPower);
-    voice.gate = this.powerGate; // powers held during intros (1/2/3 used to fire under the Waymo's)
+    // Powers held during intros (1/2/3 used to fire under the Waymo's) and while paused (they
+    // fired on the pause screen, killing what was on it).
+    voice.gate = this.powerGate;
     this.events.once('shutdown', () => {
       voice.off('power', this.onPower);
       if (voice.gate === this.powerGate) voice.gate = null;

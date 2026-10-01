@@ -1,7 +1,8 @@
 // Leaderboard rules, shared by the game (Vite) and the API (Vercel functions). Keep it pure:
 // no window, no Phaser, no node:* imports, so both sides load the same file.
 
-export const RULES_VERSION = 1;
+// Stored with every run. 2: the run clock counts pauses and hidden tabs (1 left them out).
+export const RULES_VERSION = 2;
 
 // A run's milestones, in the order every run reaches them. Elevator, Ride and Arrival are
 // skippable, so they aren't milestones. A run's `splits` are the run-clock times at each one.

@@ -5,7 +5,10 @@ import { pop, shake } from '../fx.js';
 import { TOUCH, touch } from '../touch.js';
 
 const SPEED = 95;
-const FIRE_MS = 170;
+// A prompt every 183 ms, the rate a 60 Hz screen gave when each shot waited for the first frame
+// past 170 ms. Shots now carry their timing over (below), so the rate is the same at any
+// refresh rate; it used to quicken to 171 ms at 240 Hz and slow to 200 ms at 30 Hz.
+const FIRE_MS = 183;
 const STREAM_MS = 40; // MAX: 25 characters a second
 // Jump designed from height + time-to-apex (Pittman, "Building a Better Jump", GDC 2016):
 // v0 = 2h/t, g = 2h/t². h = 70px (4.4 tiles), t = 0.38s. Then Celeste-style forgiveness:
@@ -163,7 +166,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         }
       }
     } else if (firing && time > this.nextFire) {
-      this.nextFire = time + FIRE_MS;
+      // Steady fire keeps the beat; the first shot after a pause in firing starts a new one.
+      this.nextFire = (time - this.nextFire > FIRE_MS ? time : this.nextFire) + FIRE_MS;
       this.scene.firePrompt(this.laptop.x, this.laptop.y, this.facing);
       this.laptop.kick();
       this.scene.sfx?.('shoot', 0.25);

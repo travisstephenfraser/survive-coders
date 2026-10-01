@@ -40,10 +40,10 @@ export function cleanRows(rows) {
     }));
 }
 
-// `top` ranks by stars, `fastest` by time; `fastest` is null when the answer has no time board
-// at all (an older API's), so the screen can say so rather than show it empty.
+// `top` ranks by stars, `fastest` by time; either is null when the answer doesn't have it (an
+// older API's has no `fastest`), so the screen can say so rather than show it empty.
 const board = (body) => ({
-  top: cleanRows(body?.top),
+  top: Array.isArray(body?.top) ? cleanRows(body.top) : null,
   fastest: Array.isArray(body?.fastest) ? cleanRows(body.fastest) : null,
   total: Number.isInteger(body?.total) ? body.total : 0,
   asOf: typeof body?.asOf === 'string' ? body.asOf : null,
@@ -91,7 +91,7 @@ export async function submitScore(summary, profile, playerId, { retryDelayMs = 1
     const share = typeof r.body.share === 'string' && /^[\w-]+\.[\w-]+$/.test(r.body.share) ? r.body.share : null;
     // The time rank, or null if the answer has none (an older API's).
     const fast = r.body.you?.fastest;
-    const you = { ...r.body.you, fastest: Number.isInteger(fast?.rank) ? { rank: fast.rank, best: fast.best === true } : null };
+    const you = { ...r.body.you, fastest: Number.isInteger(fast?.rank) && fast.rank >= 1 ? { rank: fast.rank, best: fast.best === true } : null };
     return { state: 'ok', you, board: newest({ state: 'ok', ...board(r.body) }), share };
   }
   return { state: 'error', status: r.status, error: r.body?.error ?? null };

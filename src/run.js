@@ -6,14 +6,9 @@ import { sfx } from './audio.js';
 // The one run clock (runClock.js), and what ties it to the game.
 export const run = createRunClock();
 
-const anyPaused = (game) => game.scene.scenes.some((s) => s.sys.isPaused());
-
-// Drives the clock every frame, and the instant the tab hides or shows (a hidden tab draws no
-// frames in most browsers, so only the event marks the moment).
+// Feeds the clock's check every frame. The clock itself reads wall time, pauses included.
 export function installRunClock(game) {
-  const liveNow = () => !document.hidden && !anyPaused(game);
-  game.events.on('step', () => run.frame(liveNow(), game.loop.rawDelta));
-  document.addEventListener('visibilitychange', () => run.setLive(liveNow()));
+  game.events.on('step', () => run.frame(game.loop.rawDelta));
   if (import.meta.env.DEV) window.run = run; // debugging hook for dev builds only
 }
 

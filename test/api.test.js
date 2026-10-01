@@ -69,6 +69,12 @@ test("an answer without a time board or time rank (an older API's) reads as miss
   const junk = await submitScore(summary, profile, 'p-1');
   assert.equal(junk.you.fastest, null);
   assert.deepEqual(junk.board.fastest, []);
+  globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 1, best: true, fastest: { rank: -3, best: true } }, ...old });
+  assert.equal((await submitScore(summary, profile, 'p-1')).you.fastest, null);
+  globalThis.fetch = async () => reply(200, { fastest: old.top, total: 1, asOf: '2026-10-01T00:01:00Z' });
+  const noTop = await getBoard();
+  assert.equal(noTop.top, null);
+  assert.equal(noTop.fastest.length, 1);
 });
 
 test('refusals keep their status and reason; a network failure is retried once, then offline', async () => {

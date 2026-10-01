@@ -262,7 +262,7 @@ A dated design review with before and after screenshots is in
 - Pause (with a restart for the level you are on), mute, and a checkpoint at every level after the first (the park, each tower floor, the fall, the boss) that restores your star total on retry
 - A title menu (PLAY NOW, LEADERBOARD, SETTINGS) driven by the arrow keys, a click, or a tap
 - Settings: music and sound-effect volume, sound on or off, the CRT filter, screen shake, flashes (shake and flashes start off when the system asks for reduced motion), fullscreen where the browser has it, and a run timer in the HUD; saved in the browser
-- An online leaderboard with two tabs. TIME: the fastest finish first, timed from the start of the run to the Hydra's fall, pauses excluded, with more stars breaking a tie. STARS: the most stars first (382 is the most one run can earn), with the faster run breaking a tie. Each board shows each player's best run for it, so a fast run and a thorough one can both count. Deaths and restarts cost time; going back to the first level starts a new run. A finished run posts a name and, optionally, a GitHub, LinkedIn, X, or Bluesky handle, which each of the top ten links to
+- An online leaderboard with two tabs. TIME: the fastest finish first, timed from the start of the run to the Hydra's fall, pauses and hidden tabs included (the game's timers don't all stop for a pause, so a clock that did could be cut short by pausing), with more stars breaking a tie. STARS: the most stars first (382 is the most one run can earn), with the faster run breaking a tie. Each board shows each player's best run for it, so a fast run and a thorough one can both count. Deaths and restarts cost time; going back to the first level starts a new run. A finished run posts a name and, optionally, a GitHub, LinkedIn, X, or Bluesky handle, which each of the top ten links to
 - Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
 - A song for each stretch of the run (the city, the park, the tower, the fall, the ride to HQ, and the Hydra), the new ones loudness-matched to the city's so none jumps out, plus two originals written as MIDI note data and synthesized in the browser: the elevator's bossa nova and the chiptune victory song on the win screen
 - Share any run from the win or death screen: on a phone, the share sheet gets a card of the run (drawn in the game's own pixels) and a line with its link; on a desktop, S or a button copies the line and another saves the card. The link unfurls into the same card, and opens the game with a challenge on the title screen
@@ -471,7 +471,8 @@ never production.
   handles, and pasted-URL parsing
 - the profanity check on names and handles: a list that must be refused (disguised
   spellings too) and a list that must pass (surnames, places, and words that contain one)
-- the run clock (pauses, milestones, and the check that catches a clock running short), the
+- the run clock (wall time with pauses counted, milestones, and the check that catches a clock
+  running short), the
   settings store, the mute toggle, the saved player profile, and the game's API client
   (including an older API's answer, with no time board, as after a rollback)
 - the database wrapper's request to Neon (driver fetch stubbed): both boards in one round
@@ -551,9 +552,9 @@ against the running game, recorded with screenshots in
 
 Not verified by automation: real spoken commands through a microphone, the audio mix,
 difficulty with first-time players (the fall's 24 seconds included), a full run timed against
-a stopwatch (the clock was checked over 40 s with a pause, not a whole run), and a hidden tab
-(the automated browser never reports one, so the visibility path is covered by a unit test
-only).
+a stopwatch (the clock was checked over 40 s with a pause, not a whole run, and again over a
+3 s pause once pauses counted), and a real hidden tab (the automated browser never reports one;
+the clock reads wall time, so a hidden tab needs no path of its own).
 
 ---
 
@@ -590,11 +591,12 @@ only).
    return JSON. Smoke-testing production would put a `smoke-*` run at #1 on the live board.
 
 **The time board** (2026-10-01) reads the same `scores` table, so it needs no migration: the
-runs already stored are on it from the first request. Two owner steps, both in the Neon SQL
-editor: once it's live, run the time-board review query from the comments at the end of
+runs already stored are on it from the first request. One owner step, in the Neon SQL editor:
+once it's live, run the time-board review query from the comments at the end of
 `db/schema.sql` and hide anything implausible, because runs posted before it were only
-alerted on when they made the stars board; and, when convenient, run `db/schema.sql` again
-(it's idempotent) to add the `scores_fastest` index, which the board reads correctly without.
+alerted on when they made the stars board. Those runs were also timed with pauses left out
+(rules version 1); runs from the time board on count them (rules version 2, stored with each
+run).
 
 To hide a cheat, run the `UPDATE` from its alert email in the Neon SQL editor. The public
 board serves a cached copy for up to 15 minutes, and after a quiet spell the first visitor
@@ -640,6 +642,15 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   turns away the impossible (see [what the leaderboard claims](#what-the-leaderboard-does-and-doesnt-claim)),
   and cheats are hidden by hand after the alert email. Next: an occasional offline audit of
   the stored milestones (times and stars at each), first as rules, later as a model.
+- **Every board read sorts the whole table, twice.** Both boards rank each player's best run
+  from every stored run, so the read grows with the table. Measured on Postgres 16 throttled
+  to a quarter of a CPU (the Free plan's smallest compute): about 1 s for both boards at 50,000
+  runs, about 5.7 s at 500,000, past the 5 s a statement may take there. The rate limit and the
+  15-minute edge cache keep that far off. Next: a table of each player's best run on each
+  board, kept up to date on insert, so a read sorts players rather than runs.
+- **Older runs on the time board were timed without pauses.** Runs posted before 2026-10-01
+  (rules version 1) left pauses out of their time; later runs count them. An honest early run
+  that paused reads a little short of how it would be timed now.
 - **A player is a browser.** Clearing site data, or another browser, is a new player. Inside
   the travisfraser.com embed, storage belongs to that site (and Safari keeps it only in
   memory), so the embed and the direct link count as two players.

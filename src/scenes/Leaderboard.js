@@ -34,6 +34,10 @@ export default class Leaderboard extends Phaser.Scene {
   }
 
   create(data) {
+    // Phaser keeps a scene's last data when it's started with none, so a later visit from the
+    // title would show this board again, never fetching: take it and clear it.
+    const handed = data?.board;
+    this.sys.settings.data = {};
     applyScreenFX(this.cameras.main);
     const win = terminalWindow(this, 'vibecoder@sf: ~/leaderboard - zsh');
     this.rule = uiText(this, 70, win.y + 74, '', { size: 16, color: '#d97757' });
@@ -73,14 +77,14 @@ export default class Leaderboard extends Phaser.Scene {
 
     // The scene object is reused, so an answer from an earlier visit that arrives late is dropped.
     const visit = (this.visit = {});
-    if (data?.board) this.show(data.board);
+    if (handed) this.show(handed);
     else getBoard().then((b) => this.visit === visit && this.sys.isActive() && this.show(b));
   }
 
   show(board) {
     if (board.state === 'offline') return this.status.setText("offline: can't reach the leaderboard");
     if (board.state !== 'ok') return this.status.setText(`leaderboard unavailable (HTTP ${board.status})`);
-    if (!board.top.length) return this.status.setText('no finished runs yet: be the first');
+    if (!board.top?.length && !board.fastest?.length) return this.status.setText('no finished runs yet: be the first');
     this.status.setText('');
     this.total.setText(`${board.total} ${board.total === 1 ? 'player' : 'players'}`);
     this.board = board;
@@ -98,9 +102,10 @@ export default class Leaderboard extends Phaser.Scene {
     this.tabs.forEach((t) => t.redraw());
     this.dest.setText('');
     if (!this.board) return;
-    // A board missing from the answer (an older API's, say) says so rather than draw empty.
+    // Both boards count the same players, so one that's missing or empty while the other has
+    // rows (an older API's answer, say) says so rather than draw empty.
     const entries = this.board[b.field];
-    this.status.setText(entries ? '' : `the ${b.key} board is unavailable: try again later`);
+    this.status.setText(entries?.length ? '' : `the ${b.key} board is unavailable: try again later`);
     this.rows.forEach((row, i) => {
       const e = entries?.[i] ?? null;
       row.fill(e, e !== null && this.mine.some((m) => sameRun(m, e)));
@@ -184,12 +189,15 @@ export default class Leaderboard extends Phaser.Scene {
         focused = on;
         row.redraw();
         if (on) describe();
+        else scene.dest.setText('');
       },
       redraw() {
         const tint = focused ? 0x3fb950 : own ? 0xe3b341 : 0xf5f5f5;
         for (const k of ['rank', 'name', 'stars', 'time']) t[k].setTint(tint);
       },
-      activate: () => link?.node.click(),
+      // ENTER opens the link. A click or tap is the link's own (the menu's hit box is a little
+      // larger than the row, and a tap there mustn't open a profile on the first touch).
+      activate: (via) => via === 'key' && link?.node.click(),
       adjust: (dir) => scene.flip(dir),
     };
     return row;

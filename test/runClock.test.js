@@ -10,18 +10,17 @@ function clockAt() {
   return { clock, set: (ms) => (t = ms) };
 }
 
-test('time counts only while the run is live', () => {
+test('time counts from start to finish, pauses and hidden tabs included, then stops', () => {
   const { clock, set } = clockAt();
+  set(500);
   clock.start();
   set(1000);
-  clock.setLive(false); // paused
-  set(5000);
-  clock.setLive(true);
-  set(6500);
-  assert.equal(clock.elapsed(), 2500);
+  clock.frame(500);
+  set(6500); // paused, or the tab hidden: frames or none, the clock counts on
+  assert.equal(clock.elapsed(), 6000);
   clock.finish();
   set(9000);
-  assert.equal(clock.elapsed(), 2500);
+  assert.equal(clock.elapsed(), 6000);
   assert.equal(clock.state, 'finished');
 });
 
@@ -45,13 +44,13 @@ function fullRun(clock, set, { lastFrameMs } = {}) {
   const stars = [90, 160, 190, 230, 250, 250, 262];
   SPLITS.forEach((name, i) => {
     t += SEGMENT_FLOOR_MS[i] + 2000;
-    clock.frame(true, t - frames);
+    clock.frame(t - frames);
     frames = t;
     set(t);
     clock.split(name, stars[i]);
   });
   t += SEGMENT_FLOOR_MS.at(-1) + 2000;
-  clock.frame(true, lastFrameMs ?? t - frames);
+  clock.frame(lastFrameMs ?? t - frames);
   set(t);
   clock.finish();
   return t;

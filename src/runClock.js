@@ -1,30 +1,20 @@
 import { SPLITS, checkRun } from '../shared/leaderboard.js';
 
-// The leaderboard's run clock: real time from PLAY NOW to the Hydra's fall, deaths and retries
-// included, minus every stretch the run isn't live (the game paused, the tab hidden). It keeps
-// wall-clock time and subtracts the pauses, rather than summing frame deltas: Phaser resets
-// its delta whenever the window regains focus, and some browsers keep drawing frames in hidden
-// tabs, and a sum would miss the first and count the second. Browser-free (the scene hooks are
-// in run.js), so it runs under node --test with a fake time source.
+// The leaderboard's run clock: real time from PLAY NOW to the Hydra's fall, everything
+// included: deaths and retries, the pause screen, a hidden tab. Pauses count because the game
+// doesn't stop with them: power cooldowns, timed gates (the park's fountain, the arena's waves,
+// Claude typing in the fall) and tweens run on time the pause doesn't freeze, so a clock that
+// skipped pauses could be cut short by pausing through them. It keeps wall-clock time rather
+// than summing frame deltas, which a hidden tab (no frames) would miss. Browser-free (the scene
+// hook is in run.js), so it runs under node --test with a fake time source.
 export function createRunClock(now = () => performance.now()) {
   let state = 'idle'; // idle | running | finished
   let id = null;
   let reasons = [];
-  let ms = 0; // live time banked before the current live stretch
-  let live = false;
-  let since = 0;
-  let frameMs = 0; // the frames drawn while live, summed: an independent check on the clock
+  let startedAt = 0;
+  let frameMs = 0; // the frames drawn, summed: an independent check on the clock
   let marks = {};
   let finalMs = null;
-
-  function setLive(on) {
-    on = on && state === 'running';
-    if (on === live) return;
-    const t = now();
-    if (live) ms += t - since;
-    live = on;
-    since = t;
-  }
 
   return {
     get state() {
@@ -34,31 +24,25 @@ export function createRunClock(now = () => performance.now()) {
     get ranked() {
       return reasons.length === 0;
     },
-    elapsed: () => (state === 'finished' ? finalMs : ms + (live ? now() - since : 0)),
-    setLive,
+    elapsed: () => (state === 'finished' ? finalMs : state === 'running' ? now() - startedAt : 0),
 
     start({ god = false, dev = false } = {}) {
       state = 'running';
       id = uuid();
       reasons = [...(god ? ['god'] : []), ...(dev ? ['dev'] : [])];
-      ms = 0;
-      live = false;
+      startedAt = now();
       frameMs = 0;
       marks = {};
       finalMs = null;
-      setLive(true);
     },
 
     reset() {
-      setLive(false);
       state = 'idle';
     },
 
-    // Once per frame: whether the run is live now, and the frame's raw delta.
-    frame(isLive, rawDelta) {
-      if (state !== 'running') return;
-      setLive(isLive);
-      if (isLive) frameMs += rawDelta;
+    // Once per frame: the frame's raw delta.
+    frame(rawDelta) {
+      if (state === 'running') frameMs += rawDelta;
     },
 
     // First arrival at a milestone (a retry that re-enters it changes nothing).
@@ -68,8 +52,7 @@ export function createRunClock(now = () => performance.now()) {
 
     finish() {
       if (state !== 'running') return;
-      setLive(false);
-      finalMs = Math.round(ms);
+      finalMs = Math.round(now() - startedAt);
       state = 'finished';
     },
 
@@ -79,8 +62,8 @@ export function createRunClock(now = () => performance.now()) {
       const splitStars = SPLITS.map((n) => marks[n]?.stars);
       const why = [...reasons];
       // The failure that would look like success is a clock that runs short: that reads as a
-      // fast run. The live frames can come up short of real time but never long, so a clock
-      // well under them missed play time.
+      // fast run. The frames can come up short of real time but never long, so a clock well
+      // under them missed play time.
       if (finalMs < frameMs - (1000 + 0.01 * frameMs)) why.push('clock');
       const code = checkRun({ stars, timeMs: finalMs, splits, splitStars });
       if (code) why.push(code);

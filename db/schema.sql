@@ -33,10 +33,8 @@ CREATE TABLE IF NOT EXISTS scores (
           AND handle ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'))))
 );
 
--- Each player's best visible run, fast; and their fastest, for the time board. The board reads
--- correctly without the second (it sorts instead); it only keeps the read quick as the table grows.
+-- Each player's best visible run, fast.
 CREATE INDEX IF NOT EXISTS scores_best ON scores (player_id, stars DESC, time_ms, created_at) WHERE NOT hidden;
-CREATE INDEX IF NOT EXISTS scores_fastest ON scores (player_id, time_ms, stars DESC, created_at) WHERE NOT hidden;
 
 -- Per-minute request counters for the submit rate limit (one row per bucket per minute).
 CREATE TABLE IF NOT EXISTS request_counts (
