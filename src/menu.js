@@ -81,6 +81,10 @@ export function menu(scene, items, { onBack, start = 0 } = {}) {
     if (i >= 0 && i === pressed) items[i].activate?.('pointer', p);
     pressed = -1;
   });
+  // A press or release off the canvas (on a link over it, or outside the game) ends any press,
+  // so a later release can't finish one that began elsewhere.
+  scene.input.on('pointerupoutside', () => (pressed = -1));
+  scene.input.on('pointerdownoutside', () => (pressed = -1));
 
   if (usable(start)) select(start);
   else move(1);

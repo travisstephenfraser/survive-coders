@@ -212,6 +212,7 @@ export default class Leaderboard extends Phaser.Scene {
         if (via !== 'key' || !link) return;
         armed = true;
         link.node.click();
+        armed = false; // the next tap starts over
       },
       adjust: (dir) => scene.flip(dir),
     };
@@ -239,10 +240,12 @@ export default class Leaderboard extends Phaser.Scene {
       e.preventDefault();
       select();
     });
+    // A click selects its row again (the keyboard may have moved the selection mid-press), so
+    // what opens is the row the line names.
     a.addEventListener('click', (e) => {
+      select();
       if (TOUCH && !armed()) {
         e.preventDefault();
-        select();
         arm();
       }
     });
