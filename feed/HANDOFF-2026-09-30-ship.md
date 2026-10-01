@@ -5,7 +5,7 @@ Audience: Travis's next session. Pick-up notes._
 
 ## Pick up here
 
-- **First action:** `git -C ~/Developer/survive-coders fetch origin && git -C ~/Developer/survive-coders log --oneline -1 origin/master`: expect `d41e89b README: 70 tests, and the share tests' canonical redirect`.
+- **First action:** `git -C ~/Developer/survive-coders fetch origin && git -C ~/Developer/survive-coders merge-base --is-ancestor d41e89b origin/master && echo app-ok`: expect `app-ok` (the shipped app is `d41e89b`; docs-only commits such as this handoff's `29b72b3` sit above it).
 - **Resume prompt** (paste into a fresh session):
   > Read `feed/HANDOFF-2026-09-30-ship.md`. Then clear the deferred minors in Next steps 3 on one branch off master, each fix test-first (unit test or a check in `feed/shots/playtest.js`), and stop for Travis's go before master. Fetch and check the behind count as its own step immediately before every push. Never commit `feed/HANDOFF-2026-09-30.md` (a private note in a public repo).
 - **Human-only steps:** post a ranked production run and open its `/r/` link; LinkedIn Post Inspector on one `/s/` link; a second playtester for the controls.
@@ -17,8 +17,8 @@ A 16-bit Phaser browser game (static Vite build on Vercel, iframed on travisfras
 
 ## Status
 
-- **Git:** checkout on `claude/title-screen-credit-vqfi4n` at `d41e89b`, which equals `origin/master` and local `master` (0 ahead, 0 behind). PR #2 (`claude/playtest-fixes`) shows merged (`7cf2c80`). Uncommitted, no app code: `docs/superpowers/` (plan, spec), `feed/HANDOFF-2026-09-2{6,7}.md` (pre-existing edits), untracked `feed/HANDOFF-2026-09-{27-design-flow,29,30}.md` (`-30` is an unrelated private note: never commit it), and this file.
-- **This file:** untracked in a tracked `feed/`, so the devbox won't see it until it's committed and pushed, and once pushed it is public.
+- **Git:** checkout on `master`, even with `origin/master` (app at `d41e89b`; the handoff, plan and spec committed on top as `29b72b3`). PR #2 (`claude/playtest-fixes`) shows merged (`7cf2c80`). Untracked on purpose: `feed/HANDOFF-2026-09-27-design-flow.md` (it spells out god mode's activation, so it stays out of the public repo) and `feed/HANDOFF-2026-09-30.md` (an unrelated private note: never commit it).
+- **This file:** tracked and pushed to the public repo, so the devbox sees it after `git pull`.
 - **Tests:** `npm test` 70/70, `npm run stars` 382, `npm run build` clean, all on the merged tree 2026-09-30 about 15:30 PDT. Fifteen scripted browser checks passed on the final playtest code (dev-only, see Run).
 - **Live surface:** https://survive-coders.vercel.app serving `d41e89b` (bundle `assets/index-B5CTu4cb.js`). Health: `curl -sI https://survive-coders.vercel.app/ | head -1` gives `HTTP/2 200`.
 - **Environment:** laptop, repo `~/Developer/survive-coders` (devbox root: vault `wiki-vault/_meta/machine-parity.md`), Node v26.4.0, `node_modules` present. No servers running. Secrets: `.env` (names in `.env.example`), Vercel env vars (Sensitive). No data outside git and Neon.
@@ -27,7 +27,7 @@ A 16-bit Phaser browser game (static Vite build on Vercel, iframed on travisfras
 
 ```bash
 cd ~/Developer/survive-coders
-git fetch origin && git log --oneline -1 origin/master      # expect: d41e89b ...
+git fetch origin && git merge-base --is-ancestor d41e89b origin/master && echo app-ok   # expect: app-ok
 npm test 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E 'ℹ (pass|fail)'   # expect: pass 70, fail 0
 npm run -s stars | tail -1                                   # expect: total 382 (independent recount)
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' 'https://survive-coders.vercel.app/s/1-a-3x-ky/card.png?x=1'
@@ -116,3 +116,4 @@ git fetch origin && git rev-list --count HEAD..origin/master   # before any push
 ## Changelog
 
 - 2026-09-30 20:35: corrected which design-brief items had shipped (the vault hub recorded 1 and 3-5 as shipped earlier); vault synced.
+- 2026-09-30 20:50: handoff, plan and spec committed and pushed (`29b72b3`); First action made robust to docs-only commits on master; vault pushed (`72844f2`).
