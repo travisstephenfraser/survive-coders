@@ -5,16 +5,29 @@ import { terminalWindow } from '../terminal.js';
 import { TOUCH } from '../touch.js';
 import { menu, textRow } from '../menu.js';
 import { getBoard } from '../api.js';
-import { readBest } from '../profile.js';
+import { readBest, readFastest } from '../profile.js';
 import { PLATFORMS, formatTime } from '../../shared/leaderboard.js';
 
 const ROW_Y = 158;
 const ROW_H = 26;
 const COL = { rank: 110, name: 130, stars: 560, time: 700, tag: 730 };
+const TAB_Y = 82; // the tabs' middle
+const ORANGE = 0xd97757;
+const GREY = 0x8b8b8b;
 
-// The top ten, most stars first, fastest breaking ties. A row with a profile is a real link
-// (a transparent <a> over it), so it opens the way any link does; ENTER opens the selected one.
-// `data.board` is a board already in hand (the one a score submission just returned).
+// The two boards, in tab order. `field` is where the API's answer holds each top ten.
+const BOARDS = [
+  { key: 'time', label: 'TIME', field: 'fastest', rule: 'fastest finish wins; more ★ breaks a tie' },
+  { key: 'stars', label: 'STARS', field: 'top', rule: 'most ★ wins; the faster run breaks a tie' },
+];
+
+const sameRun = (a, b) => a.name === b.name && a.stars === b.stars && a.timeMs === b.timeMs;
+
+// Two top tens behind two tabs: TIME (fastest first, more stars breaking ties), the one that
+// opens, and STARS (most stars first, fastest breaking ties). ←→ switch from anywhere. A row
+// with a profile is a real link (a transparent <a> over it), so it opens the way any link does;
+// ENTER opens the selected one. `data.board` is a board already in hand (the one a score
+// submission just returned).
 export default class Leaderboard extends Phaser.Scene {
   constructor() {
     super('Leaderboard');
@@ -23,27 +36,40 @@ export default class Leaderboard extends Phaser.Scene {
   create(data) {
     applyScreenFX(this.cameras.main);
     const win = terminalWindow(this, 'vibecoder@sf: ~/leaderboard - zsh');
-    uiText(this, 70, win.y + 44, '$ curl -s survive-coders.vercel.app/api/scores', { size: 16, color: '#8b8b8b' });
-    uiText(this, 70, win.y + 68, 'most ★ wins; the faster run breaks a tie', { size: 16, color: '#d97757' });
-    this.total = uiText(this, win.x + win.w - 30, win.y + 68, '', { size: 16, color: '#8b8b8b', ox: 1 });
+    this.rule = uiText(this, 70, win.y + 74, '', { size: 16, color: '#d97757' });
+    this.total = uiText(this, win.x + win.w - 30, win.y + 74, '', { size: 16, color: '#8b8b8b', ox: 1 });
     const head = { size: 8, color: '#8b8b8b' };
     uiText(this, COL.rank, ROW_Y - 22, '#', { ...head, ox: 1 });
     uiText(this, COL.name, ROW_Y - 22, 'name', head);
-    uiText(this, COL.stars, ROW_Y - 22, 'stars', { ...head, ox: 1 });
-    uiText(this, COL.time, ROW_Y - 22, 'time', { ...head, ox: 1 });
+    this.heads = {
+      stars: uiText(this, COL.stars, ROW_Y - 22, 'stars', { ...head, ox: 1 }),
+      time: uiText(this, COL.time, ROW_Y - 22, 'time', { ...head, ox: 1 }),
+    };
     uiText(this, COL.tag, ROW_Y - 22, 'profile', head);
 
     this.status = uiText(this, COL.name, ROW_Y, 'fetching..._', { size: 16, color: '#8b8b8b' });
     this.dest = uiText(this, 70, win.y + win.h - 84, '', { size: 16, color: '#58a6ff' });
-    this.best = uiText(this, 70, win.y + win.h - 58, bestLine(), { size: 16, color: '#f5f5f5' });
-    const hint = TOUCH ? 'tap a name to see its profile, tap again to open it' : '↑↓ choose   ENTER open profile   ESC back';
+    this.best = uiText(this, 70, win.y + win.h - 58, '', { size: 16, color: '#f5f5f5' });
+    const hint = TOUCH ? 'tap a name to see its profile, tap again to open it' : '←→ time / stars   ↑↓ choose   ENTER open profile   ESC back';
     uiText(this, 70, win.y + win.h - 16, hint, { size: 8, color: '#8b8b8b' });
 
+    // The player's own runs (their best and their fastest), lit up wherever they rank.
+    this.mine = [readBest(), readFastest()].filter(Boolean);
+    this.board = null;
+    this.at = 0; // TIME
+    let x = 70;
+    this.tabs = BOARDS.map((b, i) => {
+      const tab = this.tab(x, b.label, i);
+      x = tab.bounds().right + 12;
+      return tab;
+    });
     this.rows = [];
     for (let i = 0; i < 10; i++) this.rows.push(this.row(i));
     const back = () => this.scene.start('Title', { from: 'leaderboard' });
-    const backRow = textRow(this, win.x + win.w - 110, win.y + 44, 'BACK', { size: 16, onPick: back });
-    this.menu = menu(this, [...this.rows, backRow], { onBack: back, start: 10 });
+    const backRow = textRow(this, win.x + win.w - 110, win.y + 44, 'BACK', { size: 16, onPick: back, onAdjust: (dir) => this.flip(dir) });
+    const items = [...this.tabs, ...this.rows, backRow];
+    this.menu = menu(this, items, { onBack: back, start: items.length - 1 });
+    this.draw();
 
     if (data?.board) this.show(data.board);
     else getBoard().then((b) => this.sys.isActive() && this.show(b));
@@ -55,9 +81,64 @@ export default class Leaderboard extends Phaser.Scene {
     if (!board.top.length) return this.status.setText('no finished runs yet: be the first');
     this.status.setText('');
     this.total.setText(`${board.total} ${board.total === 1 ? 'player' : 'players'}`);
-    const mine = readBest();
-    board.top.forEach((entry, i) => this.rows[i].fill(entry, mine && entry.name === mine.name && entry.stars === mine.stars && entry.timeMs === mine.timeMs));
-    this.menu.select(0);
+    this.board = board;
+    this.draw();
+    this.menu.select(this.tabs.length); // the first row
+  }
+
+  // Shows the open tab: its rule, its column lit in the header, its rows, the player's line.
+  draw() {
+    const b = BOARDS[this.at];
+    this.rule.setText(b.rule);
+    for (const [key, text] of Object.entries(this.heads)) text.setTint(key === b.key ? ORANGE : GREY);
+    this.best.setText(bestLine(b.key));
+    this.tabs.forEach((t) => t.redraw());
+    if (!this.board) return;
+    const entries = this.board[b.field];
+    this.rows.forEach((row, i) => {
+      const e = entries[i] ?? null;
+      row.fill(e, e !== null && this.mine.some((m) => sameRun(m, e)));
+    });
+    this.menu.refresh();
+  }
+
+  pick(i) {
+    if (i === this.at) return;
+    this.at = i;
+    this.draw();
+  }
+
+  flip(dir) {
+    this.pick((this.at + dir + BOARDS.length) % BOARDS.length);
+  }
+
+  // A tab: a box, filled orange while its board is open, outlined green while selected. ENTER
+  // or a click opens it; ←→ on a tab move to the other tab and open it.
+  tab(x, label, i) {
+    // The glyphs leave their cell's bottom row empty: a nudge down centers them in the box.
+    const text = uiText(this, x + 12, TAB_Y + 2, label, { size: 16, oy: 0.5 }).setDepth(1);
+    const box = this.add.rectangle(x, TAB_Y, text.width + 24, 26, 0x0d0d0d).setOrigin(0, 0.5);
+    let focused = false;
+    const tab = {
+      bounds: () => box.getBounds(),
+      focus: (on) => {
+        focused = on;
+        tab.redraw();
+        if (on) this.dest.setText('');
+      },
+      redraw: () => {
+        const open = this.at === i;
+        box.setFillStyle(open ? ORANGE : 0x0d0d0d);
+        box.setStrokeStyle(2, focused ? 0x3fb950 : open ? ORANGE : 0x444c56);
+        text.setTint(open ? 0x0d0d0d : focused ? 0x3fb950 : GREY);
+      },
+      activate: () => this.pick(i),
+      adjust: (dir) => {
+        this.flip(dir);
+        this.menu.select(this.at);
+      },
+    };
+    return tab;
   }
 
   row(i) {
@@ -74,37 +155,43 @@ export default class Leaderboard extends Phaser.Scene {
     let own = false;
     let focused = false;
     let link = null;
+    const describe = () => scene.dest.setText(entry?.url ? `→ ${entry.url.replace(/^https:\/\/(www\.)?/, '')}` : entry ? 'no profile linked' : '');
     const row = {
       bounds: () => new Phaser.Geom.Rectangle(70, y - 5, 800, ROW_H),
       enabled: () => entry !== null,
+      // A switch of tabs refills every row, so the old row's link goes first.
       fill(e, isMine) {
         entry = e;
         own = isMine;
-        t.rank.setText(`${e.rank}.`);
-        t.name.setText(e.name);
-        t.stars.setText(`★ ${e.stars}`);
-        t.time.setText(formatTime(e.timeMs));
-        t.tag.setText(e.url ? PLATFORMS[e.platform].tag : '');
-        if (e.url) link = scene.link(e, y, () => scene.menu.select(i), () => focused);
+        link?.destroy();
+        link = null;
+        t.rank.setText(e ? `${e.rank}.` : '');
+        t.name.setText(e?.name ?? '');
+        t.stars.setText(e ? `★ ${e.stars}` : '');
+        t.time.setText(e ? formatTime(e.timeMs) : '');
+        t.tag.setText(e?.url ? PLATFORMS[e.platform].tag : '');
+        if (e?.url) link = scene.link(e, y, () => scene.menu.select(scene.tabs.length + i), () => focused);
         row.redraw();
+        if (focused) describe();
       },
       focus(on) {
         focused = on;
         row.redraw();
-        if (on) scene.dest.setText(entry?.url ? `→ ${entry.url.replace(/^https:\/\/(www\.)?/, '')}` : entry ? 'no profile linked' : '');
+        if (on) describe();
       },
       redraw() {
         const tint = focused ? 0x3fb950 : own ? 0xe3b341 : 0xf5f5f5;
         for (const k of ['rank', 'name', 'stars', 'time']) t[k].setTint(tint);
       },
-      activate: () => link?.click(),
+      activate: () => link?.node.click(),
+      adjust: (dir) => scene.flip(dir),
     };
     return row;
   }
 
-  // A transparent link over a row. On a phone the first tap only selects the row (showing
-  // where it goes); the second opens it. The link never keeps focus, so the arrow keys stay
-  // with the menu after a click.
+  // A transparent link over a row (its DOM game object; the <a> is its node). On a phone the
+  // first tap only selects the row (showing where it goes); the second opens it. The link never
+  // keeps focus, so the arrow keys stay with the menu after a click.
   link(entry, y, select, selected) {
     const a = document.createElement('a');
     a.href = entry.url;
@@ -121,13 +208,16 @@ export default class Leaderboard extends Phaser.Scene {
         select();
       }
     });
-    this.add.dom(70, y - 5, a).setOrigin(0);
-    return a;
+    return this.add.dom(70, y - 5, a).setOrigin(0);
   }
 }
 
-function bestLine() {
-  const b = readBest();
-  if (!b) return 'finish a run to get on the board';
-  return `your best: ★ ${b.stars} in ${formatTime(b.timeMs)}`;
+// The player's own line under the board: their fastest on TIME, their best on STARS, whichever
+// this browser has when it only has one (a post before the time board saved only the best).
+function bestLine(key) {
+  const best = readBest();
+  const fastest = readFastest();
+  if (fastest && (key === 'time' || !best)) return `your fastest: ${formatTime(fastest.timeMs)} with ★ ${fastest.stars}`;
+  if (best) return `your best: ★ ${best.stars} in ${formatTime(best.timeMs)}`;
+  return 'finish a run to get on the board';
 }

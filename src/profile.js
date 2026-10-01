@@ -49,13 +49,17 @@ export function loadProfile() {
 
 export const saveProfile = ({ name, platform, handle }) => write('sc_profile', JSON.stringify({ name, platform, handle }));
 
-// { name, stars, timeMs, rank, total } from the last post that was a personal best.
-export function readBest() {
+function readJson(key) {
   try {
-    return JSON.parse(read('sc_best') ?? 'null');
+    return JSON.parse(read(key) ?? 'null');
   } catch {
     return null;
   }
 }
 
+// { name, stars, timeMs } from the last post that was a personal best: most stars (readBest),
+// or fastest (readFastest).
+export const readBest = () => readJson('sc_best');
 export const saveBest = (best) => write('sc_best', JSON.stringify(best));
+export const readFastest = () => readJson('sc_fastest');
+export const saveFastest = (fastest) => write('sc_fastest', JSON.stringify(fastest));

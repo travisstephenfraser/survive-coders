@@ -1,14 +1,15 @@
 import { SPLITS, formatTime } from '../../shared/leaderboard.js';
 
-// The top-ten alert: one plain-text email through Resend's REST API, with the run and the SQL
+// The top-ten alert (a new best in either board's top ten): one plain-text email through Resend's REST API, with the run and the SQL
 // that hides it. Sent from Resend's shared test sender, which delivers only to the Resend
 // account's own address (that's who it's for). Bounded by a timeout; a failure is logged and
 // swallowed, because the player's post already succeeded.
 export function resendNotifier(settings, { fetch: send = fetch, log = console } = {}) {
   return async (e) => {
     if (!settings) return;
+    const head = `time #${e.fastRank}, ★ #${e.rank} of ${e.total}: ${e.name}, ★ ${e.stars} in ${formatTime(e.timeMs)}`;
     const lines = [
-      `#${e.rank} of ${e.total}: ${e.name}, ★ ${e.stars} in ${formatTime(e.timeMs)}`,
+      head,
       e.url ? `profile: ${e.url}` : 'no profile linked',
       '',
       'milestones (time, stars held):',
@@ -30,7 +31,7 @@ export function resendNotifier(settings, { fetch: send = fetch, log = console } 
         body: JSON.stringify({
           from: 'Survive Coders <onboarding@resend.dev>',
           to: [settings.to],
-          subject: `Leaderboard #${e.rank} of ${e.total}: ${e.name}, ★ ${e.stars} in ${formatTime(e.timeMs)}`,
+          subject: `Leaderboard ${head}`,
           text: lines.join('\n'),
         }),
         signal: AbortSignal.timeout(3000),

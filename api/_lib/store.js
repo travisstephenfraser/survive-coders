@@ -3,20 +3,23 @@ import { neon } from '@neondatabase/serverless';
 // The leaderboard's queries. `db` runs them: { q(text, params) → rows, tx([[text, params], …])
 // → [rows, …] in one transaction }. Neon's HTTP driver in production (neonDb), PGlite in tests.
 
-// Each player's best visible run, ranked: most stars, then fastest, then first posted. Returns
-// the top ten, plus the given player's own row wherever it ranks ($1 null: just the ten).
-const BOARD = `
+// The two boards: each player's best visible run, ranked. By stars: most stars, then fastest,
+// then first posted. By time: fastest, then most stars, then first posted. Each returns the top
+// ten, plus the given player's own row wherever it ranks ($1 null: just the ten).
+const board = (order) => `
 WITH best AS (
   SELECT DISTINCT ON (player_id) player_id, run_id, name, stars, time_ms, platform, handle, created_at
   FROM scores WHERE NOT hidden
-  ORDER BY player_id, stars DESC, time_ms, created_at
+  ORDER BY player_id, ${order}
 ), ranked AS (
-  SELECT *, row_number() OVER (ORDER BY stars DESC, time_ms, created_at, run_id)::int AS rank,
+  SELECT *, row_number() OVER (ORDER BY ${order}, run_id)::int AS rank,
          count(*) OVER ()::int AS total
   FROM best
 )
 SELECT rank, total, name, stars, time_ms, platform, handle, run_id, coalesce(player_id = $1::uuid, false) AS mine
 FROM ranked WHERE rank <= 10 OR player_id = $1::uuid ORDER BY rank`;
+const BY_STARS = board('stars DESC, time_ms, created_at');
+const BY_TIME = board('time_ms, stars DESC, created_at');
 
 // One round trip for the rate limit: this address's count for the minute, and the global count,
 // which only moves when the address was still under its limit (so one noisy address can't use
@@ -47,14 +50,22 @@ export function createStore(db) {
       const [row] = await db.q(HIT, [`scores:${ipHash}`, atIso, ipLimit]);
       return { ip: row.ip_n, global: row.global_n };
     },
-    board: (playerId) => db.q(BOARD, [playerId]),
-    // → { id (null if the run was already posted), board as the poster sees it }
-    async insert(r) {
-      const [inserted, board] = await db.tx([
-        [INSERT, [r.runId, r.playerId, r.name, r.stars, r.timeMs, r.splits, r.splitStars, r.platform, r.handle, r.ipHash, r.rulesVersion]],
-        [BOARD, [r.playerId]],
+    // → { stars, time }: both boards, read together
+    async boards(playerId) {
+      const [stars, time] = await db.tx([
+        [BY_STARS, [playerId]],
+        [BY_TIME, [playerId]],
       ]);
-      return { id: inserted[0]?.id ?? null, board };
+      return { stars, time };
+    },
+    // → { id (null if the run was already posted), boards as the poster sees them }
+    async insert(r) {
+      const [inserted, stars, time] = await db.tx([
+        [INSERT, [r.runId, r.playerId, r.name, r.stars, r.timeMs, r.splits, r.splitStars, r.platform, r.handle, r.ipHash, r.rulesVersion]],
+        [BY_STARS, [r.playerId]],
+        [BY_TIME, [r.playerId]],
+      ]);
+      return { id: inserted[0]?.id ?? null, boards: { stars, time } };
     },
   };
 }

@@ -39,6 +39,8 @@ const post = (body, headers = {}) =>
 
 const board = await get('/api/scores');
 check('GET board: 200 JSON', board.status === 200 && (board.headers.get('content-type') ?? '').includes('json'), board.status);
+const boards = await board.json().catch(() => ({}));
+check('GET board: a top ten by stars and one by time', Array.isArray(boards.top) && Array.isArray(boards.fastest), JSON.stringify(boards).slice(0, 80));
 check('GET ?x=1: 400', (await get('/api/scores?x=1')).status === 400, '');
 check('POST from another site: 403', (await post(run(), { origin: 'https://evil.example' })).status === 403, '');
 check('POST as text/plain: 415', (await post(run(), { 'content-type': 'text/plain' })).status === 415, '');
@@ -49,7 +51,7 @@ check('POST a profane name: 422 rude-name', rude.status === 422 && (await rude.j
 const first = run();
 const r201 = await post(first);
 const body = await r201.json().catch(() => ({}));
-check('POST a valid run: 201 with a rank', r201.status === 201 && Number.isInteger(body.you?.rank), `${r201.status} ${JSON.stringify(body)}`);
+check('POST a valid run: 201 with both ranks', r201.status === 201 && Number.isInteger(body.you?.rank) && Number.isInteger(body.you?.fastest?.rank), `${r201.status} ${JSON.stringify(body)}`);
 check('POST the same run again: 409', (await post(first)).status === 409, '');
 
 for (const [flag, name, detail] of results) console.log(`${flag} ${name} ${detail}`);

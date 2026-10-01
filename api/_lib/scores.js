@@ -14,16 +14,19 @@ export const GLOBAL_LIMIT = 60; // posts a minute from everyone
 // answer.
 const BOARD_CACHE = 'public, s-maxage=900, stale-while-revalidate=86400';
 
-// A board as the public sees it: no run, player or address ids.
-function board(rows, at) {
-  const top = rows
+// The boards as the public sees them: no run, player or address ids. `top` ranks by stars,
+// `fastest` by time; both count the same players.
+const topTen = (rows) =>
+  rows
     .filter((r) => r.rank <= 10)
     .map((r) => ({ rank: r.rank, name: r.name, stars: r.stars, timeMs: r.time_ms, platform: r.platform, handle: r.handle }));
-  return { top, total: rows[0]?.total ?? 0, asOf: at.toISOString() };
+
+function board({ stars, time }, at) {
+  return { top: topTen(stars), fastest: topTen(time), total: stars[0]?.total ?? 0, asOf: at.toISOString() };
 }
 
-// GET: the top ten. POST: a finished run. Everything they need comes in, so the tests can run
-// them against PGlite with a fake clock and mailer.
+// GET: both boards' top tens. POST: a finished run. Everything they need comes in, so the tests
+// can run them against PGlite with a fake clock and mailer.
 export function scoresHandlers({ config, store, notify, now = () => new Date(), log = console }) {
   function unavailable(cfg) {
     log.error(`api/scores 503 config: ${cfg.problems.join(', ')}`);
@@ -36,7 +39,7 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
     // Any query string is a new cache key, so it would reach the database: refuse it outright.
     if (new URL(request.url).search) return json(400, { error: 'query' });
     try {
-      return json(200, board(await store().board(null), now()), { 'cache-control': BOARD_CACHE });
+      return json(200, board(await store().boards(null), now()), { 'cache-control': BOARD_CACHE });
     } catch (err) {
       logFail(log, 'GET api/scores', 503, err);
       return json(503, { error: 'unavailable' });
@@ -73,14 +76,15 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
       const db = store();
       const hits = await db.hit(ipHash, at.toISOString(), IP_LIMIT);
       if (hits.ip > IP_LIMIT || hits.global > GLOBAL_LIMIT) return json(429, { error: 'busy' }, { 'retry-after': '60' });
-      const { id, board: rows } = await db.insert({ ...run, ipHash, rulesVersion: RULES_VERSION });
+      const { id, boards } = await db.insert({ ...run, ipHash, rulesVersion: RULES_VERSION });
       if (!id) return json(409, { error: 'duplicate' });
-      const mine = rows.find((r) => r.mine);
-      const you = { rank: mine.rank, total: mine.total, best: mine.run_id === run.runId };
-      // A new top-ten best: tell Travis, with the line that hides it if it's a cheat.
-      if (you.best && you.rank <= 10) {
+      const mine = boards.stars.find((r) => r.mine);
+      const fast = boards.time.find((r) => r.mine);
+      const you = { rank: mine.rank, total: mine.total, best: mine.run_id === run.runId, fastest: { rank: fast.rank, best: fast.run_id === run.runId } };
+      // A new top-ten best on either board: tell Travis, with the line that hides it if it's a cheat.
+      if ((you.best && you.rank <= 10) || (you.fastest.best && you.fastest.rank <= 10)) {
         try {
-          await notify({ id, rank: you.rank, total: you.total, name: run.name, stars: run.stars, timeMs: run.timeMs, splits: run.splits, splitStars: run.splitStars, url: profileUrl(run.platform, run.handle), playerId: run.playerId, ipHash });
+          await notify({ id, rank: you.rank, fastRank: you.fastest.rank, total: you.total, name: run.name, stars: run.stars, timeMs: run.timeMs, splits: run.splits, splitStars: run.splitStars, url: profileUrl(run.platform, run.handle), playerId: run.playerId, ipHash });
         } catch (err) {
           logFail(log, 'alert', 0, err);
         }
@@ -88,7 +92,7 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
       // The run's /r/ link, signed now so the card keeps the rank it posted at and link previews
       // never wake the database. The rank is this run's only if it's the player's best.
       const share = shareToken(cfg.ipHashSecret, { name: run.name, stars: run.stars, timeMs: run.timeMs, rank: you.best ? you.rank : null, total: you.total });
-      return json(201, { you, ...board(rows, at), share });
+      return json(201, { you, ...board(boards, at), share });
     } catch (err) {
       logFail(log, 'POST api/scores', 503, err);
       return json(503, { error: 'unavailable' });

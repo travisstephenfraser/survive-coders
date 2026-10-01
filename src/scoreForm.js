@@ -145,10 +145,12 @@ export function scoreForm({ profile, touch, submit, view, close, share }) {
     else status.textContent = `leaderboard unavailable (HTTP ${r.status}): try again`;
   });
 
-  // Posted: the rank, a way to the board, and the keys back to the game.
+  // Posted: the ranks on both boards, a way to the board, and the keys back to the game.
   function done(r) {
-    const { rank, total, best } = r.you;
-    status.textContent = best ? `#${rank} of ${total} ✓ personal best` : `your best is still #${rank} of ${total}`;
+    const { rank, total, best, fastest } = r.you;
+    const mark = (b) => (b ? ' ✓' : '');
+    const ranks = `time #${fastest.rank}${mark(fastest.best)} · ★ #${rank}${mark(best)} of ${total}`;
+    status.textContent = best || fastest.best ? `${ranks} (✓ personal best)` : `your bests stand: ${ranks}`;
     const board = el('button', { type: 'button', className: 'sc-go', textContent: 'view the board' });
     board.addEventListener('click', () => view(r.board));
     const shut = el('button', { type: 'button', textContent: 'close' });

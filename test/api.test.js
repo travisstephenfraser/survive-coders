@@ -37,15 +37,22 @@ test('a submission posts exactly the run and profile, and a 201 comes back as ra
   const sent = [];
   globalThis.fetch = async (url, init) => {
     sent.push([url, init.method, JSON.parse(init.body)]);
-    return reply(201, { you: { rank: 3, total: 9, best: true }, top: [{ rank: 1, name: 'x', stars: 9, timeMs: 1000, platform: null, handle: null }], total: 9, asOf: '2026-10-01T00:00:00Z' });
+    return reply(201, {
+      you: { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true } },
+      top: [{ rank: 1, name: 'x', stars: 9, timeMs: 1000, platform: null, handle: null }],
+      fastest: [{ rank: 1, name: 'y', stars: 5, timeMs: 900, platform: null, handle: null }],
+      total: 9,
+      asOf: '2026-10-01T00:00:00Z',
+    });
   };
   const r = await submitScore(summary, profile, 'p-1');
   assert.deepEqual(sent, [
     ['/api/scores', 'POST', { runId: 'r-1', playerId: 'p-1', name: 'ada_l', stars: 5, timeMs: 300000, splits: [1, 2, 3, 4, 5, 6, 7], splitStars: [0, 0, 0, 0, 0, 0, 1], platform: 'github', handle: 'ada' }],
   ]);
-  assert.deepEqual(r.you, { rank: 3, total: 9, best: true });
+  assert.deepEqual(r.you, { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true } });
   assert.equal(r.board.state, 'ok');
   assert.equal(r.board.top[0].name, 'x');
+  assert.equal(r.board.fastest[0].name, 'y');
 });
 
 test('refusals keep their status and reason; a network failure is retried once, then offline', async () => {
@@ -65,12 +72,14 @@ test('refusals keep their status and reason; a network failure is retried once, 
 
 test('the leaderboard shows whichever is newer: the board a post returned, or the cached one', async () => {
   const { submitScore, getBoard } = await import('../src/api.js?isolated=1');
-  const board = (asOf, name) => ({ top: [{ rank: 1, name, stars: 9, timeMs: 1000, platform: null, handle: null }], total: 1, asOf });
+  const row = (name) => [{ rank: 1, name, stars: 9, timeMs: 1000, platform: null, handle: null }];
+  const board = (asOf, name) => ({ top: row(name), fastest: row(name), total: 1, asOf });
   globalThis.fetch = async () => reply(201, { you: { rank: 1, total: 1, best: true }, ...board('2026-10-01T12:00:00.000Z', 'posted') });
   await submitScore(summary, profile, 'p-1');
   // the edge cache still holds a board from before the post
   globalThis.fetch = async () => reply(200, board('2026-10-01T11:50:00.000Z', 'cached'));
   assert.equal((await getBoard()).top[0].name, 'posted');
+  assert.equal((await getBoard()).fastest[0].name, 'posted');
   // once the cache refreshes past the post, the fresh board wins
   globalThis.fetch = async () => reply(200, board('2026-10-01T12:20:00.000Z', 'fresh'));
   assert.equal((await getBoard()).top[0].name, 'fresh');

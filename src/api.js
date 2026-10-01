@@ -40,8 +40,10 @@ export function cleanRows(rows) {
     }));
 }
 
+// `top` ranks by stars, `fastest` by time.
 const board = (body) => ({
   top: cleanRows(body?.top),
+  fastest: cleanRows(body?.fastest),
   total: Number.isInteger(body?.total) ? body.total : 0,
   asOf: typeof body?.asOf === 'string' ? body.asOf : null,
 });
@@ -52,14 +54,15 @@ const board = (body) => ({
 let latest = null;
 const newest = (b) => (latest = !latest || (b.asOf ?? '') >= (latest.asOf ?? '') ? b : latest);
 
-// { state: 'ok', top, total, asOf } | { state: 'offline' } | { state: 'error', status }
+// { state: 'ok', top, fastest, total, asOf } | { state: 'offline' } | { state: 'error', status }
 export async function getBoard() {
   const r = await call('/api/scores');
   return r.state === 'ok' ? newest({ state: 'ok', ...board(r.body) }) : r;
 }
 
 // Posts a finished run (the run clock's summary) with the player's name and link.
-// → { state: 'ok', you: { rank, total, best }, board, share } | { state: 'error', status, error } |
+// → { state: 'ok', you: { rank, total, best, fastest: { rank, best } }, board, share } |
+//   { state: 'error', status, error } |
 //   { state: 'offline' }. The database can take a few seconds to wake after a quiet spell, so
 // the wait is long, and a network failure gets one retry (a retry of a post that did land
 // comes back 409).

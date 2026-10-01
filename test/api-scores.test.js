@@ -76,8 +76,9 @@ test('a valid run is stored and ranked', async () => {
   const res = await post(entry());
   assert.equal(res.status, 201);
   const body = await res.json();
-  assert.deepEqual(body.you, { rank: 1, total: 1, best: true });
+  assert.deepEqual(body.you, { rank: 1, total: 1, best: true, fastest: { rank: 1, best: true } });
   assert.deepEqual(body.top, [{ rank: 1, name: 'ada_l', stars: 300, timeMs: body.top[0].timeMs, platform: 'github', handle: 'ada' }]);
+  assert.deepEqual(body.fastest, body.top);
   assert.equal(res.headers.get('cache-control'), 'no-store');
 });
 
@@ -186,6 +187,56 @@ test('the board: most stars, then fastest, then first; one row per player; hidde
   assert.equal(body.total, 6);
 });
 
+test('the time board: fastest, then most stars, then first; each player\'s fastest run', async () => {
+  // milestone stars that allow each finish: 200-285, the default's 262-357, or more
+  const low = [90, 160, 190, 190, 190, 190, 190];
+  const high = [98, 172, 206, 246, 275, 275, 287];
+  const players = [
+    ['t_slow', 382, 900000, high],
+    ['t_more', 300, 600000],
+    ['t_fewer', 250, 600000, low], // same time as t_more, fewer stars
+    ['t_first', 350, 800000],
+    ['t_second', 350, 800000], // same stars and time as t_first, posted later
+    ['t_hidden', 300, 480000], // the fastest, but hidden
+  ];
+  for (const [name, stars, timeMs, splitStars] of players) {
+    assert.equal((await post(entry({ name, stars, timeMs, ...(splitStars && { splitStars }) }))).status, 201, name);
+  }
+  await pg.query("UPDATE scores SET created_at = created_at + interval '1 ms' WHERE name = 't_second'");
+  await pg.query("UPDATE scores SET hidden = true WHERE name = 't_hidden'");
+  // one player, three runs: the most stars on one board, the fastest on the other
+  const playerId = crypto.randomUUID();
+  for (const [stars, timeMs, splitStars] of [[382, 990000, high], [200, 500000, low], [210, 700000, low]]) {
+    assert.equal((await post(entry({ name: 't_multi', playerId, stars, timeMs, splitStars }))).status, 201);
+  }
+  const body = await (await get()).json();
+  assert.deepEqual(
+    body.fastest.map((r) => [r.rank, r.name, r.stars, r.timeMs]),
+    [
+      [1, 't_multi', 200, 500000],
+      [2, 't_more', 300, 600000],
+      [3, 't_fewer', 250, 600000],
+      [4, 't_first', 350, 800000],
+      [5, 't_second', 350, 800000],
+      [6, 't_slow', 382, 900000],
+    ],
+  );
+  assert.deepEqual(body.top.map((r) => [r.rank, r.name, r.stars]).slice(0, 2), [[1, 't_slow', 382], [2, 't_multi', 382]]);
+  assert.equal(body.total, 6);
+});
+
+test("a post reports the player's rank on both boards, and whether this run is a best on each", async () => {
+  const run = entry({ name: 'racer', stars: 300, timeMs: 800000 });
+  await post(entry({ name: 'rival', stars: 250, timeMs: 700000, splitStars: [90, 160, 190, 190, 190, 190, 190] }));
+  assert.deepEqual((await (await post(run)).json()).you, { rank: 1, total: 2, best: true, fastest: { rank: 2, best: true } });
+  // faster with fewer stars: a new fastest, not a new best
+  const quick = entry({ playerId: run.playerId, name: 'racer', stars: 200, timeMs: 600000, splitStars: [90, 160, 190, 190, 190, 190, 190] });
+  assert.deepEqual((await (await post(quick)).json()).you, { rank: 1, total: 2, best: false, fastest: { rank: 1, best: true } });
+  // slower and fewer stars: neither
+  const slow = entry({ playerId: run.playerId, name: 'racer', stars: 100, timeMs: 900000, splitStars: [50, 60, 70, 80, 90, 90, 95] });
+  assert.deepEqual((await (await post(slow)).json()).you, { rank: 1, total: 2, best: false, fastest: { rank: 1, best: false } });
+});
+
 test('the board answers 400 to any query string (a cache-buster would reach the database)', async () => {
   const res = await get('/api/scores?bust=1');
   assert.equal(res.status, 400);
@@ -197,6 +248,7 @@ test('the alert goes out for a new top-ten best, not otherwise, and a failing al
   assert.equal(sent.length, 1);
   assert.equal(sent[0].name, 'leader');
   assert.equal(sent[0].rank, 1);
+  assert.equal(sent[0].fastRank, 1);
   assert.match(sent[0].id, /^[0-9a-f-]{36}$/);
   // the same player, worse: not a new best, no alert
   await post(entry({ playerId: first.playerId, name: 'leader', stars: 100, splitStars: [50, 60, 70, 80, 90, 90, 95] }));
@@ -204,8 +256,13 @@ test('the alert goes out for a new top-ten best, not otherwise, and a failing al
   // ten better players push a newcomer out of the top ten: no alert for them
   for (let i = 0; i < 10; i++) await post(entry({ name: `p${i}`, stars: 381, splitStars: [98, 172, 206, 246, 275, 275, 287] }));
   sent.length = 0;
-  await post(entry({ name: 'eleventh', stars: 10, splitStars: [1, 2, 3, 4, 5, 5, 6] }));
+  const eleventh = entry({ name: 'eleventh', stars: 10, timeMs: 3000000, splitStars: [1, 2, 3, 4, 5, 5, 6] });
+  await post(eleventh);
   assert.equal(sent.length, 0);
+  // the same player, now the fastest: a new top-ten best on the time board alerts
+  await post(entry({ playerId: eleventh.playerId, name: 'eleventh', stars: 5, timeMs: 490000, splitStars: [1, 2, 3, 4, 5, 5, 5] }));
+  assert.equal(sent.length, 1);
+  assert.deepEqual([sent[0].rank, sent[0].fastRank], [12, 1]);
   notifyImpl = async () => {
     throw new Error('mail down');
   };

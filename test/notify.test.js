@@ -5,6 +5,7 @@ import { resendNotifier } from '../api/_lib/notify.js';
 const entry = {
   id: '11111111-2222-4333-8444-555555555555',
   rank: 1,
+  fastRank: 3,
   total: 12,
   name: 'ada_l',
   stars: 382,
@@ -27,7 +28,7 @@ test('a top-ten alert is one Resend email carrying the run and the line that hid
   const body = JSON.parse(init.body);
   assert.deepEqual(body.to, ['me@example.com']);
   assert.match(body.from, /onboarding@resend\.dev/);
-  assert.match(body.subject, /#1 of 12: ada_l, ★ 382 in 1:15\.5/);
+  assert.match(body.subject, /time #3, ★ #1 of 12: ada_l, ★ 382 in 1:15\.5/);
   assert.match(body.text, /UPDATE scores SET hidden = true WHERE id = '11111111-2222-4333-8444-555555555555';/);
   assert.match(body.text, /https:\/\/github\.com\/ada/);
   assert.ok(init.signal, 'bounded by a timeout');

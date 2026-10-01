@@ -3,7 +3,7 @@ import { createStore, neonDb } from './_lib/store.js';
 import { resendNotifier } from './_lib/notify.js';
 import { scoresHandlers } from './_lib/scores.js';
 
-// /api/scores. GET: the top ten. POST: a finished run. The logic is in _lib/scores.js (Vercel
+// /api/scores. GET: the top ten by stars and by time. POST: a finished run. The logic is in _lib/scores.js (Vercel
 // serves nothing from _-prefixed paths); this file only wires in the real config, database and
 // mailer, each made on first use and kept for the life of the instance.
 let config;

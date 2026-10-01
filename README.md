@@ -14,8 +14,8 @@ demo fires nothing, because `src/voice.js` only acts on release and only on a re
 command. It plays with a keyboard or, on phones and tablets, with touch controls.
 
 Status: hackathon demo: the city, Salesforce Park, three floors of the Salesforce Tower, the fall
-from its top, and one boss, plus an online leaderboard (most stars, then fastest) and a settings
-screen. Built with Claude Code (Claude Opus 5.5) as a pair programmer; commits carry
+from its top, and one boss, plus an online leaderboard (fastest finish, or most stars) and a
+settings screen. Built with Claude Code (Claude Opus 5.5) as a pair programmer; commits carry
 `Co-Authored-By` trailers.
 
 **Live app: <https://survive-coders.vercel.app>**
@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      70 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      72 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -59,9 +59,10 @@ up the microphone, and a menu: PLAY NOW, LEADERBOARD, SETTINGS.
 ![Title screen](docs/screenshots/01-title.png)
 
 Settings holds music and sound-effect volume, sound on or off, the CRT filter, screen shake,
-flashes, fullscreen, and a run timer, all saved in the browser. The leaderboard ranks finished
-runs by stars, then time, and each of the top ten can link a profile (shown here with sample
-entries).
+flashes, fullscreen, and a run timer, all saved in the browser. The leaderboard has two tabs:
+TIME (the one that opens) ranks finished runs by the fastest finish, more stars breaking a tie;
+STARS ranks them by the most stars, the faster run breaking a tie. Each of the top ten can link
+a profile (shown here with sample entries).
 
 ![Settings](docs/screenshots/01a-settings.png)
 
@@ -261,7 +262,7 @@ A dated design review with before and after screenshots is in
 - Pause (with a restart for the level you are on), mute, and a checkpoint at every level after the first (the park, each tower floor, the fall, the boss) that restores your star total on retry
 - A title menu (PLAY NOW, LEADERBOARD, SETTINGS) driven by the arrow keys, a click, or a tap
 - Settings: music and sound-effect volume, sound on or off, the CRT filter, screen shake, flashes (shake and flashes start off when the system asks for reduced motion), fullscreen where the browser has it, and a run timer in the HUD; saved in the browser
-- An online leaderboard: most stars first (382 is the most one run can earn), then the time from the start of the run to the Hydra's fall, pauses excluded. Deaths and restarts cost time; going back to the first level starts a new run. A finished run posts a name and, optionally, a GitHub, LinkedIn, X, or Bluesky handle, which each of the top ten links to
+- An online leaderboard with two tabs. TIME: the fastest finish first, timed from the start of the run to the Hydra's fall, pauses excluded, with more stars breaking a tie. STARS: the most stars first (382 is the most one run can earn), with the faster run breaking a tie. Each board shows each player's best run for it, so a fast run and a thorough one can both count. Deaths and restarts cost time; going back to the first level starts a new run. A finished run posts a name and, optionally, a GitHub, LinkedIn, X, or Bluesky handle, which each of the top ten links to
 - Plays on phones and tablets: a touch D-pad and fire and jump buttons at the screen's corners, powers you tap in the terminal bar, hold-to-talk, auto-pause when the phone turns portrait or the app goes to the background, and a home-screen install that runs fullscreen
 - A song for each stretch of the run (the city, the park, the tower, the fall, the ride to HQ, and the Hydra), the new ones loudness-matched to the city's so none jumps out, plus two originals written as MIDI note data and synthesized in the browser: the elevator's bossa nova and the chiptune victory song on the win screen
 - Share any run from the win or death screen: on a phone, the share sheet gets a card of the run (drawn in the game's own pixels) and a line with its link; on a desktop, S or a button copies the line and another saves the card. The link unfurls into the same card, and opens the game with a challenge on the title screen
@@ -282,7 +283,7 @@ A dated design review with before and after screenshots is in
 | Pause / mute / restart | P or Esc / N / R (while paused) restarts the level; the pause screen lists the controls and powers | Pause button at the top; *sound* and *restart level* on the pause screen, with the controls and powers |
 | Title screen | ↑ ↓ or W / S choose, Enter picks; V sets up the microphone | Tap PLAY NOW, LEADERBOARD, or SETTINGS; tap *set up mic* |
 | Settings | ↑ ↓ choose, ← → change, Enter toggles, Esc back | Tap a setting to change it; tap the volume dots to set a level |
-| Leaderboard | ↑ ↓ choose, Enter opens the selected profile, Esc back | Tap a name to see its link, tap again to open it |
+| Leaderboard | ← → switch between TIME and STARS, ↑ ↓ choose, Enter opens the selected profile, Esc back | Tap TIME or STARS; tap a name to see its link, tap again to open it |
 | Intro | Enter, Space, or Esc skips | Tap skips |
 | End screen | Enter retry (from the park, the floor, the fall, or the boss you died on), T title | Tap retries; *title* button |
 | Posting a win | Type a name and an optional handle or profile URL; Enter posts, Esc skips; then Enter plays again | The same form, with the phone's keyboard; tap the prompt to play again |
@@ -352,12 +353,13 @@ the touch controls on a desktop (they work with a mouse).
 
 Vercel: serves the static dist/ build, and two functions:
 
-  GET  /api/scores ── top ten, edge-cached 15 min ──┐
+  GET  /api/scores ── top tens by time and stars ───┐
+       edge-cached 15 min                           │
   POST /api/scores ── a finished run ───────────────┼──→ Neon Postgres (role sc_app:
        origin + JSON checks → shared rules          │       read and add scores only)
        → profanity check (api/_lib/words.js)        │
        → rate limit → insert + rank ────────────────┘
-       a new top-ten best ──→ Resend ──→ an email to Travis
+       a new top-ten best on either board ──→ Resend ──→ an email to Travis
 
   GET  /s/<code>, /r/<token> ── vercel.json rewrites ──→ api/share.js: a page with
        link-preview tags, a 1200x630 card PNG, the banner's JSON; cached a year, no database
@@ -396,7 +398,7 @@ other sites from using their visitors' browsers but not a script. A name or prof
 that reads as profanity or a slur is refused on the server: the `obscenity` word list, which
 sees through leetspeak and look-alike characters, plus a pass of our own for spelled-out
 letters (`f.u.c.k`); a creative enough spelling still gets through. The rest is moderation:
-every new top-ten entry emails Travis with the one line of SQL that hides it. The public
+every new top-ten entry, on either board, emails Travis with the one line of SQL that hides it. The public
 board is an edge-cached copy, fresh for 15 minutes at a time; after a quiet spell the first
 visitor can still get an older copy while it refreshes. God mode and the level-jump flags are never ranked.
 
@@ -406,7 +408,7 @@ There are no accounts: a player is an anonymous id kept in their browser.
 
 The board only reaches people already in the game, and most runs end before the Hydra, so both
 End screens can share the run: the card (where it ended, stars, time, the rank a posted run
-got) and one line with a link, like `141 stars, died on the Ohana Floor, 0.1 miles from
+got on the stars board) and one line with a link, like `141 stars, died on the Ohana Floor, 0.1 miles from
 Anthropic HQ. Can you get further? https://survive-coders.vercel.app/s/1-a-3x-ky`.
 
 - **On a phone** the share sheet gets the card image and the line, so it posts as an image
@@ -461,7 +463,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 70 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 72 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -472,8 +474,8 @@ never production.
 - the run clock (pauses, milestones, and the check that catches a clock running short), the
   settings store, the mute toggle, the saved player profile, and the game's API client
 - the API against real Postgres: PGlite (Postgres compiled to WebAssembly, a dev dependency)
-  runs `db/schema.sql`, then every refusal, the rate limit, the ranking (ties, one row per
-  player, hidden rows), the alert email, and what the `sc_app` role can and can't do. This is
+  runs `db/schema.sql`, then every refusal, the rate limit, both rankings (ties, one row per
+  player, each player's best run for that board, hidden rows), the alert email, and what the `sc_app` role can and can't do. This is
   how a CHECK constraint that let a NULL through was caught.
 - sharing: where each kind of death maps to, the exact one-liners, `/s/` codes that decode
   only in their one canonical spelling, a posted run's token keeping the rank it posted at
@@ -483,8 +485,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 70
-ℹ pass 70
+ℹ tests 72
+ℹ pass 72
 ℹ fail 0
 ```
 
@@ -533,6 +535,7 @@ against the running game, recorded with screenshots in
 | Title menu, settings, leaderboard (2026-09-29) | The menu answers to arrows and Enter, a click, and a tap; a click off the menu no longer starts a run. Settings flips the CRT filter live, previews the music at the chosen level, and a saved setting (CRT off, no shake or flash, music at 50%) holds after a reload with the song at 0.14 instead of 0.28. The leaderboard shows its offline state with no API, and a ten-row board with its links laid exactly over their rows; Enter opens the selected profile |
 | Run clock (2026-09-29) | Against a stopwatch (the page's own Date.now): 20.131 s of play read 20.131 s, and 40.4 s with a real 20.4 s pause (P, both edges stamped in the page) read 19.998 s against 20.004 s expected. It resumes on unpause. A run fast-forwarded through every milestone summarizes as ranked; the same run in god mode shows *not ranked* on the win screen. *Play again* after a win starts a fresh run |
 | Posting a win (2026-09-29) | Typed into the name field, `Jaz Wd XZ m123 T` arrives whole, with no power fired and no restart; a pasted LinkedIn URL becomes the platform and handle; with no API the post says it can't reach the board; a stubbed 201 shows the rank and opens the returned board; Esc then Enter plays again. On touch a stray tap leaves the form up and a tap on the prompt restarts |
+| Two leaderboards (2026-10-01) | With the API mocked: the board opens on TIME, its rows in time order and its column lit in the header; → (from a row or the TIME tab) switches to STARS, ← back, and a click on a tab does the same; each switch swaps the row links for the new board's (7 profile links each way, none left over); the player's best and fastest runs are lit gold on whichever board they appear; *your fastest* shows on TIME, *your best* on STARS, and a browser that posted before the time board shows *your best* on both |
 | Skipping the intro (2026-09-29) | Esc skips the intro without pausing the level (it used to do both); P, three keys in one frame, pauses once; N mutes once |
 | Restart from the pause screen (2026-09-29) | R in Level 1 starts a new run (a new run id, 0 stars, no intro); the *restart level* button on floor 60 restarts the floor with the stars it began with, in the same run, the clock still counting; a death in Level 1 retries as a new run. No console errors |
 | Production build | Loads with no failed requests and no console errors or warnings, locally and on the live URL |

@@ -9,7 +9,7 @@ import { beginRun, retryLevel, run } from '../run.js';
 import { MAX_STARS, formatTime } from '../../shared/leaderboard.js';
 import { scoreForm } from '../scoreForm.js';
 import { submitScore } from '../api.js';
-import { loadProfile, playerId, saveBest, saveProfile } from '../profile.js';
+import { loadProfile, playerId, saveBest, saveFastest, saveProfile } from '../profile.js';
 import { placeOf } from '../../shared/share.js';
 import { drawCard, runLine, runLink, shareRun } from '../share.js';
 import { sharePanel } from '../sharePanel.js';
@@ -125,7 +125,9 @@ export default class End extends Phaser.Scene {
       submit: async (entry) => {
         saveProfile(entry);
         const r = await submitScore(this.result, entry, playerId());
-        if (r.state === 'ok' && r.you.best) saveBest({ name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs });
+        const posted = { name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs };
+        if (r.state === 'ok' && r.you.best) saveBest(posted);
+        if (r.state === 'ok' && r.you.fastest.best) saveFastest(posted);
         // A posted run shares its signed record: the name, and the rank it posted at if it's
         // the player's best (otherwise the board ranks their better run, not this one).
         if (r.state === 'ok' && r.share) {
