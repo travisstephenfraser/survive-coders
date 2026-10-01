@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      82 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      83 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -463,7 +463,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 82 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 83 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -493,8 +493,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 82
-ℹ pass 82
+ℹ tests 83
+ℹ pass 83
 ℹ fail 0
 ```
 
@@ -603,6 +603,13 @@ alerted on when they made the stars board. Those runs were also timed with pause
 (rules version 1); runs from the time board on count them, and each post says which rules its
 game timed it under (rules version 2), stored with the run; a game too old to say is stored
 as 1.
+
+The alert is the only cheat control and a working one is silent, so every alert leaves a
+log line whatever happens to it: `alert sent <Resend's id>`, `alert off` (no settings), or
+`alert <status> <Resend's error name>`. Vercel keeps an hour of logs on the free plan:
+`vercel logs --environment production --no-branch --since 1h --expand` after a post that
+should have alerted. A sent alert that never arrives is a delivery question, answered by that
+id on Resend's Emails page.
 
 To hide a cheat, run the `UPDATE` from its alert email in the Neon SQL editor. The public
 board serves a cached copy for up to 15 minutes, and after a quiet spell the first visitor

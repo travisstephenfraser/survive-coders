@@ -19,9 +19,11 @@ const entry = {
   ipHash: 'ab'.repeat(32),
 };
 
+const quiet = { info() {}, error() {} };
+
 test('a top-ten alert is one Resend email carrying the run and the line that hides it', async () => {
   const calls = [];
-  const notify = resendNotifier({ apiKey: 're_test', to: 'me@example.com' }, { fetch: async (u, init) => (calls.push([u, init]), new Response('{}')) });
+  const notify = resendNotifier({ apiKey: 're_test', to: 'me@example.com' }, { fetch: async (u, init) => (calls.push([u, init]), new Response('{}')), log: quiet });
   await notify(entry);
   assert.equal(calls.length, 1);
   const [u, init] = calls[0];
@@ -39,7 +41,7 @@ test('a top-ten alert is one Resend email carrying the run and the line that hid
 
 test("the alert gives this run's ranks only on the boards where it's the player's best", async () => {
   const sent = [];
-  const notify = resendNotifier({ apiKey: 'k', to: 't' }, { fetch: async (u, init) => (sent.push(JSON.parse(init.body)), new Response('{}')) });
+  const notify = resendNotifier({ apiKey: 'k', to: 't' }, { fetch: async (u, init) => (sent.push(JSON.parse(init.body)), new Response('{}')), log: quiet });
   await notify({ ...entry, fastBest: true, fastRank: 1 });
   await notify({ ...entry, best: false, rank: 12, fastBest: true, fastRank: 2 });
   assert.match(sent[0].subject, /^Leaderboard time #1, ★ #1 of 12: /);
@@ -49,16 +51,40 @@ test("the alert gives this run's ranks only on the boards where it's the player'
   assert.match(sent[1].text, /next-best run take its place/);
 });
 
-test('no settings, no email', async () => {
+// The alert is the board's only cheat control, and it works silently: an email arrives or it
+// doesn't. So every outcome leaves a log line, a sent one included; otherwise the log can't
+// tell "sent" from "never tried".
+const logTo = (lines) => ({ info: (l) => lines.push(`info ${l}`), error: (l) => lines.push(`error ${l}`) });
+
+test('no settings, no email, and the log says alerts are off', async () => {
   let called = false;
-  await resendNotifier(null, { fetch: async () => (called = true) })(entry);
+  const lines = [];
+  await resendNotifier(null, { fetch: async () => (called = true), log: logTo(lines) })(entry);
   assert.equal(called, false);
+  assert.deepEqual(lines, ['info alert off']);
 });
 
-test('a refused or failed send is logged by status or name only, and never throws', async () => {
+test("a sent alert is logged with Resend's id for it, and nothing about who it went to", async () => {
   const lines = [];
-  const log = { error: (l) => lines.push(l) };
-  await resendNotifier({ apiKey: 'k', to: 't' }, { fetch: async () => new Response('bad', { status: 422 }), log })(entry);
-  await resendNotifier({ apiKey: 'k', to: 't' }, { fetch: async () => Promise.reject(Object.assign(new Error('secret-ish detail'), { name: 'TimeoutError' })), log })(entry);
-  assert.deepEqual(lines, ['alert 422', 'alert 0 TimeoutError']);
+  const settings = { apiKey: 're_secret', to: 'me@example.com' };
+  await resendNotifier(settings, { fetch: async () => Response.json({ id: '49a3999c-0ce1-4ea6-ab68-afcd6dc2e794' }), log: logTo(lines) })(entry);
+  // an answer with no usable id still counts as sent
+  await resendNotifier(settings, { fetch: async () => new Response('ok'), log: logTo(lines) })(entry);
+  await resendNotifier(settings, { fetch: async () => Response.json({ id: 'me@example.com <script>' }), log: logTo(lines) })(entry);
+  await resendNotifier(settings, { fetch: async () => Response.json(null), log: logTo(lines) })(entry);
+  assert.deepEqual(lines, ['info alert sent 49a3999c-0ce1-4ea6-ab68-afcd6dc2e794', 'info alert sent', 'info alert sent', 'info alert sent']);
+});
+
+test("a refused or failed send is logged by status and Resend's error name only, and never throws", async () => {
+  const lines = [];
+  const log = logTo(lines);
+  const settings = { apiKey: 're_secret', to: 'me@example.com' };
+  await resendNotifier(settings, { fetch: async () => new Response('bad', { status: 422 }), log })(entry);
+  // Resend's message can name the account's address; its error name can't
+  const refusal = { statusCode: 403, name: 'validation_error', message: 'You can only send testing emails to your own email address (me@example.com).' };
+  await resendNotifier(settings, { fetch: async () => Response.json(refusal, { status: 403 }), log })(entry);
+  await resendNotifier(settings, { fetch: async () => Response.json({ name: 'me@example.com' }, { status: 401 }), log })(entry);
+  await resendNotifier(settings, { fetch: async () => Promise.reject(Object.assign(new Error('secret-ish detail'), { name: 'TimeoutError' })), log })(entry);
+  assert.deepEqual(lines, ['error alert 422', 'error alert 403 validation_error', 'error alert 401', 'error alert 0 TimeoutError']);
+  assert.doesNotMatch(lines.join(' '), /example\.com|re_secret/);
 });
