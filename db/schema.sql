@@ -33,8 +33,10 @@ CREATE TABLE IF NOT EXISTS scores (
           AND handle ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'))))
 );
 
--- Each player's best visible run, fast.
+-- Each player's best visible run, fast; and their fastest, for the time board. The board reads
+-- correctly without the second (it sorts instead); it only keeps the read quick as the table grows.
 CREATE INDEX IF NOT EXISTS scores_best ON scores (player_id, stars DESC, time_ms, created_at) WHERE NOT hidden;
+CREATE INDEX IF NOT EXISTS scores_fastest ON scores (player_id, time_ms, stars DESC, created_at) WHERE NOT hidden;
 
 -- Per-minute request counters for the submit rate limit (one row per bucket per minute).
 CREATE TABLE IF NOT EXISTS request_counts (
@@ -76,6 +78,13 @@ ALTER ROLE sc_app SET statement_timeout = '5s';
 -- The public board is an edge-cached copy, fresh for 15 minutes; after a quiet spell the first
 -- visitor can get an older one while it refreshes. Purge the CDN cache in the Vercel dashboard
 -- when a hide has to show at once.
+--
+-- The time board's top ten, with the ids that hide each run. Look once after the time board
+-- first deploys: runs posted before it were only alerted on when they made the stars board.
+--   SELECT id, player_id, name, stars, time_ms, splits, created_at FROM (
+--     SELECT DISTINCT ON (player_id) * FROM scores WHERE NOT hidden
+--     ORDER BY player_id, time_ms, stars DESC, created_at, run_id
+--   ) best ORDER BY time_ms, stars DESC, created_at, run_id LIMIT 10;
 --
 -- Recent runs, newest first, for a look at what's plausible:
 --   SELECT id, name, stars, time_ms, splits, split_stars, left(ip_hash, 8) AS ip, created_at

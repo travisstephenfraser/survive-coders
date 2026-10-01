@@ -7,9 +7,14 @@ import { SPLITS, formatTime } from '../../shared/leaderboard.js';
 export function resendNotifier(settings, { fetch: send = fetch, log = console } = {}) {
   return async (e) => {
     if (!settings) return;
-    const head = `time #${e.fastRank}, ★ #${e.rank} of ${e.total}: ${e.name}, ★ ${e.stars} in ${formatTime(e.timeMs)}`;
+    // A board's rank is this run's only where it's the player's best; elsewhere the rank is
+    // their other run's, and the email says so rather than pin it on this one.
+    const boards = [e.fastBest && `time #${e.fastRank}`, e.best && `★ #${e.rank}`].filter(Boolean).join(', ');
+    const head = `${boards} of ${e.total}: ${e.name}, ★ ${e.stars} in ${formatTime(e.timeMs)}`;
     const lines = [
       head,
+      ...(e.fastBest ? [] : [`time board: their fastest is another run, at #${e.fastRank}`]),
+      ...(e.best ? [] : [`★ board: their best is another run, at #${e.rank}`]),
       e.url ? `profile: ${e.url}` : 'no profile linked',
       '',
       'milestones (time, stars held):',
@@ -17,7 +22,8 @@ export function resendNotifier(settings, { fetch: send = fetch, log = console } 
       '',
       'hide this run (Neon SQL editor, as the owner):',
       `  UPDATE scores SET hidden = true WHERE id = '${e.id}';`,
-      'or everything from this browser, or this address:',
+      "hiding only this run lets the player's next-best run take its place. Everything from this",
+      'browser, or this address:',
       `  UPDATE scores SET hidden = true WHERE player_id = '${e.playerId}';`,
       `  UPDATE scores SET hidden = true WHERE ip_hash = '${e.ipHash}';`,
       '',

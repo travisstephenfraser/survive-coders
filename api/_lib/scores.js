@@ -84,7 +84,7 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
       // A new top-ten best on either board: tell Travis, with the line that hides it if it's a cheat.
       if ((you.best && you.rank <= 10) || (you.fastest.best && you.fastest.rank <= 10)) {
         try {
-          await notify({ id, rank: you.rank, fastRank: you.fastest.rank, total: you.total, name: run.name, stars: run.stars, timeMs: run.timeMs, splits: run.splits, splitStars: run.splitStars, url: profileUrl(run.platform, run.handle), playerId: run.playerId, ipHash });
+          await notify({ id, rank: you.rank, best: you.best, fastRank: you.fastest.rank, fastBest: you.fastest.best, total: you.total, name: run.name, stars: run.stars, timeMs: run.timeMs, splits: run.splits, splitStars: run.splitStars, url: profileUrl(run.platform, run.handle), playerId: run.playerId, ipHash });
         } catch (err) {
           logFail(log, 'alert', 0, err);
         }

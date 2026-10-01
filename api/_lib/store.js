@@ -1,16 +1,18 @@
 import { neon } from '@neondatabase/serverless';
 
-// The leaderboard's queries. `db` runs them: { q(text, params) → rows, tx([[text, params], …])
-// → [rows, …] in one transaction }. Neon's HTTP driver in production (neonDb), PGlite in tests.
+// The leaderboard's queries. `db` runs them: { q(text, params) → rows, tx([[text, params], …],
+// opts) → [rows, …] in one transaction }. Neon's HTTP driver in production (neonDb), PGlite in
+// tests.
 
 // The two boards: each player's best visible run, ranked. By stars: most stars, then fastest,
-// then first posted. By time: fastest, then most stars, then first posted. Each returns the top
+// then first posted. By time: fastest, then most stars, then first posted. The run id settles
+// exact ties, so a board never depends on the order rows come back in. Each returns the top
 // ten, plus the given player's own row wherever it ranks ($1 null: just the ten).
 const board = (order) => `
 WITH best AS (
   SELECT DISTINCT ON (player_id) player_id, run_id, name, stars, time_ms, platform, handle, created_at
   FROM scores WHERE NOT hidden
-  ORDER BY player_id, ${order}
+  ORDER BY player_id, ${order}, run_id
 ), ranked AS (
   SELECT *, row_number() OVER (ORDER BY ${order}, run_id)::int AS rank,
          count(*) OVER ()::int AS total
@@ -50,12 +52,16 @@ export function createStore(db) {
       const [row] = await db.q(HIT, [`scores:${ipHash}`, atIso, ipLimit]);
       return { ip: row.ip_n, global: row.global_n };
     },
-    // → { stars, time }: both boards, read together
+    // → { stars, time }: both boards, read from one snapshot so they count the same players
+    // even while a post lands between the two
     async boards(playerId) {
-      const [stars, time] = await db.tx([
-        [BY_STARS, [playerId]],
-        [BY_TIME, [playerId]],
-      ]);
+      const [stars, time] = await db.tx(
+        [
+          [BY_STARS, [playerId]],
+          [BY_TIME, [playerId]],
+        ],
+        { isolationLevel: 'RepeatableRead', readOnly: true },
+      );
       return { stars, time };
     },
     // → { id (null if the run was already posted), boards as the poster sees them }
@@ -74,6 +80,6 @@ export function neonDb(url) {
   const sql = neon(url);
   return {
     q: (text, params) => sql.query(text, params),
-    tx: (stmts) => sql.transaction(stmts.map(([text, params]) => sql.query(text, params))),
+    tx: (stmts, opts) => sql.transaction(stmts.map(([text, params]) => sql.query(text, params)), opts),
   };
 }

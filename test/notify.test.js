@@ -5,7 +5,9 @@ import { resendNotifier } from '../api/_lib/notify.js';
 const entry = {
   id: '11111111-2222-4333-8444-555555555555',
   rank: 1,
+  best: true,
   fastRank: 3,
+  fastBest: false,
   total: 12,
   name: 'ada_l',
   stars: 382,
@@ -28,10 +30,23 @@ test('a top-ten alert is one Resend email carrying the run and the line that hid
   const body = JSON.parse(init.body);
   assert.deepEqual(body.to, ['me@example.com']);
   assert.match(body.from, /onboarding@resend\.dev/);
-  assert.match(body.subject, /time #3, ★ #1 of 12: ada_l, ★ 382 in 1:15\.5/);
+  assert.match(body.subject, /^Leaderboard ★ #1 of 12: ada_l, ★ 382 in 1:15\.5$/);
   assert.match(body.text, /UPDATE scores SET hidden = true WHERE id = '11111111-2222-4333-8444-555555555555';/);
   assert.match(body.text, /https:\/\/github\.com\/ada/);
+  assert.match(body.text, /time board: their fastest is another run, at #3/);
   assert.ok(init.signal, 'bounded by a timeout');
+});
+
+test("the alert gives this run's ranks only on the boards where it's the player's best", async () => {
+  const sent = [];
+  const notify = resendNotifier({ apiKey: 'k', to: 't' }, { fetch: async (u, init) => (sent.push(JSON.parse(init.body)), new Response('{}')) });
+  await notify({ ...entry, fastBest: true, fastRank: 1 });
+  await notify({ ...entry, best: false, rank: 12, fastBest: true, fastRank: 2 });
+  assert.match(sent[0].subject, /^Leaderboard time #1, ★ #1 of 12: /);
+  assert.doesNotMatch(sent[0].text, /another run/);
+  assert.match(sent[1].subject, /^Leaderboard time #2 of 12: /);
+  assert.match(sent[1].text, /★ board: their best is another run, at #12/);
+  assert.match(sent[1].text, /next-best run take its place/);
 });
 
 test('no settings, no email', async () => {
