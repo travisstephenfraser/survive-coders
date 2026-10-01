@@ -53,8 +53,14 @@ export function menu(scene, items, { onBack, start = 0 } = {}) {
   window.addEventListener('keydown', onKey);
   scene.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
 
-  const hitAt = (p) =>
-    items.findIndex((it, i) => usable(i) && Phaser.Geom.Rectangle.Inflate(Phaser.Geom.Rectangle.Clone(it.bounds()), 6, 4).contains(p.x, p.y));
+  // A row's own bounds first; the margin around them only where no row's bounds are hit, so
+  // the margin of one row never takes a point inside its neighbour.
+  const within = (p, padX, padY) =>
+    items.findIndex((it, i) => usable(i) && Phaser.Geom.Rectangle.Inflate(Phaser.Geom.Rectangle.Clone(it.bounds()), padX, padY).contains(p.x, p.y));
+  const hitAt = (p) => {
+    const exact = within(p, 0, 0);
+    return exact >= 0 ? exact : within(p, 6, 4);
+  };
   let pressed = -1;
   scene.input.on('pointermove', (p) => {
     const i = hitAt(p);

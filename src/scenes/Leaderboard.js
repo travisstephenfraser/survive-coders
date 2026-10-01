@@ -167,6 +167,10 @@ export default class Leaderboard extends Phaser.Scene {
     let own = false;
     let focused = false;
     let link = null;
+    // On touch a link opens only on a second tap on this same row: the first arms it. Being
+    // selected isn't enough, since the board selects its top row on loading and the keyboard
+    // can select a row whose entry a switch of tabs then replaces.
+    let armed = false;
     const describe = () => scene.dest.setText(entry?.url ? `→ ${entry.url.replace(/^https:\/\/(www\.)?/, '')}` : entry ? 'no profile linked' : '');
     const row = {
       bounds: () => new Phaser.Geom.Rectangle(70, y - 5, 800, ROW_H),
@@ -175,6 +179,7 @@ export default class Leaderboard extends Phaser.Scene {
       fill(e, isMine) {
         entry = e;
         own = isMine;
+        armed = false;
         link?.destroy();
         link = null;
         t.rank.setText(e ? `${e.rank}.` : '');
@@ -182,7 +187,7 @@ export default class Leaderboard extends Phaser.Scene {
         t.stars.setText(e ? `★ ${e.stars}` : '');
         t.time.setText(e ? formatTime(e.timeMs) : '');
         t.tag.setText(e?.url ? PLATFORMS[e.platform].tag : '');
-        if (e?.url) link = scene.link(e, y, () => scene.menu.select(scene.tabs.length + i), () => focused);
+        if (e?.url) link = scene.link(e, y, () => scene.menu.select(scene.tabs.length + i), () => armed, () => (armed = true));
         row.redraw();
         if (focused) describe();
       },
@@ -190,7 +195,10 @@ export default class Leaderboard extends Phaser.Scene {
         focused = on;
         row.redraw();
         if (on) describe();
-        else scene.dest.setText('');
+        else {
+          armed = false;
+          scene.dest.setText('');
+        }
       },
       redraw() {
         const tint = focused ? 0x3fb950 : own ? 0xe3b341 : 0xf5f5f5;
@@ -205,9 +213,9 @@ export default class Leaderboard extends Phaser.Scene {
   }
 
   // A transparent link over a row (its DOM game object; the <a> is its node). On a phone the
-  // first tap only selects the row (showing where it goes); the second opens it. The link never
-  // keeps focus, so the arrow keys stay with the menu after a click.
-  link(entry, y, select, selected) {
+  // first tap only selects the row and arms it (showing where it goes); the second opens it.
+  // The link never keeps focus, so the arrow keys stay with the menu after a click.
+  link(entry, y, select, armed, arm) {
     const a = document.createElement('a');
     a.href = entry.url;
     a.target = '_blank';
@@ -221,9 +229,10 @@ export default class Leaderboard extends Phaser.Scene {
     a.addEventListener('pointermove', (e) => e.pointerType === 'mouse' && (e.movementX !== 0 || e.movementY !== 0) && select());
     a.addEventListener('mousedown', (e) => e.preventDefault());
     a.addEventListener('click', (e) => {
-      if (TOUCH && !selected()) {
+      if (TOUCH && !armed()) {
         e.preventDefault();
         select();
+        arm();
       }
     });
     return this.add.dom(70, y - 5, a).setOrigin(0);
