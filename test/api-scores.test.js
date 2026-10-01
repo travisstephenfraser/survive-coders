@@ -46,17 +46,19 @@ beforeEach(async () => {
 let ipSeq = 0;
 const nextIp = () => `203.0.113.${++ipSeq % 250}`;
 
-// A finished run that passes every rule: each segment a little over its floor.
+// A finished run that passes every rule: each segment a little over its floor (and the last
+// milestone early enough for the shortest time a test below posts, 480 s).
+const OVER_MS = 55000;
 function entry(overrides = {}) {
   const splits = [];
   let t = 0;
-  SPLITS.forEach((_, i) => splits.push((t += SEGMENT_FLOOR_MS[i] + 60000)));
+  SPLITS.forEach((_, i) => splits.push((t += SEGMENT_FLOOR_MS[i] + OVER_MS)));
   return {
     runId: crypto.randomUUID(),
     playerId: crypto.randomUUID(),
     name: 'ada_l',
     stars: 300,
-    timeMs: t + SEGMENT_FLOOR_MS.at(-1) + 60000,
+    timeMs: t + SEGMENT_FLOOR_MS.at(-1) + OVER_MS,
     splits,
     splitStars: [90, 160, 190, 230, 250, 250, 262],
     platform: 'github',
@@ -113,6 +115,8 @@ test('impossible runs, names and links are rejected with a reason', async () => 
   const cases = [
     [{ stars: 383 }, 'stars'],
     [{ timeMs: 1000 }, 'time'],
+    // every star at the 59.5 s the floors once allowed
+    [{ stars: 382, timeMs: 59500, splits: [12000, 27000, 33000, 39500, 43500, 48500, 56500], splitStars: [98, 172, 206, 246, 275, 275, 287] }, 'time'],
     [{ splits: [1, 2, 3, 4, 5, 6, 7] }, 'splits'],
     [{ name: 'José' }, 'name'],
     [{ platform: 'github', handle: 'a--b' }, 'link'],

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS scores (
   player_id uuid NOT NULL,
   name text NOT NULL CONSTRAINT scores_name CHECK (name ~ '^[!-~]([ -~]{0,14}[!-~])?$'),
   stars integer NOT NULL CONSTRAINT scores_stars CHECK (stars BETWEEN 0 AND 382),
-  -- loose on purpose (the API's floor is 59.5 s), so tuning the API's floors never needs a migration
+  -- loose on purpose (the API's floor is 83 s), so tuning the API's floors never needs a migration
   time_ms integer NOT NULL CONSTRAINT scores_time CHECK (time_ms BETWEEN 30000 AND 43200000),
   splits integer[] NOT NULL CONSTRAINT scores_splits CHECK (
     cardinality(splits) = 7 AND array_position(splits, NULL) IS NULL AND 0 < ALL (splits) AND splits[7] < time_ms),
@@ -88,6 +88,15 @@ ALTER ROLE sc_app SET statement_timeout = '5s';
 -- Recent runs, newest first, for a look at what's plausible:
 --   SELECT id, name, stars, time_ms, splits, split_stars, left(ip_hash, 8) AS ip, created_at
 --   FROM scores WHERE NOT hidden ORDER BY created_at DESC LIMIT 50;
+--
+-- Before raising the API's time floors (SEGMENT_FLOOR_MS in shared/leaderboard.js): the stored
+-- runs the new floors would refuse, one number per segment. A real run in the answer means
+-- that floor is too tight. Raising a floor doesn't hide the runs already stored under it.
+--   SELECT id, name, stars, time_ms, splits, rules_version, created_at FROM scores
+--   WHERE NOT hidden AND (splits[1] < 16500 OR splits[2] - splits[1] < 17500
+--     OR splits[3] - splits[2] < 9500 OR splits[4] - splits[3] < 10000
+--     OR splits[5] - splits[4] < 6500 OR splits[6] - splits[5] < 5000
+--     OR splits[7] - splits[6] < 8000 OR time_ms - splits[7] < 10000);
 --
 -- Clear old rate-limit counters:
 --   DELETE FROM request_counts WHERE minute < now() - interval '1 day';

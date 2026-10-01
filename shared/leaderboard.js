@@ -16,10 +16,13 @@ export const MAX_STARS = SEGMENT_STARS.reduce((a, b) => a + b, 0);
 export const SPLIT_STAR_CAPS = SPLITS.map((_, i) => SEGMENT_STARS.slice(0, i + 1).reduce((a, b) => a + b, 0));
 const BOSS_STARS = SEGMENT_STARS.at(-1);
 
-// The fastest each segment can go, set well under what the level allows (the player tops out
-// at 95 px/s; the canopy descent alone takes 9.25 s) so no real run trips them. These filter
-// junk; they are not anti-cheat.
-export const SEGMENT_FLOOR_MS = [12000, 15000, 6000, 6500, 4000, 5000, 8000, 3000];
+// The fastest each segment can go, set under what the level allows so no real run trips them:
+// about four fifths of the fastest each can be played (simulated at 60 Hz with every cutscene
+// skipped: 21.0, 22.2, 12.0, 12.7, 8.2, 6.65, 10.1 and 12.6 s; the canopy descent alone takes
+// 9.25 s, the boss's entrance 6.4 s). These filter junk; they are not anti-cheat: a made-up run
+// above them still posts. Before raising one, check it against the stored runs (the owner's
+// query at the end of db/schema.sql).
+export const SEGMENT_FLOOR_MS = [16500, 17500, 9500, 10000, 6500, 5000, 8000, 10000];
 export const MIN_TIME_MS = SEGMENT_FLOOR_MS.reduce((a, b) => a + b, 0);
 export const MAX_TIME_MS = 12 * 60 * 60 * 1000;
 

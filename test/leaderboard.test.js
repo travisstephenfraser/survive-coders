@@ -47,6 +47,32 @@ test('checkRun rejects impossible times', () => {
   assert.equal(checkRun(run({ timeMs: Number.NaN })), 'time');
 });
 
+// Known answers from outside this file. The fastest each segment can be played, simulated on
+// 2026-10-01 at 60 Hz with every cutscene skipped (the boss's includes its entrance, 6438 ms by
+// the timings in BossHQ.stagedEntrance, which can't be skipped).
+const FASTEST_PLAYED_MS = [21000, 22200, 12000, 12700, 8200, 6650, 10120, 12600];
+
+test('each floor sits under the fastest its segment can be played, and not far under', () => {
+  assert.equal(SEGMENT_FLOOR_MS.length, FASTEST_PLAYED_MS.length);
+  SEGMENT_FLOOR_MS.forEach((floor, i) => {
+    // over 85% and a record run with a trick the simulation missed could be refused...
+    assert.ok(floor <= 0.85 * FASTEST_PLAYED_MS[i], `segment ${i}: ${floor} is too close to ${FASTEST_PLAYED_MS[i]}`);
+    // ...under 70% and the check turns away runs nobody can play
+    assert.ok(floor >= 0.7 * FASTEST_PLAYED_MS[i], `segment ${i}: ${floor} is far under ${FASTEST_PLAYED_MS[i]}`);
+  });
+  assert.ok(SEGMENT_FLOOR_MS.at(-1) > 6438, "the boss's floor is over its entrance alone");
+});
+
+test('every star in 59.5 s, once the least the rules allowed, is refused', () => {
+  const splits = [12000, 27000, 33000, 39500, 43500, 48500, 56500];
+  assert.equal(checkRun({ stars: MAX_STARS, timeMs: 59500, splits, splitStars: [...SPLIT_STAR_CAPS] }), 'time');
+  // and at the fastest the game can be played, it passes
+  const played = [];
+  let t = 0;
+  for (let i = 0; i < SPLITS.length; i++) played.push((t += FASTEST_PLAYED_MS[i]));
+  assert.equal(checkRun({ stars: MAX_STARS, timeMs: t + FASTEST_PLAYED_MS.at(-1), splits: played, splitStars: [...SPLIT_STAR_CAPS] }), null);
+});
+
 test('checkRun rejects splits that are short, out of order, or malformed', () => {
   const ok = run();
   const tooFast = [...ok.splits];

@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      80 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      82 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -463,11 +463,12 @@ never production.
 
 ## Tests
 
-`npm test` runs 80 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 82 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
-- `shared/leaderboard.js`: the star ceiling, the time and milestone checks, names, profile
+- `shared/leaderboard.js`: the star ceiling, the time and milestone checks (each time floor
+  held between 70% and 85% of the fastest its segment can be played), names, profile
   handles, and pasted-URL parsing
 - the profanity check on names and handles: a list that must be refused (disguised
   spellings too) and a list that must pass (surnames, places, and words that contain one)
@@ -492,8 +493,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 80
-ℹ pass 80
+ℹ tests 82
+ℹ pass 82
 ℹ fail 0
 ```
 
