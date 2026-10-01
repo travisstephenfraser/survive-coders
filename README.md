@@ -649,6 +649,11 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
   runs, about 5.7 s at 500,000, past the 5 s a statement may take there. The rate limit and the
   15-minute edge cache keep that far off. Next: a table of each player's best run on each
   board, kept up to date on insert, so a read sorts players rather than runs.
+- **A faster screen finishes frame-timed waits a little sooner.** Scene changes, delayed
+  calls and a few timers land on the first frame after they're due, so each can take up to one
+  frame longer at 60 Hz than at 240 Hz: about 0.1 to 0.3 s over a whole run. Fire rate and the
+  vesting clock carry their timing over, so they're the same at any rate; a slow machine only
+  loses time (Phaser caps a frame's step after a focus change or a long frame).
 - **Older runs on the time board were timed without pauses.** Runs posted before 2026-10-01
   (rules version 1) left pauses out of their time; later runs count them. An honest early run
   that paused reads a little short of how it would be timed now.

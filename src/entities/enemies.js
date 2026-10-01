@@ -442,7 +442,9 @@ export class VestedBro extends Enemy {
       }
       if (time > this.nextMonth) {
         this.months++;
-        this.nextMonth = time + MONTH_MS;
+        // Steady watching keeps the beat (the same months at any refresh rate); a gap longer
+        // than a month (a pause) starts a new one.
+        this.nextMonth = (time - this.nextMonth > MONTH_MS ? time : this.nextMonth) + MONTH_MS;
         this.counter.setText(`${this.months}/12mo`);
         if (this.vested) this.vest();
       }

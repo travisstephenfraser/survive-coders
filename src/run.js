@@ -33,7 +33,8 @@ export function beginRun(scene) {
   const reg = scene.registry;
   voice.resetCooldowns();
   sfx(scene, 'start', 0.5);
-  reg.set({ hp: MAX_HP, stars: 0, maxTokens: 0, checkpointStars: 0, checkpointTokens: 0, boss: null, towerFloor: null, elevatorSongAt: 0, cutscene: false, toast: null });
+  // The boss's entrance can't be skipped, so each run gets it once (the other intros can be).
+  reg.set({ hp: MAX_HP, stars: 0, maxTokens: 0, checkpointStars: 0, checkpointTokens: 0, boss: null, towerFloor: null, elevatorSongAt: 0, cutscene: false, toast: null, bossIntroSeen: false });
   run.start({ god: Boolean(reg.get('god')), dev: JUMPS.some((k) => params.has(k)) });
   const floor = Number(params.get('tower'));
   if (params.has('tower')) scene.scene.start('Tower', { floor: [59, 60, 61].includes(floor) ? floor : 59 });

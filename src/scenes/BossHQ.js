@@ -36,11 +36,13 @@ export default class BossHQ extends PlayScene {
     this.hydra = new Hydra(this, 272, 160);
     this.introLock = true; // until the title card clears (introCard)
     this.hydra.dormantUntil = Infinity; // the fight starts when the title card clears (introCard)
+    // The staged entrance can't be skipped, so every run sits through it once: it counts as
+    // seen only when its card clears (introCard), and a new run forgets it (run.js beginRun).
+    // A restart from the pause screen partway through used to cut it to the retry's card.
     if (this.registry.get('bossIntroSeen')) {
       this.playMusic('music_boss', 0.3);
       this.introCard(1100); // retries: short card only
     } else {
-      this.registry.set('bossIntroSeen', true);
       this.stagedEntrance();
     }
   }
@@ -105,6 +107,7 @@ export default class BossHQ extends PlayScene {
       delay: INTRO_MS - 500,
       duration: 500,
       onComplete: () => {
+        this.registry.set('bossIntroSeen', true);
         this.introLock = false;
         this.hydra.startFight();
         card.destroy();
