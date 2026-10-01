@@ -64,3 +64,20 @@ export const saveBest = (best) => write('sc_best', JSON.stringify(best));
 export const readFastest = () => readJson('sc_fastest');
 export const saveFastest = (fastest) => write('sc_fastest', JSON.stringify(fastest));
 export const forgetFastest = () => write('sc_fastest', 'null');
+
+// Brings the saved bests in line with a post's answer (src/api.js submitScore): `posted` is
+// the run just sent, { name, stars, timeMs }. The ranks come with a 201, and with a 409 that
+// names them: the retry of a post that landed but whose answer was lost. Any other answer
+// says nothing about the board, so nothing changes.
+export function keepBests(r, posted) {
+  const you = r.state === 'ok' || r.status === 409 ? r.you : undefined;
+  if (!you) return;
+  if (you.best) saveBest(posted);
+  // The server names the player's fastest run, whichever game posted it; failing that, this
+  // run if it says this is the one. An older API's answer has no time rank (as after a
+  // rollback), so nothing says; but a saved fastest that this run beats is out of date.
+  const fast = you.fastest;
+  if (fast?.run) saveFastest(fast.run);
+  else if (fast?.best) saveFastest(posted);
+  else if (fast === null && posted.timeMs < (readFastest()?.timeMs ?? Infinity)) forgetFastest();
+}

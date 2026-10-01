@@ -81,13 +81,17 @@ export function scoresHandlers({ config, store, notify, now = () => new Date(), 
       const said = Number(request.headers.get('x-rules-version'));
       const rulesVersion = Number.isInteger(said) && said >= 1 && said <= RULES_VERSION ? said : 1;
       const { id, boards } = await db.insert({ ...run, ipHash, rulesVersion });
-      if (!id) return json(409, { error: 'duplicate' });
       const mine = boards.stars.find((r) => r.mine);
       const fast = boards.time.find((r) => r.mine);
       // `fastest` names the player's fastest run too (it may be an earlier one), so the game can
       // keep its record of it right whatever posted that run.
-      const fastest = { rank: fast.rank, best: fast.run_id === run.runId, name: fast.name, stars: fast.stars, timeMs: fast.time_ms };
-      const you = { rank: mine.rank, total: mine.total, best: mine.run_id === run.runId, fastest };
+      const fastest = fast && { rank: fast.rank, best: fast.run_id === run.runId, name: fast.name, stars: fast.stars, timeMs: fast.time_ms };
+      const you = mine && fast && { rank: mine.rank, total: mine.total, best: mine.run_id === run.runId, fastest };
+      // Already posted. A game whose first answer was lost gets here on its retry, so the
+      // duplicate carries the ranks again (read from the board, never from this request): no
+      // alert and no share token, which would sign numbers this request only claims. A player
+      // with no visible run has no ranks.
+      if (!id) return json(409, { error: 'duplicate', ...(you && { you }) });
       // A new top-ten best on either board: tell Travis, with the line that hides it if it's a cheat.
       if ((you.best && you.rank <= 10) || (you.fastest.best && you.fastest.rank <= 10)) {
         try {

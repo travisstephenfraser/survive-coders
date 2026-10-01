@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      77 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      80 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -463,7 +463,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 77 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 80 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -473,12 +473,14 @@ never production.
   spellings too) and a list that must pass (surnames, places, and words that contain one)
 - the run clock (wall time with pauses counted, milestones, and the check that catches a clock
   running short), the
-  settings store, the mute toggle, the saved player profile, and the game's API client
-  (including an older API's answer, with no time board, as after a rollback)
+  settings store, the mute toggle, the saved player profile (and what each answer to a post
+  does to the saved bests), and the game's API client (including an older API's answer, with
+  no time board, as after a rollback, and a duplicate that carries the ranks)
 - the database wrapper's request to Neon (driver fetch stubbed): both boards in one round
   trip, as one read-only, repeatable-read transaction
 - the API against real Postgres: PGlite (Postgres compiled to WebAssembly, a dev dependency)
-  runs `db/schema.sql`, then every refusal, the rate limit, both rankings (ties, one row per
+  runs `db/schema.sql`, then every refusal (a run posted twice gets its ranks again, for a
+  game whose first answer was lost, and nothing else), the rate limit, both rankings (ties, one row per
   player, each player's best run for that board, hidden rows), the alert email (a rank named
   only on the boards where it's the run's own), and what the `sc_app` role can and can't do. This is
   how a CHECK constraint that let a NULL through was caught.
@@ -490,8 +492,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 77
-ℹ pass 77
+ℹ tests 80
+ℹ pass 80
 ℹ fail 0
 ```
 

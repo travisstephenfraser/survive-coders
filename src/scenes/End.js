@@ -9,7 +9,7 @@ import { beginRun, retryLevel, run } from '../run.js';
 import { MAX_STARS, formatTime } from '../../shared/leaderboard.js';
 import { scoreForm } from '../scoreForm.js';
 import { submitScore } from '../api.js';
-import { forgetFastest, loadProfile, playerId, readFastest, saveBest, saveFastest, saveProfile } from '../profile.js';
+import { keepBests, loadProfile, playerId, saveProfile } from '../profile.js';
 import { placeOf } from '../../shared/share.js';
 import { drawCard, runLine, runLink, shareRun } from '../share.js';
 import { sharePanel } from '../sharePanel.js';
@@ -125,15 +125,7 @@ export default class End extends Phaser.Scene {
       submit: async (entry) => {
         saveProfile(entry);
         const r = await submitScore(this.result, entry, playerId());
-        const posted = { name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs };
-        if (r.state === 'ok' && r.you.best) saveBest(posted);
-        // The server names the player's fastest run, whichever game posted it; failing that, this
-        // run if it says this is the one. An older API's answer has no time rank (as after a
-        // rollback), so nothing says; but a saved fastest that this run beats is out of date.
-        const fast = r.state === 'ok' ? r.you.fastest : undefined;
-        if (fast?.run) saveFastest(fast.run);
-        else if (fast?.best) saveFastest(posted);
-        else if (fast === null && posted.timeMs < (readFastest()?.timeMs ?? Infinity)) forgetFastest();
+        keepBests(r, { name: entry.name, stars: this.result.stars, timeMs: this.result.timeMs });
         // A posted run shares its signed record: the name, and the rank it posted at if it's
         // the player's best (otherwise the board ranks their better run, not this one).
         if (r.state === 'ok' && r.share) {

@@ -128,10 +128,26 @@ test('impossible runs, names and links are rejected with a reason', async () => 
   }
 });
 
-test('a run posts once', async () => {
+test('a run posts once; the duplicate carries the ranks again, for a game that lost the first answer', async () => {
   const run = entry();
-  assert.equal((await post(run)).status, 201);
-  assert.equal((await post(run)).status, 409);
+  const first = await post(run);
+  assert.equal(first.status, 201);
+  const { you } = await first.json();
+  const again = await post(run);
+  assert.equal(again.status, 409);
+  // the ranks and nothing else: no board, no second share token, no second alert
+  assert.deepEqual(await again.json(), { error: 'duplicate', you });
+  assert.equal(sent.length, 1);
+  assert.equal((await pg.query('SELECT count(*)::int AS n FROM scores')).rows[0].n, 1);
+  // the same run id from a player with no run of their own: refused, with no ranks to give
+  const other = await post({ ...run, playerId: crypto.randomUUID() });
+  assert.equal(other.status, 409);
+  assert.deepEqual(await other.json(), { error: 'duplicate' });
+  // nor once the run is hidden
+  await pg.query('UPDATE scores SET hidden = true WHERE run_id = $1', [run.runId]);
+  const hidden = await post(run);
+  assert.equal(hidden.status, 409);
+  assert.deepEqual(await hidden.json(), { error: 'duplicate' });
 });
 
 test('one address gets five posts a minute, and its refused posts leave the global budget alone', async () => {

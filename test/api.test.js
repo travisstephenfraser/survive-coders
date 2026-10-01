@@ -125,6 +125,18 @@ test('refusals keep their status and reason; a network failure is retried once, 
     globalThis.fetch = async () => reply(status, { error });
     assert.deepEqual(await submitScore(summary, profile, 'p-1'), { state: 'error', status, error });
   }
+  // A duplicate that names the ranks (the retry of a post whose answer was lost) keeps them,
+  // checked the same way as a 201's.
+  const you = { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true, name: 'ada_l', stars: 5, timeMs: 300000 } };
+  globalThis.fetch = async () => reply(409, { error: 'duplicate', you });
+  assert.deepEqual(await submitScore(summary, profile, 'p-1'), {
+    state: 'error',
+    status: 409,
+    error: 'duplicate',
+    you: { rank: 3, total: 9, best: true, fastest: { rank: 1, best: true, run: { name: 'ada_l', stars: 5, timeMs: 300000 } } },
+  });
+  globalThis.fetch = async () => reply(409, { error: 'duplicate', you: { rank: 12, total: 9, best: 'yes' } });
+  assert.deepEqual((await submitScore(summary, profile, 'p-1')).you, { rank: null, total: 9, best: false, fastest: null });
   let calls = 0;
   globalThis.fetch = async () => {
     calls++;

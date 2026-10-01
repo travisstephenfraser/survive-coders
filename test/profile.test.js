@@ -42,3 +42,47 @@ test('the profile round-trips, and junk in storage comes back as an empty profil
   const junk = await load({ sc_profile: JSON.stringify({ name: 42, platform: 'myspace', handle: {} }) });
   assert.deepEqual(junk.loadProfile(), { name: '', platform: null, handle: null });
 });
+
+// What a post's answer does to the saved bests (the leaderboard marks these rows as yours).
+const posted = { name: 'ada_l', stars: 300, timeMs: 200000 };
+const earlier = { name: 'ada_l', stars: 120, timeMs: 150000 };
+const stored = (data) => ({ best: JSON.parse(data.get('sc_best') ?? 'null'), fastest: JSON.parse(data.get('sc_fastest') ?? 'null') });
+
+test('a posted run that is a best on a board is saved as that best; the server names the fastest', async () => {
+  const both = await load();
+  both.keepBests({ state: 'ok', you: { rank: 1, total: 4, best: true, fastest: { rank: 1, best: true, run: posted } } }, posted);
+  assert.deepEqual(stored(both.data), { best: posted, fastest: posted });
+  // a best on stars only: the fastest stays the earlier run the server names
+  const stars = await load();
+  stars.keepBests({ state: 'ok', you: { rank: 1, total: 4, best: true, fastest: { rank: 2, best: false, run: earlier } } }, posted);
+  assert.deepEqual(stored(stars.data), { best: posted, fastest: earlier });
+  // neither: the saved best is left alone
+  const neither = await load({ sc_best: JSON.stringify(earlier) });
+  neither.keepBests({ state: 'ok', you: { rank: 2, total: 4, best: false, fastest: { rank: 2, best: false, run: null } } }, posted);
+  assert.deepEqual(stored(neither.data), { best: earlier, fastest: null });
+  // the answer names no run but says this one is the fastest
+  const unnamed = await load();
+  unnamed.keepBests({ state: 'ok', you: { rank: 2, total: 4, best: false, fastest: { rank: 1, best: true, run: null } } }, posted);
+  assert.deepEqual(stored(unnamed.data), { best: null, fastest: posted });
+});
+
+test("an answer with no time rank (an older API's) forgets a saved fastest this run beats, and only then", async () => {
+  const answer = { state: 'ok', you: { rank: 1, total: 4, best: true, fastest: null } };
+  const beaten = await load({ sc_fastest: JSON.stringify({ ...earlier, timeMs: 900000 }) });
+  beaten.keepBests(answer, posted);
+  assert.equal(stored(beaten.data).fastest, null);
+  const standing = await load({ sc_fastest: JSON.stringify(earlier) });
+  standing.keepBests(answer, posted);
+  assert.deepEqual(stored(standing.data).fastest, earlier);
+});
+
+test('a duplicate that names the ranks saves the bests like the answer that was lost; other refusals save nothing', async () => {
+  const lost = await load();
+  lost.keepBests({ state: 'error', status: 409, error: 'duplicate', you: { rank: 1, total: 4, best: true, fastest: { rank: 1, best: true, run: posted } } }, posted);
+  assert.deepEqual(stored(lost.data), { best: posted, fastest: posted });
+  for (const r of [{ state: 'error', status: 409, error: 'duplicate' }, { state: 'error', status: 422, error: 'name' }, { state: 'offline' }]) {
+    const none = await load({ sc_fastest: JSON.stringify({ ...earlier, timeMs: 900000 }) });
+    none.keepBests(r, posted);
+    assert.deepEqual(stored(none.data), { best: null, fastest: { ...earlier, timeMs: 900000 } }, JSON.stringify(r));
+  }
+});
