@@ -25,7 +25,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      96 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      97 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -472,7 +472,7 @@ never production.
 
 ## Tests
 
-`npm test` runs 96 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 97 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
@@ -488,7 +488,8 @@ never production.
   no time board, as after a rollback, and a duplicate that carries the ranks)
 - the key map (`src/keymap.js`): the defaults checked against Phaser's own key-code table, no
   key on two actions through two thousand random binds and resets, saved maps that are partly
-  bad or hold one key twice, and storage that throws
+  bad or hold one key twice, storage that throws, and the short key list a status line shows
+  only when every name in it is one character
 - the database wrapper's request to Neon (driver fetch stubbed): both boards in one round
   trip, as one read-only, repeatable-read transaction
 - the API against real Postgres: PGlite (Postgres compiled to WebAssembly, a dev dependency)
@@ -505,8 +506,8 @@ never production.
 
 ```console
 $ npm test
-ℹ tests 96
-ℹ pass 96
+ℹ tests 97
+ℹ pass 97
 ℹ fail 0
 ```
 
@@ -560,7 +561,7 @@ against the running game, recorded with screenshots in
 | Demo day rollback (2026-10-01) | Entering the arena from the left, the oldest rollback snapshot at the lock was x 1517 with the wall at 1536; the rollback landed at 1547, inside, the arena still locked and the fight still on |
 | Skipping the intro (2026-09-29) | Esc skips the intro without pausing the level (it used to do both); P, three keys in one frame, pauses once; N mutes once |
 | Restart from the pause screen (2026-09-29) | R in Level 1 starts a new run (a new run id, 0 stars, no intro); the *restart level* button on floor 60 restarts the floor with the stars it began with, in the same run, the clock still counting; a death in Level 1 retries as a new run. No console errors |
-| Key remapping, new run and quit to title (2026-10-01) | With jump on SPACE, fire on SHIFT, the powers on Q, E and F and talk on K, bound on the controls screen: the keys play and the old ones do nothing; the title, the HUD, the tips and the pause screen name the new keys; the map survives a reload; SPACE skips the intro without a jump. With the widest names (SHIFT, SPACE, the number pad) no hint runs into another: the HUD's bottom hint shortens to the pause key. Binding M does not open the microphone, ESC cancels a rebind without leaving the screen, ENTER and TAB are refused, and a key taken from an action leaves it `unbound`, with which the game still runs. On the pause screen T leaves one scene active, no music and an idle clock, and the next run starts on a fresh one; G in the park starts the first level with 0 stars, one song and a fresh clock. A name with `r` and `t` in it types whole; after the post (answered locally), R starts a new run and T goes to the title. Play keys were sent as timed key events; the controls screen and the form took real key presses |
+| Key remapping, new run and quit to title (2026-10-01) | With jump on SPACE, fire on SHIFT, the powers on Q, E and F and talk on K, bound on the controls screen: the keys play and the old ones do nothing; the title, the HUD, the tips and the pause screen name the new keys; the map survives a reload; SPACE skips the intro without a jump. With the widest names (SHIFT, SPACE, the number pad) no hint runs into another: the HUD's bottom hint shortens to the pause key. Binding M does not open the microphone, ESC cancels a rebind without leaving the screen, ENTER and TAB are refused, and a key taken from an action leaves it `unbound`, with which the game still runs. On the pause screen T leaves one scene active, no music and an idle clock, and the next run starts on a fresh one; G in the park starts the first level with 0 stars, one song and a fresh clock. A name with `r` and `t` in it types whole; after the post (answered locally), R starts a new run and T goes to the title. A key still held as the death screen comes up (a repeating T, R or Enter) does nothing, and a fresh press works; quitting to the title after a visit to Settings lands on PLAY NOW. With no speech API and the powers on SHIFT, SPACE and the number pad, the microphone's lines say `the keys` and clear the power slots and the title window. Play keys were sent as timed key events; the controls screen and the form took real key presses |
 | Production build | Loads with no failed requests and no console errors or warnings, locally and on the live URL |
 | Touch controls (iPhone landscape emulation, synthetic touch and pointer events) | The D-pad moves at full speed and slides between directions; a tapped jump peaks at 24 px and a held one at 70 px; holding jump jumps once, as the keyboard does; each power fires from its slot; pause, resume, the sound toggle, and auto-pause on a hidden tab or a portrait turn all work |
 | Touch-only playthrough | A scripted run using only the touch controls finished Level 1, cable car included, and the Hydra; it checks the controls, not the difficulty |

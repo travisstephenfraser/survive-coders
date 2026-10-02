@@ -71,9 +71,11 @@ Travis asked for the new-run key, kept `T` for quit to title, and skipped a red-
     screen, the level tips in the city, the park and the tower, the rollback and MAX tips, the
     founder's `MASH` chip, the canopy's steer hint, and the microphone's status. With the
     defaults every hint reads as it does today. Measured in the game's font, the longest
-    names (SHIFT, SPACE, the number pad's) fit the power slots and the pause buttons; the one
-    place they don't is the HUD's bottom row, where the controls hint shortens (down to the
-    pause key alone) so it never runs under the status line beside it.
+    names (SHIFT, SPACE, the number pad's) fit the power slots and the pause buttons. Two
+    places they don't: the HUD's bottom row, where the controls hint shortens (down to the
+    pause key alone) so it never runs under the status line beside it, and the microphone's
+    no-speech and error lines (on the title and in the HUD), which list the powers' keys only
+    when each name is one character and say "the keys" otherwise.
 11. **Where the map is read.** Phaser key objects are made from it when a level starts
     (Player, Landing). The voice keys and the HUD's keys check it at each keydown. The map can
     only change on the controls screen, which is reached from the title with no run in
@@ -99,6 +101,30 @@ Travis asked for the new-run key, kept `T` for quit to title, and skipped a red-
     still closes.
 15. **`R` plays again anywhere on the end screen**, as `ENTER` does, so the key means one thing
     on that screen. The prompt line is unchanged.
+
+## After the whole-branch review (2026-10-01)
+
+A fresh reviewer read the branch; three findings were fixed, each reproduced first.
+
+- **A held key on the end screen.** `ENTER`, `R` and `T` there ignore auto-repeat. A play key
+  rebound to `R` or `T` and still held at a death used to act the moment the screen came up,
+  taking the retry with it.
+- **The title's menu row after a quit.** Quit to title (and the end screen's `T`) hands the
+  title an empty object, so it opens on PLAY NOW. Phaser otherwise re-used the row a Settings
+  visit had left, and `ENTER` opened Settings.
+- **The microphone's lines with long key names** (decision 10, above).
+
+Known and left as they are (small, and Travis's to decide):
+
+- The title's control line reaches the key art by about 18 px when move is on SHIFT or SPACE
+  and jump keeps its three defaults.
+- Rebinding talk while its old key is held leaves the microphone listening until the new key
+  is pressed or the window loses focus.
+- After a bind, a key held past the repeat delay (W, S, an arrow) moves the menu.
+- `SHIFT restart level` is 2 px too wide for its button, so that button drops its key.
+- `R` on the end screen, like `T` and `S`, acts if focus has left the leaderboard form.
+- A few comments still name the default keys, and the settings screen clears its start data
+  through Phaser's internals, as the leaderboard screen already did.
 
 ## What this does not do
 

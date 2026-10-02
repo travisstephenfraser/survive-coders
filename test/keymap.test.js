@@ -103,6 +103,23 @@ test('a bound key is taken from the action that had it, which can be left unboun
   assert.deepEqual(keymap.bind('fire', K.M), { from: null });
 });
 
+test('a short list of keys for a status line, or none when a name is long', async () => {
+  const { keymap } = await load();
+  const powers = ['ship', 'rollback', 'refactor'];
+  assert.equal(keymap.short(powers, '/'), '1/2/3');
+  keymap.bind('ship', K.Q);
+  assert.equal(keymap.short(powers, ' '), 'Q 2 3');
+  // SHIFT, SPACE and the number pad's names are too long for the lines that list keys.
+  keymap.bind('refactor', K.NUMPAD_THREE);
+  assert.equal(keymap.short(powers, '/'), null);
+  keymap.bind('refactor', K.F);
+  keymap.bind('rollback', K.SHIFT);
+  assert.equal(keymap.short(powers, '/'), null);
+  // An unbound action lists as `?`, which is short.
+  keymap.bind('fire', K.SHIFT);
+  assert.equal(keymap.short(powers, '/'), 'Q/?/F');
+});
+
 test('no key is ever on two actions, whatever is bound and reset', async () => {
   const { keymap, ACTIONS, keyName } = await load();
   const bindable = [];

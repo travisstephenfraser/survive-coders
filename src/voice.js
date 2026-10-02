@@ -10,12 +10,16 @@ export const POWERS = {
 };
 
 // What the status line calls the push-to-talk control (its key, or the HUD's talk slot) and
-// the powers' keys. A status that names a key is a function, read when the line is drawn: the
-// keys can be rebound between runs (keymap.js).
+// the powers' keys: listed, or just "the keys" when their names are long, since the line sits
+// beside the power slots and a long one ran over them. A status that names a key is a
+// function, read when the line is drawn: the keys can be rebound between runs (keymap.js).
 const talkKey = () => (TOUCH ? 'talk' : keymap.name('talk'));
-const powerKeys = () => Object.keys(POWERS).map((name) => keymap.name(name)).join('/');
+const powerKeys = () => {
+  const list = keymap.short(Object.keys(POWERS), '/');
+  return list ? `keys ${list}` : 'the keys';
+};
 const IDLE = () => `hold ${talkKey()} to talk`;
-const NO_SPEECH = () => `no speech API here: use keys ${powerKeys()}`;
+const NO_SPEECH = () => `no speech API here: use ${powerKeys()}`;
 
 // Push-to-talk: hold the talk key (M unless rebound), say a command, release. The command fires
 // on release, so ordinary talking (demo narration!) never triggers powers. The powers' own keys
@@ -93,7 +97,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     };
     rec.onerror = (e) => {
       if (e.error === 'no-speech' || e.error === 'aborted') return;
-      this.status = e.error === 'not-allowed' ? 'mic blocked: allow it in the address bar' : `mic error: ${e.error}, keys ${powerKeys()} work`;
+      this.status = e.error === 'not-allowed' ? 'mic blocked: allow it in the address bar' : `mic error: ${e.error}, ${powerKeys()} work`;
     };
     rec.onend = () => {
       this.running = false;

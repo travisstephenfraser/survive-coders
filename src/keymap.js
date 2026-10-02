@@ -132,6 +132,12 @@ export const keymap = {
     const [x, y] = [keymap.name(a), keymap.name(b)];
     return ARROW.test(x) && ARROW.test(y) ? x + y : `${x} ${y}`;
   },
+  // Several actions' keys as one short list for a status line ("1/2/3"), or null when a name
+  // is longer than a character: SHIFT, SPACE and the number pad's don't fit those lines.
+  short(actions, sep) {
+    const names = actions.map((a) => keymap.name(a));
+    return names.every((n) => n.length === 1) ? names.join(sep) : null;
+  },
   // Make `code` the action's one key. Returns { from } (the action it was taken from, or
   // null), or null if the key can't be bound, with nothing changed.
   bind(action, code) {

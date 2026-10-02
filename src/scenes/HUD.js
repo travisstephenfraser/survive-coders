@@ -254,7 +254,7 @@ export default class HUD extends Phaser.Scene {
     const play = this.playScene();
     if (!play?.sys.isPaused()) return;
     this.scene.stop(play.scene.key);
-    this.scene.start('Title');
+    this.scene.start('Title', {}); // {}: Phaser would hand the title its last data (a menu row)
   }
 
   tap(p) {

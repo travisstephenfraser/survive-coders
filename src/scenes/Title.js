@@ -66,7 +66,7 @@ export default class Title extends Phaser.Scene {
     const micText = uiText(this, left + 520, 428, '', { size: 16 });
     const showMic = () => {
       if (TOUCH) micText.setText(voice.primed ? 'mic ready ✓' : voice.supported ? 'tap: set up mic' : 'no speech: tap powers');
-      else micText.setText(voice.primed ? 'V  mic ready ✓' : voice.supported ? 'V  set up mic (optional)' : `no speech here: keys ${powerKeys.join('/')}`);
+      else micText.setText(voice.primed ? 'V  mic ready ✓' : voice.supported ? 'V  set up mic (optional)' : `no speech here: ${keymap.short(Object.keys(POWERS), '/') ? `keys ${powerKeys.join('/')}` : 'use the keys'}`);
       micText.setTint(voice.primed ? 0x3fb950 : 0x8b8b8b);
     };
     showMic();
