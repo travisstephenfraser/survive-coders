@@ -9,6 +9,7 @@ import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, jokeText, worldText } from '
 import { applyScreenFX, flash, shake } from '../fx.js';
 import { sfx as playSfx } from '../audio.js';
 import { TOUCH } from '../touch.js';
+import { keymap } from '../keymap.js';
 import { loopSong } from './Songs.js';
 
 // MAX stream: random alphanumerics, mostly white with syntax-highlight accents.
@@ -217,7 +218,7 @@ export default class PlayScene extends Phaser.Scene {
     const tip = r.get('toast');
     if (r.get('rollbackTaught') || this.player.dead || this.player.hp >= MAX_HP || (tip && this.time.now < tip.until) || r.get('boss')?.overflow) return;
     r.set('rollbackTaught', true);
-    this.toast(TOUCH ? 'Took a hit? Tap "rollback" below' : 'Took a hit? HOLD M, say "rollback" (or 2)', 'rollback');
+    this.toast(TOUCH ? 'Took a hit? Tap "rollback" below' : `Took a hit? HOLD ${keymap.name('talk')}, say "rollback" (or ${keymap.name('rollback')})`, 'rollback');
   }
 
   sfx(key, volume = 0.5) {
@@ -429,7 +430,7 @@ export default class PlayScene extends Phaser.Scene {
     floatText(this, x, y - 10, 'MAX', '#f59a70');
     this.burst(x, y, 'px_orange', 14);
     this.sfx('start', 0.5);
-    this.toast(`MAX: hold ${TOUCH ? '>_' : 'SPACE'} to stream tokens`);
+    this.toast(`MAX: hold ${TOUCH ? '>_' : keymap.name('fire')} to stream tokens`);
   }
 
   // Spend one MAX token on one character.

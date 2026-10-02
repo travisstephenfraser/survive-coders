@@ -5,6 +5,7 @@ import { Founder, VestedBro } from '../entities/enemies.js';
 import { TILE, floatText, worldText } from '../util.js';
 import { run } from '../run.js';
 import { TOUCH } from '../touch.js';
+import { keymap } from '../keymap.js';
 import { cardMs, lineMs, sequence } from '../pacing.js';
 
 // Legend: # ground (lawn over the Transit Center roof), = planter, P player, * star, F founder,
@@ -244,7 +245,7 @@ export default class Park extends PlayScene {
       return z;
     });
     a.collider = this.physics.add.collider([this.player, this.enemies], a.walls);
-    this.toast(TOUCH ? 'Demo day! Clear the stage. Tap "ship it"' : 'Demo day! Clear the stage. "ship it" helps (1)', 'ship');
+    this.toast(TOUCH ? 'Demo day! Clear the stage. Tap "ship it"' : `Demo day! Clear the stage. "ship it" helps (${keymap.name('ship')})`, 'ship');
   }
 
   spawnWave(time) {

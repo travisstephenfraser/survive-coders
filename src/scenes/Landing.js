@@ -5,6 +5,7 @@ import { run } from '../run.js';
 import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX, pop } from '../fx.js';
 import { TOUCH, showPad, touch } from '../touch.js';
+import { keymap } from '../keymap.js';
 import { LAYERS, addParallax, panParallax } from '../backdrops.js';
 import { placeLidar } from '../sprites.js';
 import { loopSong } from './Songs.js';
@@ -81,7 +82,7 @@ export default class Landing extends Phaser.Scene {
 
     this.keys = { left: actionKeys(this, 'left'), right: actionKeys(this, 'right') };
     showPad(true, { steerOnly: true }); // touch: the D-pad steers
-    const hint = worldText(this, 320 + 160, 180 + 14, TOUCH ? 'hold ← → to steer · land on the Waymo' : '← → steer · land on the Waymo', {
+    const hint = worldText(this, 320 + 160, 180 + 14, TOUCH ? 'hold ← → to steer · land on the Waymo' : `${keymap.name('left')} ${keymap.name('right')} steer · land on the Waymo`, {
       color: '#f5f5f5',
       bg: '#0d0d0d',
       depth: 60,

@@ -3,6 +3,7 @@ import Laptop from './Laptop.js';
 import { MAX_HP, actionKeys, held, worldText } from '../util.js';
 import { pop, shake } from '../fx.js';
 import { TOUCH, touch } from '../touch.js';
+import { keymap } from '../keymap.js';
 
 const SPEED = 95;
 // A prompt every 183 ms, the rate a 60 Hz screen gave when each shot waited for the first frame
@@ -48,7 +49,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // Reversed controls show on the player, not in the HUD: the gaslight head's <-> as a chip.
     this.reversedChip = worldText(scene, x, y, '<->', { color: '#7a4fbf', bg: '#f5f5f5', size: 6, depth: 47 }).setVisible(false);
     // Caught in a founder's demo: the way out, shown on the player like the reversed chip.
-    this.trapChip = worldText(scene, x, y, TOUCH ? 'MASH!' : 'MASH ↑', { color: '#0d0d0d', bg: '#e3b341', size: 6, depth: 47 }).setVisible(false);
+    this.trapChip = worldText(scene, x, y, TOUCH ? 'MASH!' : `MASH ${keymap.name('jump')}`, { color: '#0d0d0d', bg: '#e3b341', size: 6, depth: 47 }).setVisible(false);
     this.trapped = null;
     // Locked into a contract (a CRM agent's): no firing. The chip and its fine print ride along.
     this.lockChip = worldText(scene, x, y, 'LOCKED IN', { color: '#f5f5f5', bg: '#e5534b', size: 6, depth: 47 }).setVisible(false);

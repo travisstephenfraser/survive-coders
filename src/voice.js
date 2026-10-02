@@ -4,16 +4,23 @@ import { keymap } from './keymap.js';
 
 // "Wispr Flow": spoken keywords fire powers.
 export const POWERS = {
-  ship: { label: 'ship it', does: 'big forward blast', key: '1', cooldown: 6000, re: /\bship(ped|ping|s)?\b|\bshipit\b/ },
-  rollback: { label: 'rollback', does: 'rewind 3s, heal', key: '2', cooldown: 8000, re: /\broll ?backs?\b|\brole ?back\b|\broll bag\b|\brollback\b/ },
-  refactor: { label: 'refactor', does: 'clear enemies; shrink the Hydra', key: '3', cooldown: 10000, re: /\bre-? ?factor(ed|ing|s)?\b|\breactor\b|\brefractor\b/ },
+  ship: { label: 'ship it', does: 'big forward blast', cooldown: 6000, re: /\bship(ped|ping|s)?\b|\bshipit\b/ },
+  rollback: { label: 'rollback', does: 'rewind 3s, heal', cooldown: 8000, re: /\broll ?backs?\b|\brole ?back\b|\broll bag\b|\brollback\b/ },
+  refactor: { label: 'refactor', does: 'clear enemies; shrink the Hydra', cooldown: 10000, re: /\bre-? ?factor(ed|ing|s)?\b|\breactor\b|\brefractor\b/ },
 };
 
-const TALK = TOUCH ? 'talk' : 'M'; // the push-to-talk control: the M key, or the HUD's talk slot
+// What the status line calls the push-to-talk control (its key, or the HUD's talk slot) and
+// the powers' keys. A status that names a key is a function, read when the line is drawn: the
+// keys can be rebound between runs (keymap.js).
+const talkKey = () => (TOUCH ? 'talk' : keymap.name('talk'));
+const powerKeys = () => Object.keys(POWERS).map((name) => keymap.name(name)).join('/');
+const IDLE = () => `hold ${talkKey()} to talk`;
+const NO_SPEECH = () => `no speech API here: use keys ${powerKeys()}`;
 
-// Push-to-talk: hold M, say a command, release. The command fires on release, so ordinary
-// talking (demo narration!) never triggers powers. Keys 1/2/3 always work too, because
-// Chrome's speech recognition needs network and demo rooms are loud.
+// Push-to-talk: hold the talk key (M unless rebound), say a command, release. The command fires
+// on release, so ordinary talking (demo narration!) never triggers powers. The powers' own keys
+// (1, 2 and 3 unless rebound) always work too, because Chrome's speech recognition needs network
+// and demo rooms are loud.
 class VoiceControl extends Phaser.Events.EventEmitter {
   constructor() {
     super();
@@ -26,7 +33,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.keysSuspended = false; // while typing (the Chute's terminal), the talk and power keys are just letters
     this.gate = null; // set by the play scene: true while an intro owns the controls
     this.heldLocked = false; // this push-to-talk hold began under the gate
-    this.status = `hold ${TALK} to talk`;
+    this.status = IDLE;
     window.addEventListener('keydown', (e) => {
       if (this.keysSuspended) return;
       if (keymap.has('talk', e.keyCode)) {
@@ -42,6 +49,15 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     window.addEventListener('blur', () => this.release());
   }
 
+  // A status can be a function, so a line that names a key names the one bound now.
+  get status() {
+    return typeof this.statusNow === 'function' ? this.statusNow() : this.statusNow;
+  }
+
+  set status(s) {
+    this.statusNow = s;
+  }
+
   get supported() {
     return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
@@ -49,14 +65,14 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   // Ask for mic permission on the title screen so the first hold doesn't pop a prompt mid-fight.
   async prime() {
     if (!this.supported) {
-      this.status = 'no speech API here: use keys 1/2/3';
+      this.status = NO_SPEECH;
       return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
       this.primed = true;
-      this.status = `hold ${TALK} to talk`;
+      this.status = IDLE;
     } catch {
       this.primed = false;
       this.status = 'mic blocked: allow it in the address bar';
@@ -77,13 +93,13 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     };
     rec.onerror = (e) => {
       if (e.error === 'no-speech' || e.error === 'aborted') return;
-      this.status = e.error === 'not-allowed' ? 'mic blocked: allow it in the address bar' : `mic error: ${e.error}, keys 1/2/3 work`;
+      this.status = e.error === 'not-allowed' ? 'mic blocked: allow it in the address bar' : `mic error: ${e.error}, keys ${powerKeys()} work`;
     };
     rec.onend = () => {
       this.running = false;
       if (this.pendingFire) {
         this.pendingFire = false;
-        if (!this.fireFromTranscript() && this.status === 'processing...') this.status = `hold ${TALK} to talk`;
+        if (!this.fireFromTranscript() && this.status === 'processing...') this.status = IDLE;
       }
       // M pressed again (or Chrome timed out mid-hold): keep listening.
       if (this.listening) this.startSession();
@@ -104,7 +120,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   press() {
     if (this.listening) return;
     if (!this.supported) {
-      this.status = 'no speech API here: use keys 1/2/3';
+      this.status = NO_SPEECH;
       return;
     }
     this.listening = true;
@@ -112,7 +128,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.pendingFire = false;
     this.transcript = '';
     this.heard = '';
-    this.status = `listening... release ${TALK}`;
+    this.status = `listening... release ${talkKey()}`;
     this.rec ??= this.makeRecognizer();
     this.startSession();
   }
@@ -125,7 +141,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     if (this.heldLocked || this.gate?.()) {
       this.heldLocked = false;
       this.transcript = '';
-      this.status = `hold ${TALK} to talk`;
+      this.status = IDLE;
       try {
         this.rec.abort();
       } catch {
@@ -168,7 +184,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       return false;
     }
     this.transcript = '';
-    this.status = `hold ${TALK} to talk`;
+    this.status = IDLE;
     this.trigger(best, 'voice');
     return true;
   }

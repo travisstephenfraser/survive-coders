@@ -91,6 +91,14 @@ export default class HUD extends Phaser.Scene {
     this.ctxLabel = uiText(this, 0, 94, 'CONTEXT', { size: 8, color: '#58a6ff', ox: 1, oy: 0.5 });
     this.ctxText = uiText(this, 0, 94, '', { size: 8, color: '#58a6ff', oy: 0.5 });
 
+    // The status lines that name keys, built once: the map can't change during a run.
+    const key = (action) => keymap.name(action);
+    const powerKeys = Object.keys(POWERS).map(key).join(' ');
+    this.lines = {
+      powers: voice.supported ? `powers: ${powerKeys}, or hold ${key('talk')} and say one` : `powers: press ${powerKeys}`,
+      full: `CONTEXT FULL → hold ${key('talk')}: "refactor" (or ${key('refactor')})`,
+    };
+
     // Bottom terminal strip. On touch the corners belong to the D-pad and FIRE/JUMP, so the
     // slots centre up as tap targets, plus a hold-to-talk slot when speech is available.
     const slotW = TOUCH ? 150 : 174;
@@ -99,8 +107,9 @@ export default class HUD extends Phaser.Scene {
     const x0 = TOUCH ? Math.round((960 - span) / 2 / P) * P : 18;
     this.powers = Object.entries(POWERS).map(([name, p], i) => {
       const x = x0 + i * (slotW + 12);
-      const text = TOUCH ? p.label : `${p.key} ${p.label}`;
-      return { name, p, x, w: slotW, label: uiText(this, x + slotW / 2, 495, text, { size: 16, color: '#0d0d0d', ox: 0.5, oy: 0.5 }).setDepth(1) };
+      const label = uiText(this, x + slotW / 2, 495, p.label, { size: 16, color: '#0d0d0d', ox: 0.5, oy: 0.5 }).setDepth(1);
+      if (!TOUCH) keyed(label, key(name), p.label, slotW - 12);
+      return { name, p, x, w: slotW, label };
     });
     if (talk) {
       const x = x0 + 3 * (slotW + 12);
@@ -112,7 +121,16 @@ export default class HUD extends Phaser.Scene {
     } else {
       this.mic = uiText(this, 942, 495, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 }).setDepth(1);
       this.heard = uiText(this, 18, 522, '', { size: 16, color: '#f5f5f5', oy: 0.5 });
-      uiText(this, 942, 522, '←→ move  ↑ jump  SPACE fire  P pause', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+      // The controls hint shares its row with the status line on the left: as much of it as
+      // fits beside the widest line this map can put there (long key names are wide).
+      const hints = [
+        `${keymap.pair('left', 'right')} move  ${key('jump')} jump  ${key('fire')} fire  ${pauseKey} pause`,
+        `${key('jump')} jump  ${key('fire')} fire  ${pauseKey} pause`,
+        `${pauseKey} pause`,
+      ];
+      const hint = uiText(this, 942, 522, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+      const room = 942 - 18 - 24 - Math.max(...Object.values(this.lines).map((line) => hint.setText(`$ ${line}`).width));
+      hint.setText(hints.find((h) => hint.setText(h).width <= room) ?? '');
     }
 
     this.toastText = uiText(this, 480, 158, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
@@ -124,10 +142,10 @@ export default class HUD extends Phaser.Scene {
       .setVisible(false);
     // Paused: the controls and powers, for anyone the tips missed (a playtester spent three
     // minutes taking SPACE for "ship it"). Under the buttons, clear of the terminal strip.
-    const powerLines = Object.values(POWERS).map((p) => `${TOUCH ? '' : `${p.key}  `}${p.label}: ${p.does}`);
+    const powerLines = Object.entries(POWERS).map(([name, p]) => `${TOUCH ? '' : `${key(name)}  `}${p.label}: ${p.does}`);
     const help = TOUCH
       ? [`>_ fire   ↑ jump   powers: tap the bar${voice.supported ? ', or hold talk and say one' : ''}`, ...powerLines]
-      : ['←→ move   ↑ W Z jump   SPACE fire', ...powerLines, ...(voice.supported ? ['or hold M, say the power, let go'] : [])];
+      : [`${keymap.pair('left', 'right')} move   ${keymap.names('jump')} jump   ${key('fire')} fire`, ...powerLines, ...(voice.supported ? [`or hold ${key('talk')}, say the power, let go`] : [])];
     this.helpText = uiText(this, 480, TOUCH ? 352 : 316, help.join('\n'), { size: 16, color: '#c9d1d9', ox: 0.5, lineSpacing: 4 })
       .setCenterAlign()
       .setDepth(3)
@@ -330,7 +348,7 @@ export default class HUD extends Phaser.Scene {
     const blink = Math.floor(time / 180) % 2 === 0;
     const pulse = blink ? (showToast && toast.power) || (overflow ? 'refactor' : null) : null;
     const refactorLeft = voice.remaining('refactor');
-    const cta = !overflow ? null : refactorLeft > 0 ? `CONTEXT FULL → refactor ready in ${Math.ceil(refactorLeft / 1000)}s` : TOUCH ? 'CONTEXT FULL → tap "refactor"' : 'CONTEXT FULL → hold M: "refactor" (or 3)';
+    const cta = !overflow ? null : refactorLeft > 0 ? `CONTEXT FULL → refactor ready in ${Math.ceil(refactorLeft / 1000)}s` : TOUCH ? 'CONTEXT FULL → tap "refactor"' : this.lines.full;
 
     for (const pw of this.powers) {
       const left = voice.remaining(pw.name);
@@ -372,7 +390,7 @@ export default class HUD extends Phaser.Scene {
 
     // Left: what the mic heard. Right: what actually happened (ran / cooling down) for ~2s,
     // otherwise the mic state. Speech recognized is not the same as a power firing.
-    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? (voice.supported ? 'powers: 1 2 3, or hold M and say one' : 'powers: press 1 2 3'));
+    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? this.lines.powers);
     this.heard.setText(`$ ${heard}`).setTint(!voice.heard && !voice.listening && cta ? 0xe5534b : 0xf5f5f5);
     if (fresh && ev.type === 'fired') {
       this.mic.setText(`✓ ran: ${POWERS[ev.name].label}`);

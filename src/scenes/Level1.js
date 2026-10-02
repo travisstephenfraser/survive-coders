@@ -4,6 +4,7 @@ import { LAYERS, TROLLEYS } from '../backdrops.js';
 import { placeLidar } from '../sprites.js';
 import { worldText } from '../util.js';
 import { TOUCH } from '../touch.js';
+import { keymap } from '../keymap.js';
 import { cardMs, lineMs, sequence } from '../pacing.js';
 
 // Legend: # ground, = neon platform, P player, * star, M MAX power-up, B Bad Prompt Blob,
@@ -77,11 +78,12 @@ export default class Level1 extends PlayScene {
     if (!this.registry.get('introSeen')) this.playIntro();
     // x-position beats: [worldX, keyboard text, touch text (if different), power to pulse, done].
     // With `done`, the tip stays until you've done it (the first two), not for a fixed time.
+    const key = (action) => keymap.name(action);
     this.beats = [
-      [70, 'SPACE fires prompts at bad prompts', '>_ fires prompts at bad prompts', null, () => this.shots > 0],
-      [640, 'Swarmed? HOLD M, say "refactor" (or press 3)', 'Swarmed? Tap "refactor" below', 'refactor', () => this.lastPower === 'refactor' || this.player.x > SWARM_PAST_X],
+      [70, `${key('fire')} fires prompts at bad prompts`, '>_ fires prompts at bad prompts', null, () => this.shots > 0],
+      [640, `Swarmed? HOLD ${key('talk')}, say "refactor" (or press ${key('refactor')})`, 'Swarmed? Tap "refactor" below', 'refactor', () => this.lastPower === 'refactor' || this.player.x > SWARM_PAST_X],
       [1372, 'Too far to jump. Hop on the cable car roof', null, null],
-      [1760, 'Save a big one for the park: HOLD M, "ship it" (or 1)', 'Save a big one for the park: tap "ship it"', 'ship'],
+      [1760, `Save a big one for the park: HOLD ${key('talk')}, "ship it" (or ${key('ship')})`, 'Save a big one for the park: tap "ship it"', 'ship'],
     ];
   }
 

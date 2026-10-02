@@ -7,6 +7,7 @@ import { TILE, floatText, jokeText, worldText } from '../util.js';
 import { run } from '../run.js';
 import { flash, shake } from '../fx.js';
 import { TOUCH } from '../touch.js';
+import { keymap } from '../keymap.js';
 
 // Legend: # floor slab (carpet on top), = standing desk, P player, * star, A CRM agent,
 // C chatbot, D the elevator (floors 59 and 60; the Ohana Floor has no way out but the glass).
@@ -149,7 +150,7 @@ export default class Tower extends PlayScene {
     // Mid-swarm the lesson would bury the one that matters: out through the glass.
     if (this.registry.get('lockTaught') || (this.ohana && this.ohana.state !== 'waves')) return;
     this.registry.set('lockTaught', true);
-    this.toast(TOUCH ? 'Locked in? Tap "refactor" to void the contract' : 'Locked in? "refactor" voids the contract (or 3)', 'refactor');
+    this.toast(TOUCH ? 'Locked in? Tap "refactor" to void the contract' : `Locked in? "refactor" voids the contract (or ${keymap.name('refactor')})`, 'refactor');
   }
 
   // ---- Floor 59: the SDR bullpen, a gong, a leaderboard, a motivational poster. ----
