@@ -12,19 +12,23 @@ in chat; this is the written version for review. Plan:
 | Back to the title from the pause menu | The pause screen has resume, mute and restart level (`R`). The only way to the title mid-run is to die and press `T`, or reload the page. |
 | Back to the title from the end screen, after entering the leaderboard | The end screen has `ENTER` play again and `T` title, but the leaderboard form holds the keyboard: every key stops at it (`isolate` in `src/scoreForm.js`). After posting, it takes `ESC` and then `T`. |
 
-## One decision still open
+## Decided after the first read (2026-10-01)
 
-**A new-run key on the pause screen.** Quit to title, then PLAY NOW, then skipping the intro is
-three presses and a screen. A key that starts a new run straight from the pause screen is one
-line (`beginRun`). It is left out because the ask was the title screen. Say the word and it
-becomes a thirteenth action.
+Travis asked for the new-run key, kept `T` for quit to title, and skipped a red-team pass.
+
+- **New run is `G`**, the thirteenth action. No default uses it, it is not next to `R`, and it
+  only acts on the pause screen: a reset is `P`, `G`, with no title screen and no intro replay.
+- **A mapping for speed**, as advice in the README, not a preset: `A` and `D` to move, `SPACE`
+  to jump (the thumb), `J` to fire (held), and the powers on `K` (ship it), `L` (refactor) and
+  `;` (rollback). Nothing needs a reach: the default `1 2 3` pull a hand off moving or firing.
+  From the defaults that is four rebinds.
 
 ## Decisions
 
 ### Key remapping
 
-1. **Twelve actions can be remapped:** move left, move right, jump, fire, ship it, rollback,
-   refactor, talk (hold), pause, mute, restart level, quit to title.
+1. **Thirteen actions can be remapped:** move left, move right, jump, fire, ship it, rollback,
+   refactor, talk (hold), pause, mute, restart level, new run, quit to title.
 2. **These stay fixed:** `ESC` always pauses, whatever the map says. The menu keys (arrows,
    `W A S D`, `ENTER`, `SPACE`, `ESC`), the intro skip (`ENTER`, `SPACE`, `ESC`), the fall's
    typing, the title's `V`, and the end screen's `ENTER`, `R`, `S` and `T` do not change.
@@ -75,16 +79,18 @@ becomes a thirteenth action.
     only change on the controls screen, which is reached from the title with no run in
     progress, so nothing has to re-bind mid-run.
 
-### Quit to title
+### New run and quit to title
 
-12. **The pause screen gets quit to title:** a key (`T` by default, the twelfth action) and a
-    button beside restart level, on every device. It works only while paused, the same guard
+12. **The pause screen gets new run and quit to title:** each a key (`G` and `T` by default)
+    and a button beside restart level, on every device. New run stops the level and starts
+    the first one with fresh stats and a fresh clock (`beginRun`), keeping the intros already
+    seen skipped. Quit to title is as follows. It works only while paused, the same guard
     restart level has. It stops the level and the HUD and starts the title, which resets the
     run clock. No confirmation: restart level has none, the pause is already deliberate, and
     the button names its key. `T` sits next to `R` on a keyboard, which is the argument for a
     different default; `T` matches the end screen, and it can be rebound.
-13. **The pause screen's buttons carry their keys.** Restart level and quit to title sit side
-    by side where the one button is now, each reading its key and its name. The headline
+13. **The pause screen's buttons carry their keys.** Restart level, new run and quit to title
+    sit side by side where the one button is now, each reading its key and its name. The headline
     shortens to resume and mute.
 14. **After a post, `R` and `T` work through the form.** Once the run is posted the form's
     inputs are disabled, so no letter is being typed: `R` starts a new run and `T` goes to the
@@ -107,7 +113,7 @@ becomes a thirteenth action.
 - **A key bound once stays taken from the browser until the page reloads**, even after it is
   rebound (Phaser keeps its captures). Typing in the leaderboard form is not affected: keys
   typed there never reach Phaser.
-- **No confirmation on quit to title.** A mis-press ends the run.
+- **No confirmation on new run or quit to title.** A mis-press ends the run.
 - **It changes nothing about the leaderboard.** Scores, the run clock and the time floors are
   as they were.
 
@@ -122,7 +128,7 @@ src/keymap.js          the map: actions, defaults, names, load and save, bind, r
         │                        onAction(scene, action, fn) an action's keydown in a scene
         │      ├─ src/entities/Player.js    move, jump, fire
         │      ├─ src/scenes/Landing.js     steer; mute
-        │      ├─ src/scenes/HUD.js         pause, mute, restart level, quit to title
+        │      ├─ src/scenes/HUD.js         pause, mute, restart level, new run, quit to title
         │      └─ Ride, Arrival, Elevator   mute
         ├─ src/voice.js          powers and talk, checked at each keydown; status names the key
         ├─ hints                 Title, HUD, Level1, Park, Tower, PlayScene, Player, Landing
@@ -133,7 +139,7 @@ src/keymap.js          the map: actions, defaults, names, load and save, bind, r
   `keymap`: `codes(action)`, `has(action, code)`, `name(action)` (the first key, `?` when
   unbound), `names(action, sep)`, `pair(a, b)` (two keys in one hint: `←→`, or `A D`),
   `bind(action, code) → { from } | null`, `reset(action?)`, `isDefault()`.
-- `src/scenes/HUD.js`: `toTitle()`, the second button, and the keyed labels.
+- `src/scenes/HUD.js`: `newRun()`, `toTitle()`, their buttons, and the keyed labels.
 - `src/scoreForm.js`: `again` and `title` callbacks, live once the post is in.
   `src/scenes/End.js` passes them and adds `R`.
 

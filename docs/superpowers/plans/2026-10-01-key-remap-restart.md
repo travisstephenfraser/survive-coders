@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A player can remap twelve keyboard actions from a controls screen in Settings, quit to the title from the pause screen, and start a new run or go to the title straight from the posted leaderboard form.
+**Goal:** A player can remap thirteen keyboard actions from a controls screen in Settings, start a new run or quit to the title from the pause screen, and start a new run or go to the title straight from the posted leaderboard form.
 
 **Architecture:** One new module, `src/keymap.js`, holds the map (actions, defaults, key names, load and save, bind, reset) with no Phaser and no `window`, so it is tested under node. Everything that reads a key asks it: Phaser key objects are made from it when a level starts, the voice keys and the HUD's keys check it at each keydown, and every on-screen hint takes its key names from it. The map changes only on a new Controls scene, reached from Settings, where no run is in progress.
 
@@ -17,7 +17,7 @@
 - The repo is public. Name no player or playtester. God mode stays undocumented.
 - Front end only: no change under `api/`, `db/`, `shared/` or the environment. `src/settings.js` and the `sc_settings` storage key do not change.
 - The map is stored under `sc_keys` as `{ v: 1, keys: { action: [codes] } }`.
-- The twelve actions, in this order: `left`, `right`, `jump`, `fire`, `ship`, `rollback`, `refactor`, `talk`, `pause`, `mute`, `restart`, `title`.
+- The thirteen actions, in this order: `left`, `right`, `jump`, `fire`, `ship`, `rollback`, `refactor`, `talk`, `pause`, `mute`, `restart`, `newrun`, `title`.
 - With nothing saved, play and every hint are as they are on master, except: the pause screen (spec decision 13); the end screen's `R` and the posted form's hint (decisions 14 and 15); and the powers' keys, which now match by key code, so they also fire with SHIFT held (the number pad's 1, 2 and 3 fire them as before, because they are in the defaults).
 - `ESC` always pauses. The menu keys, the intro skip, the fall's typing, the title's `V`, and the end screen's `ENTER`, `S` and `T` stay fixed.
 - Match the surrounding code: comments explain why, in the codebase's voice. No em dashes.
@@ -33,7 +33,7 @@ The inputs most likely to bite a person. None can be pinned by a node test (they
 2. **A name typed before the post.** `r`, `t`, `R` and `T` in the name field must type letters. Only after the post do `R` and `T` leave the screen. (Task 6, Step 4.)
 3. **An action with no key.** A map with jump unbound must start a level with no error, read `?` in the hints and `unbound` on the controls screen, and leave every other key working. (Task 2, Step 8; Task 5, Step 5.)
 4. **Long key names.** With SHIFT, SPACE and the number pad bound, no hint may run into another: the HUD strip's hint shortens beside the status line. (Task 4, Step 8.)
-5. **A quit that leaves a run behind.** After quit to title: one active scene, no music playing, the run clock idle, and the next run on a fresh clock. `T` outside the pause screen does nothing. (Task 3, Step 4.)
+5. **A quit or a new run that leaves a run behind.** After quit to title: one active scene, no music playing, the run clock idle, and the next run on a fresh clock. After new run, from any level: the first level, one song, one HUD, 0 stars, a fresh clock. `T` and `G` outside the pause screen do nothing. (Task 3, Step 4.)
 
 Measured on 2026-10-01 in the game's own font (size 16 unless said), so the layouts below are not guesses: `SPACE restart level` is 198 px and `SHIFT quit to title` 196 px (a 222 px button leaves 198); `SHIFT refactor` is 158 px (a 174 px slot leaves 162); the strip's hint is 394 px at the defaults and its widest neighbour, the full-context line, 464 px.
 
@@ -82,7 +82,7 @@ Expected: `ℹ tests 83`, `ℹ pass 83`, `ℹ fail 0`.
 
 **Interfaces:**
 - Produces, all from `src/keymap.js`:
-  - `ACTIONS: string[12]`, `LABELS: { [action]: string }`, `DEFAULTS: { [action]: number[] }`, `UNBOUND: '?'`
+  - `ACTIONS: string[13]`, `LABELS: { [action]: string }`, `DEFAULTS: { [action]: number[] }`, `UNBOUND: '?'`
   - `keyName(code: number) → string | null` (null: the key can't be bound)
   - `keymap.codes(action) → number[]` (a copy), `keymap.has(action, code) → boolean`
   - `keymap.name(action) → string` (the first key's name, or `?`), `keymap.names(action, sep = ' ') → string`
@@ -131,6 +131,7 @@ test('the defaults are the keys the game shipped with, by Phaser\'s own codes', 
     pause: [K.P],
     mute: [K.N],
     restart: [K.R],
+    newrun: [K.G],
     title: [K.T],
   });
 });
@@ -304,7 +305,7 @@ const VERSION = 1;
 const MAX_KEYS = 4; // per action, in a saved map
 
 // In the order the controls screen lists them.
-export const ACTIONS = ['left', 'right', 'jump', 'fire', 'ship', 'rollback', 'refactor', 'talk', 'pause', 'mute', 'restart', 'title'];
+export const ACTIONS = ['left', 'right', 'jump', 'fire', 'ship', 'rollback', 'refactor', 'talk', 'pause', 'mute', 'restart', 'newrun', 'title'];
 
 export const LABELS = {
   left: 'move left',
@@ -318,6 +319,7 @@ export const LABELS = {
   pause: 'pause',
   mute: 'mute',
   restart: 'restart level',
+  newrun: 'new run',
   title: 'quit to title',
 };
 
@@ -335,6 +337,7 @@ export const DEFAULTS = {
   pause: [80], // P (ESC always pauses too)
   mute: [78], // N
   restart: [82], // R
+  newrun: [71], // G
   title: [84], // T
 };
 
@@ -742,13 +745,14 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: Quit to title from the pause screen
+### Task 3: New run and quit to title from the pause screen
 
 **Files:**
-- Modify: `src/scenes/HUD.js` (imports; the button constants at 19-21; `create`: the paused headline, the restart button, the keys, the pointer handlers; `setPaused`; `tap`; a new `toTitle`)
+- Modify: `src/scenes/HUD.js` (imports; the button constants at 19-21; `create`: the paused headline, the restart button, the keys, the pointer handlers; `setPaused`; `tap`; new `newRun` and `toTitle`)
 
 **Interfaces:**
 - Consumes: `keymap.name`, `keymap.codes`, `UNBOUND` (Task 1); `onAction` (Task 2).
+- Consumes also: `beginRun(scene)` from `src/run.js` (fresh stats, a fresh clock, the first level).
 - Produces, inside `src/scenes/HUD.js`: `keyed(text, key, label, maxW) → text` and, in `create`, `const pauseKey`. Task 4 uses both.
 
 - [ ] **Step 1: The buttons' places and the keyed label**
@@ -769,13 +773,19 @@ const RESTART_BTN = { x: 390, y: TOUCH ? 300 : 246, w: 180, h: 42 };
 with:
 
 ```js
-// Paused, on every device: restart the level and quit to the title, side by side (under the
-// sound toggle on touch). Wide enough for the longest key name in front of the label.
+// Paused, on every device: restart the level, start a new run, or quit to the title, side by
+// side (under the sound toggle on touch). Wide enough for the longest key name in front of the
+// label. `action` is the button's key in the map (keymap.js) and what it does (HUD.pauseActs).
 const BTN_Y = TOUCH ? 300 : 246;
-const RESTART_BTN = { x: 252, y: BTN_Y, w: 222, h: 42 };
-const TITLE_BTN = { x: 486, y: BTN_Y, w: 222, h: 42 };
-const BTN_PAD = 6; // half the gap between the two, so one's margin never reaches into the other
+const PAUSE_BTNS = [
+  { x: 135, y: BTN_Y, w: 222, h: 42, action: 'restart', label: 'restart level' },
+  { x: 369, y: BTN_Y, w: 222, h: 42, action: 'newrun', label: 'new run' },
+  { x: 603, y: BTN_Y, w: 222, h: 42, action: 'title', label: 'quit to title' },
+];
+const BTN_PAD = 6; // half the gap between two, so one's margin never reaches into the next
 ```
+
+Change the run import to `import { beginRun, retryLevel, run } from '../run.js';`.
 
 Add after the `frame` function:
 
@@ -815,22 +825,23 @@ Replace the three lines that make `this.restartBox` and `this.restartText` (from
 
 ```js
     // The pause buttons, each naming its key on a keyboard.
-    this.pauseButtons = [
-      [RESTART_BTN, 'restart', 'restart level'],
-      [TITLE_BTN, 'title', 'quit to title'],
-    ].flatMap(([r, action, label]) => {
-      const box = this.add.rectangle(r.x, r.y, r.w, r.h, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
-      const text = uiText(this, r.x + r.w / 2, r.y + r.h / 2, label, { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
-      if (!TOUCH) keyed(text, keymap.name(action), label, r.w - 24);
+    this.pauseButtons = PAUSE_BTNS.flatMap((b) => {
+      const box = this.add.rectangle(b.x, b.y, b.w, b.h, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
+      const text = uiText(this, b.x + b.w / 2, b.y + b.h / 2, b.label, { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
+      if (!TOUCH) keyed(text, keymap.name(b.action), b.label, b.w - 24);
       return [box, text];
     });
+    // What each button, and its key, does. Each only acts while paused.
+    this.pauseActs = { restart: () => this.restartLevel(), newrun: () => this.newRun(), title: () => this.toTitle() };
 ```
 
-Under `onAction(this, 'restart', () => this.restartLevel());` add:
+Replace `onAction(this, 'restart', () => this.restartLevel());` (Task 2) with:
 
 ```js
-    onAction(this, 'title', () => this.toTitle());
+    for (const b of PAUSE_BTNS) onAction(this, b.action, () => this.pauseActs[b.action]());
 ```
+
+and move the `// Pause / mute live here…` block, with its `onAction` lines, to just after the `this.pauseActs = …` line if it sits above it (the handlers only run on a keydown, but keep the definition first).
 
 Replace `this.talkPointer = null;` with:
 
@@ -856,9 +867,7 @@ with:
     this.input.on('pointerup', (p) => {
       const btn = this.armed;
       this.armed = null;
-      if (!btn || !hit(p, btn, BTN_PAD)) return;
-      if (btn === TITLE_BTN) this.toTitle();
-      else this.restartLevel();
+      if (btn && hit(p, btn, BTN_PAD)) this.pauseActs[btn.action]();
     });
 ```
 
@@ -878,7 +887,7 @@ In `tap`, replace:
 with:
 
 ```js
-      this.armed = [RESTART_BTN, TITLE_BTN].find((b) => hit(p, b, BTN_PAD)) ?? null;
+      this.armed = PAUSE_BTNS.find((b) => hit(p, b, BTN_PAD)) ?? null;
       if (this.armed || !TOUCH) return;
 ```
 
@@ -886,8 +895,17 @@ Add after `restartLevel()`:
 
 ```js
 
+  // From the pause screen: a new run on a fresh clock, from the first level, without the title
+  // screen or the intros already seen (run.js beginRun). Only while paused, as restartLevel.
+  newRun() {
+    const play = this.playScene();
+    if (!play?.sys.isPaused()) return;
+    this.scene.stop(play.scene.key);
+    beginRun(this);
+  }
+
   // From the pause screen: leave the run for the title screen, which resets the run clock
-  // (Title.create). Only while paused, as restartLevel.
+  // (Title.create).
   toTitle() {
     const play = this.playScene();
     if (!play?.sys.isPaused()) return;
@@ -896,7 +914,7 @@ Add after `restartLevel()`:
   }
 ```
 
-Run: `grep -n "restartArmed\|restartBox\|restartText" src/scenes/HUD.js`
+Run: `grep -n "restartArmed\|restartBox\|restartText\|RESTART_BTN" src/scenes/HUD.js`
 Expected: no output.
 
 - [ ] **Step 3: Tests and build**
@@ -912,7 +930,7 @@ Expected: one `built in` line, no error.
 With nothing saved, `?park`, PLAY NOW, skip the intro:
 
 1. Press T while playing: nothing happens. During the intro (reload to see it): nothing happens.
-2. Press P. The pause screen reads `PAUSED`, `P: resume   N: mute`, and two buttons side by side, `R restart level` and `T quit to title`, neither over the help text below.
+2. Press P. The pause screen reads `PAUSED`, `P: resume   N: mute`, and three buttons side by side, `R restart level`, `G new run` and `T quit to title`, none over the help text below.
 3. Press T. The title screen shows. In the console:
 
 ```js
@@ -923,15 +941,16 @@ Expected: `[['Title'], 0, 'idle']`.
 
 4. PLAY NOW again: the level starts from its intro, and `run.elapsed()` in the console is a few seconds, not the earlier run's time.
 5. Pause, click `quit to title`: the title shows. Pause again, press the mouse on `quit to title`, drag off it and release: still paused. Click `restart level`: the level restarts.
+5a. New run. With no flags, play Level 1 into the park (or reach any later level), collect a star, pause, press G. In the console `[game.scene.getScenes(true).map((s) => s.scene.key), game.sound.sounds.filter((s) => s.isPlaying).map((s) => s.key), game.registry.get('stars'), Math.round(run.elapsed() / 1000)]` reads `[['Level1', 'HUD'], ['music_level'], 0, 0]` (a second or two is fine), and no intro plays. G while playing, not paused: nothing. Pause, click `new run`: the same.
 6. R on the pause screen in Level 1 (no `?park`): a new run, as before this change.
-7. `?touch&park`: pause with the button at the top. Sound sits above the two buttons, the help text clears them, a tap on `quit to title` goes to the title, and a tap anywhere else resumes.
-8. With `localStorage.setItem('sc_keys', JSON.stringify({ v: 1, keys: { pause: [], title: [], restart: [32] } })); location.reload();`: ESC pauses, the headline reads `ESC: resume   N: mute`, the buttons read `SPACE restart level` and `quit to title`, and both still take a click. Then put the defaults back.
+7. `?touch&park`: pause with the button at the top. Sound sits above the three buttons, the help text clears them, a tap on `quit to title` goes to the title, a tap on `new run` starts one, and a tap anywhere else resumes.
+8. With `localStorage.setItem('sc_keys', JSON.stringify({ v: 1, keys: { pause: [], title: [], restart: [32] } })); location.reload();`: ESC pauses, the headline reads `ESC: resume   N: mute`, the buttons read `SPACE restart level`, `G new run` and `quit to title`, and all three still take a click. Then put the defaults back.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/scenes/HUD.js
-git commit -m "Pause: quit to the title, by a key or a button beside restart level
+git commit -m "Pause: a new run, or quit to the title, by a key or a button beside restart level
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1241,8 +1260,8 @@ import { menu, textRow } from '../menu.js';
 
 const X_LABEL = 70;
 const X_VALUE = 380;
-const ROW_Y = 78; // the first action's line, from the window's top
-const ROW_H = 26;
+const ROW_Y = 76; // the first action's line, from the window's top
+const ROW_H = 24;
 const GREY = 0x8b8b8b;
 
 // A refused key's name for the status line, in characters the font has ("Enter" → ENTER).
@@ -1290,7 +1309,7 @@ export default class Controls extends Phaser.Scene {
     let focused = false;
     const row = {
       action,
-      bounds: () => new Phaser.Geom.Rectangle(X_LABEL - 10, y - 5, 820, ROW_H),
+      bounds: () => new Phaser.Geom.Rectangle(X_LABEL - 10, y - 4, 820, ROW_H),
       focus: (on) => {
         focused = on;
         row.redraw();
@@ -1415,7 +1434,7 @@ Expected: one `built in` line, no error.
 
 With nothing saved:
 
-1. Title, SETTINGS: a `controls` row reads `default keys`, under `run timer`, with BACK and the hint clear below it. ←→ on it does nothing. ENTER opens the controls screen: twelve rows, `move left  ←  A` to `quit to title  T`, then RESET ALL and BACK, all inside the window, the hint clear of BACK.
+1. Title, SETTINGS: a `controls` row reads `default keys`, under `run timer`, with BACK and the hint clear below it. ←→ on it does nothing. ENTER opens the controls screen: thirteen rows, `move left  ←  A` to `quit to title  T`, then RESET ALL and BACK, all inside the window, the hint clear of BACK.
 2. On `jump`, press ENTER: `press a key_`. Hold ENTER a moment longer: nothing more happens. Press ENTER again: the note reads `ENTER can't be bound` and the row still waits. Press TAB: `TAB can't be bound`, focus stays in the game. Press ESC: the row shows `↑  W  Z` again and the screen is still the controls screen (`game.scene.isActive('Controls')` is `true`).
 3. ENTER on `jump`, then SPACE: the row reads `SPACE`, the note `SPACE: taken from fire`, and `fire` reads `X  J`. The row was not picked again by the SPACE (it does not read `press a key_`).
 4. In Chrome, ENTER on `talk (hold)`, then M, its own key: the row reads `M`, the note is empty, `voice.listening` in the console is `false`, and no microphone prompt appeared. (M is still talk's key as the event travels, so a key that leaked past the capture would open the microphone here.)
@@ -1603,10 +1622,10 @@ and add under the settings screenshot:
 ![The controls screen](docs/screenshots/01c-controls.png)
 ```
 
-In Features, change the pause bullet's opening from `Pause (with a restart for the level you are on), mute,` to `Pause (with a restart for the level you are on and a way back to the title), mute,`, and in the settings bullet change `and a run timer in the HUD; saved in the browser` to:
+In Features, change the pause bullet's opening from `Pause (with a restart for the level you are on), mute,` to `Pause (with a restart for the level you are on, a new run, and a way back to the title), mute,`, and in the settings bullet change `and a run timer in the HUD; saved in the browser` to:
 
 ```markdown
-a run timer in the HUD, and, on a keyboard, a controls screen that remaps twelve actions (move, jump, fire, the three powers, talk, pause, mute, restart level, quit to title), with every on-screen hint naming the key that is bound; saved in the browser
+a run timer in the HUD, and, on a keyboard, a controls screen that remaps thirteen actions (move, jump, fire, the three powers, talk, pause, mute, restart level, new run, quit to title), with every on-screen hint naming the key that is bound; saved in the browser
 ```
 
 - [ ] **Step 3: The Controls table**
@@ -1615,15 +1634,16 @@ Add above the table:
 
 ```markdown
 The keyboard column gives the defaults. Settings, then *controls*, remaps moving, jumping,
-firing, the powers, talk, pause, mute, restart level and quit to title; the menu keys, Esc and
-the intro skip stay as they are.
+firing, the powers, talk, pause, mute, restart level, new run and quit to title; the menu keys,
+Esc and the intro skip stay as they are. A layout with no reaches, for fast runs: A and D to
+move, Space to jump, J to fire, and the powers on K (ship it), L (refactor) and ; (rollback).
 ```
 
 Replace these rows' keyboard and touch cells:
 
 ```markdown
 | Powers without voice | 1 ship it, 2 rollback, 3 refactor (the number pad's too) | Tap the power in the terminal bar |
-| Pause / mute / restart / quit | P or Esc / N / R (while paused) restarts the level / T (while paused) quits to the title; the pause screen lists the controls and powers | Pause button at the top; *sound*, *restart level* and *quit to title* on the pause screen, with the controls and powers |
+| Pause / mute / restart / quit | P or Esc / N / while paused: R restarts the level, G starts a new run, T quits to the title; the pause screen lists the controls and powers | Pause button at the top; *sound*, *restart level*, *new run* and *quit to title* on the pause screen, with the controls and powers |
 | Settings | ↑ ↓ choose, ← → change, Enter toggles, Esc back; *controls* opens the key map | Tap a setting to change it; tap the volume dots to set a level |
 | End screen | Enter or R retry (from the park, the floor, the fall, or the boss you died on), T title | Tap retries; *title* button |
 | Posting a win | Type a name and an optional handle or profile URL; Enter posts, Esc skips; once posted, R starts a new run and T goes to the title | The same form, with the phone's keyboard; tap the prompt to play again |
@@ -1671,7 +1691,7 @@ Expected: both `PNG image data, 1920 x 1080`. If the tool can't produce that siz
 Add a row to the README's verification table, under `Restart from the pause screen (2026-09-29)`, dated the day the checks ran. It records what was seen, so cut any clause the pass did not show:
 
 ```markdown
-| Key remapping and quit to title (DATE) | With jump on SPACE, fire on SHIFT, the powers on Q, E and F and talk on K: the keys play, the old ones do nothing, and the title, the HUD, the tips and the pause screen name the new keys; the map survives a reload. Binding M does not open the microphone, ESC cancels a rebind without leaving the screen, and a key taken from an action leaves it `unbound`, with which the game still runs. T on the pause screen leaves one scene active, no music and an idle clock, and the next run starts on a fresh one. A name with `r` and `t` in it types whole; after the post, R starts a new run and T goes to the title |
+| Key remapping and quit to title (DATE) | With jump on SPACE, fire on SHIFT, the powers on Q, E and F and talk on K: the keys play, the old ones do nothing, and the title, the HUD, the tips and the pause screen name the new keys; the map survives a reload. Binding M does not open the microphone, ESC cancels a rebind without leaving the screen, and a key taken from an action leaves it `unbound`, with which the game still runs. T on the pause screen leaves one scene active, no music and an idle clock, and the next run starts on a fresh one; G there starts a new run in the first level with 0 stars, one song and a fresh clock. A name with `r` and `t` in it types whole; after the post, R starts a new run and T goes to the title |
 ```
 
 Replace `DATE` with the date in the table's format (`2026-10-02`, for example).
