@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { POWERS, voice } from '../voice.js';
+import { POWERS, powerKeys, voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, freshKey, onAction, uiText } from '../util.js';
 import { UNBOUND, keymap } from '../keymap.js';
 import { isMuted, toggleMute } from '../audio.js';
@@ -91,12 +91,19 @@ export default class HUD extends Phaser.Scene {
     this.ctxLabel = uiText(this, 0, 94, 'CONTEXT', { size: 8, color: '#58a6ff', ox: 1, oy: 0.5 });
     this.ctxText = uiText(this, 0, 94, '', { size: 8, color: '#58a6ff', oy: 0.5 });
 
-    // The status lines that name keys, built once: the map can't change during a run.
+    // The status lines that name keys, built once: the map and the mic's mode can't change
+    // during a run. `say` is how voice is set up here: open, hold, or keys only (voice.js).
     const key = (action) => keymap.name(action);
-    const powerKeys = Object.keys(POWERS).map(key).join(' ');
+    const keys = Object.keys(POWERS).map(key).join(' ');
+    const say = (this.say = voice.hint);
+    this.talkKey = key('talk');
     this.lines = {
-      powers: voice.supported ? `powers: ${powerKeys}, or hold ${key('talk')} and say one` : `powers: press ${powerKeys}`,
-      full: `CONTEXT FULL → hold ${key('talk')}: "refactor" (or ${key('refactor')})`,
+      powers: { open: `powers: ${keys}, or just say one`, hold: `powers: ${keys}, or hold ${key('talk')} and say one`, keys: `powers: press ${keys}` }[say],
+      full: {
+        open: `CONTEXT FULL → say "refactor" (or ${key('refactor')})`,
+        hold: `CONTEXT FULL → hold ${key('talk')}: "refactor" (or ${key('refactor')})`,
+        keys: `CONTEXT FULL → press ${key('refactor')} for refactor`,
+      }[say],
     };
 
     // Bottom terminal strip. On touch the corners belong to the D-pad and FIRE/JUMP, so the
@@ -145,7 +152,11 @@ export default class HUD extends Phaser.Scene {
     const powerLines = Object.entries(POWERS).map(([name, p]) => `${TOUCH ? '' : `${key(name)}  `}${p.label}: ${p.does}`);
     const help = TOUCH
       ? [`>_ fire   ↑ jump   powers: tap the bar${voice.supported ? ', or hold talk and say one' : ''}`, ...powerLines]
-      : [`${keymap.pair('left', 'right')} move   ${keymap.names('jump')} jump   ${key('fire')} fire`, ...powerLines, ...(voice.supported ? [`or hold ${key('talk')}, say the power, let go`] : [])];
+      : [
+          `${keymap.pair('left', 'right')} move   ${keymap.names('jump')} jump   ${key('fire')} fire`,
+          ...powerLines,
+          ...{ open: ['or just say the power out loud'], hold: [`or hold ${key('talk')}, say the power, let go`], keys: [] }[say],
+        ];
     this.helpText = uiText(this, 480, TOUCH ? 352 : 316, help.join('\n'), { size: 16, color: '#c9d1d9', ox: 0.5, lineSpacing: 4 })
       .setCenterAlign()
       .setDepth(3)
@@ -388,19 +399,30 @@ export default class HUD extends Phaser.Scene {
       return;
     }
 
-    // Left: what the mic heard. Right: what actually happened (ran / cooling down) for ~2s,
-    // otherwise the mic state. Speech recognized is not the same as a power firing.
-    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? this.lines.powers);
-    this.heard.setText(`$ ${heard}`).setTint(!voice.heard && !voice.listening && cta ? 0xe5534b : 0xf5f5f5);
+    // Left: what Shoutr Flow heard (it lapses after a moment). Right: what actually happened
+    // (ran / cooling down) for ~2s, otherwise the light. Speech recognized is not the same as a
+    // power firing; a power that ran on a sound-alike says so.
+    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : (cta ?? this.lines.powers);
+    this.heard.setText(`$ ${heard}`).setTint(!voice.heard && cta ? 0xe5534b : 0xf5f5f5);
     if (fresh && ev.type === 'fired') {
-      this.mic.setText(`✓ ran: ${POWERS[ev.name].label}`);
+      this.mic.setText(`✓ ${ev.alike ? 'close enough' : 'ran'}: ${POWERS[ev.name].label}`);
       this.mic.setTint(0x3fb950);
     } else if (fresh && ev.type === 'cooldown') {
       this.mic.setText(`${POWERS[ev.name].label}: cooling down ${Math.ceil(ev.left / 1000)}s`);
       this.mic.setTint(0xe3b341);
+    } else if (voice.error) {
+      // Why voice stopped, in red, until it works again; the keys are the way on.
+      this.mic.setText(`${voice.error}: ${powerKeys()}`);
+      this.mic.setTint(0xe5534b);
+    } else if (this.say === 'keys') {
+      this.mic.setText('');
     } else {
-      this.mic.setText(`${voice.listening ? '●' : '○'} ${voice.status}`);
-      this.mic.setTint(voice.listening ? 0x3fb950 : 0x8b8b8b);
+      // The light: lit only while a session is really running, and white the moment a voice
+      // comes in, from the mic's level. A result takes most of a second; this is what tells the
+      // player they were heard, so they don't say it again. The game draws it, so it shows in
+      // fullscreen, where the browser's own mark does not.
+      this.mic.setText(`${voice.running ? '●' : '○'} Shoutr Flow${this.say === 'hold' ? `: hold ${this.talkKey}` : ''}`);
+      this.mic.setTint(voice.speaking || voice.listening ? 0xf5f5f5 : voice.running ? 0x3fb950 : 0x8b8b8b);
     }
   }
 }
