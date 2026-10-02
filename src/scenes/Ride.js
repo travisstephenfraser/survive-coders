@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
-import { ZOOM, worldText, freshKey } from '../util.js';
+import { ZOOM, worldText, onAction } from '../util.js';
 import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX } from '../fx.js';
 import { TOUCH } from '../touch.js';
@@ -106,7 +106,7 @@ export default class Ride extends Phaser.Scene {
 
     for (const k of ['keydown-ENTER', 'keydown-SPACE']) this.input.keyboard.on(k, () => this.press());
     this.input.keyboard.on('keydown-ESC', () => this.leave('BossHQ', 300));
-    this.input.keyboard.on('keydown-N', freshKey(() => toggleMute(this.sound))); // the HUD, which owns N, sits this out
+    onAction(this, 'mute', () => toggleMute(this.sound)); // the HUD, which owns mute, sits this out
     this.input.on('pointerdown', (p) => this.tap(p));
     this.time.delayedCall(AUTO_START_MS, () => this.startRide());
     this.events.once('shutdown', () => {

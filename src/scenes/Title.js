@@ -7,6 +7,7 @@ import { TOUCH, enterFullscreen } from '../touch.js';
 import { menu, textRow } from '../menu.js';
 import { beginRun, run } from '../run.js';
 import { arrivalBanner } from '../arrival.js';
+import { keymap } from '../keymap.js';
 
 export default class Title extends Phaser.Scene {
   constructor() {
@@ -33,10 +34,12 @@ export default class Title extends Phaser.Scene {
     const laptop = this.add.image(864, 235, 'laptop').setScale(6);
     this.tweens.add({ targets: laptop, y: 243, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
+    const key = (action) => keymap.name(action);
+    const powerKeys = Object.keys(POWERS).map(key);
     const lines = [
-      TOUCH ? '← → move    ↑ jump    >_ fire (hold it)' : '←→ move    ↑ / W / Z jump    SPACE fire prompts',
+      TOUCH ? '← → move    ↑ jump    >_ fire (hold it)' : `${keymap.pair('left', 'right')} move    ${keymap.names('jump', ' / ')} jump    ${key('fire')} fire prompts`,
       '',
-      TOUCH ? `powers: tap the terminal bar${voice.supported ? ', or hold talk' : ''}` : 'voice: HOLD M, say a command, let go',
+      TOUCH ? `powers: tap the terminal bar${voice.supported ? ', or hold talk' : ''}` : `voice: HOLD ${key('talk')}, say a command, let go`,
       '',
       '',
       '',
@@ -46,7 +49,7 @@ export default class Title extends Phaser.Scene {
     uiText(this, left, 230, lines.join('\n'), { size: 16, color: '#f5f5f5' });
     // Command table in aligned columns (the font is proportional).
     uiText(this, left + 40, 296, '"ship it"\n"rollback"\n"refactor"', { size: 16, color: '#d97757' });
-    if (!TOUCH) uiText(this, left + 230, 296, '1\n2\n3', { size: 16, color: '#8b8b8b' });
+    if (!TOUCH) uiText(this, left + 242, 296, powerKeys.join('\n'), { size: 16, color: '#8b8b8b', ox: 1 }).setRightAlign();
     uiText(this, left + 280, 296, Object.values(POWERS).map((p) => p.does).join('\n'), { size: 16, color: '#f5f5f5' });
 
     // Demo god mode: no damage (pits still respawn you). Remembered across reloads. Deliberately
@@ -63,7 +66,7 @@ export default class Title extends Phaser.Scene {
     const micText = uiText(this, left + 520, 428, '', { size: 16 });
     const showMic = () => {
       if (TOUCH) micText.setText(voice.primed ? 'mic ready ✓' : voice.supported ? 'tap: set up mic' : 'no speech: tap powers');
-      else micText.setText(voice.primed ? 'V  mic ready ✓' : voice.supported ? 'V  set up mic (optional)' : 'no speech here: keys 1/2/3');
+      else micText.setText(voice.primed ? 'V  mic ready ✓' : voice.supported ? 'V  set up mic (optional)' : `no speech here: ${keymap.short(Object.keys(POWERS), '/') ? `keys ${powerKeys.join('/')}` : 'use the keys'}`);
       micText.setTint(voice.primed ? 0x3fb950 : 0x8b8b8b);
     };
     showMic();

@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
-import { MAX_HP, MAX_TOKENS, freshKey, uiText } from '../util.js';
+import { MAX_HP, MAX_TOKENS, freshKey, onAction, uiText } from '../util.js';
+import { UNBOUND, keymap } from '../keymap.js';
 import { isMuted, toggleMute } from '../audio.js';
 import { settings } from '../settings.js';
-import { retryLevel, run } from '../run.js';
+import { beginRun, retryLevel, run } from '../run.js';
 import { formatTime } from '../../shared/leaderboard.js';
 import { TOUCH, dimPad, showPad, touch } from '../touch.js';
 import PlayScene from './PlayScene.js';
@@ -16,8 +17,16 @@ const STRIP_Y = 474; // top of the bottom terminal strip
 // paused, a sound toggle.
 const PAUSE_BTN = { x: 684, y: 12, w: 36, h: 36 };
 const SOUND_BTN = { x: 390, y: 246, w: 180, h: 42 };
-// Paused, on every device: restart the level (under the sound toggle on touch).
-const RESTART_BTN = { x: 390, y: TOUCH ? 300 : 246, w: 180, h: 42 };
+// Paused, on every device: restart the level, start a new run, or quit to the title, side by
+// side (under the sound toggle on touch). Wide enough for the longest key name in front of the
+// label. `action` is the button's key in the map (keymap.js) and what it does (HUD.pauseActs).
+const BTN_Y = TOUCH ? 300 : 246;
+const PAUSE_BTNS = [
+  { x: 135, y: BTN_Y, w: 222, h: 42, action: 'restart', label: 'restart level' },
+  { x: 369, y: BTN_Y, w: 222, h: 42, action: 'newrun', label: 'new run' },
+  { x: 603, y: BTN_Y, w: 222, h: 42, action: 'title', label: 'quit to title' },
+];
+const BTN_PAD = 6; // half the gap between two, so one's margin never reaches into the next
 const hit = (p, r, pad = 0) => p.x >= r.x - pad && p.x < r.x + r.w + pad && p.y >= r.y - pad && p.y < r.y + r.h + pad;
 
 // Segmented pixel bar with 3-tone shading, drawn in world-pixel units.
@@ -44,12 +53,22 @@ function frame(g, x, y, w, h, border, fill) {
   g.fillStyle(fill).fillRect(x + P, y + P, w - 2 * P, h - 2 * P);
 }
 
+// A control's label with its key in front, or the label alone where the two don't fit or the
+// action has no key.
+function keyed(text, key, label, maxW) {
+  text.setText(`${key} ${label}`);
+  if (key === UNBOUND || text.width > maxW) text.setText(label);
+  return text;
+}
+
 export default class HUD extends Phaser.Scene {
   constructor() {
     super('HUD');
   }
 
   create() {
+    // ESC always pauses, so the pause screen can name a key even with pause unbound.
+    const pauseKey = keymap.codes('pause').length ? keymap.name('pause') : 'ESC';
     this.g = this.add.graphics();
 
     // Health: heart icon + segmented bar (drawn in update).
@@ -72,6 +91,14 @@ export default class HUD extends Phaser.Scene {
     this.ctxLabel = uiText(this, 0, 94, 'CONTEXT', { size: 8, color: '#58a6ff', ox: 1, oy: 0.5 });
     this.ctxText = uiText(this, 0, 94, '', { size: 8, color: '#58a6ff', oy: 0.5 });
 
+    // The status lines that name keys, built once: the map can't change during a run.
+    const key = (action) => keymap.name(action);
+    const powerKeys = Object.keys(POWERS).map(key).join(' ');
+    this.lines = {
+      powers: voice.supported ? `powers: ${powerKeys}, or hold ${key('talk')} and say one` : `powers: press ${powerKeys}`,
+      full: `CONTEXT FULL → hold ${key('talk')}: "refactor" (or ${key('refactor')})`,
+    };
+
     // Bottom terminal strip. On touch the corners belong to the D-pad and FIRE/JUMP, so the
     // slots centre up as tap targets, plus a hold-to-talk slot when speech is available.
     const slotW = TOUCH ? 150 : 174;
@@ -80,8 +107,9 @@ export default class HUD extends Phaser.Scene {
     const x0 = TOUCH ? Math.round((960 - span) / 2 / P) * P : 18;
     this.powers = Object.entries(POWERS).map(([name, p], i) => {
       const x = x0 + i * (slotW + 12);
-      const text = TOUCH ? p.label : `${p.key} ${p.label}`;
-      return { name, p, x, w: slotW, label: uiText(this, x + slotW / 2, 495, text, { size: 16, color: '#0d0d0d', ox: 0.5, oy: 0.5 }).setDepth(1) };
+      const label = uiText(this, x + slotW / 2, 495, p.label, { size: 16, color: '#0d0d0d', ox: 0.5, oy: 0.5 }).setDepth(1);
+      if (!TOUCH) keyed(label, key(name), p.label, slotW - 12);
+      return { name, p, x, w: slotW, label };
     });
     if (talk) {
       const x = x0 + 3 * (slotW + 12);
@@ -93,22 +121,31 @@ export default class HUD extends Phaser.Scene {
     } else {
       this.mic = uiText(this, 942, 495, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 }).setDepth(1);
       this.heard = uiText(this, 18, 522, '', { size: 16, color: '#f5f5f5', oy: 0.5 });
-      uiText(this, 942, 522, '←→ move  ↑ jump  SPACE fire  P pause', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+      // The controls hint shares its row with the status line on the left: as much of it as
+      // fits beside the widest line this map can put there (long key names are wide).
+      const hints = [
+        `${keymap.pair('left', 'right')} move  ${key('jump')} jump  ${key('fire')} fire  ${pauseKey} pause`,
+        `${key('jump')} jump  ${key('fire')} fire  ${pauseKey} pause`,
+        `${pauseKey} pause`,
+      ];
+      const hint = uiText(this, 942, 522, '', { size: 16, color: '#8b8b8b', ox: 1, oy: 0.5 });
+      const room = 942 - 18 - 24 - Math.max(...Object.values(this.lines).map((line) => hint.setText(`$ ${line}`).width));
+      hint.setText(hints.find((h) => hint.setText(h).width <= room) ?? '');
     }
 
     this.toastText = uiText(this, 480, 158, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
     // Paused: the scene dims so the text reads over the busy city.
     this.dim = this.add.rectangle(0, 0, 960, 540, 0x0d0d0d, 0.6).setOrigin(0).setDepth(2).setVisible(false);
-    this.pausedText = uiText(this, 480, 190, TOUCH ? 'PAUSED\n\ntap to resume' : 'PAUSED\n\nP: resume   N: mute   R: restart level', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+    this.pausedText = uiText(this, 480, 190, TOUCH ? 'PAUSED\n\ntap to resume' : `PAUSED\n\n${pauseKey}: resume   ${keymap.name('mute')}: mute`, { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
       .setCenterAlign()
       .setDepth(3)
       .setVisible(false);
     // Paused: the controls and powers, for anyone the tips missed (a playtester spent three
     // minutes taking SPACE for "ship it"). Under the buttons, clear of the terminal strip.
-    const powerLines = Object.values(POWERS).map((p) => `${TOUCH ? '' : `${p.key}  `}${p.label}: ${p.does}`);
+    const powerLines = Object.entries(POWERS).map(([name, p]) => `${TOUCH ? '' : `${key(name)}  `}${p.label}: ${p.does}`);
     const help = TOUCH
       ? [`>_ fire   ↑ jump   powers: tap the bar${voice.supported ? ', or hold talk and say one' : ''}`, ...powerLines]
-      : ['←→ move   ↑ W Z jump   SPACE fire', ...powerLines, ...(voice.supported ? ['or hold M, say the power, let go'] : [])];
+      : [`${keymap.pair('left', 'right')} move   ${keymap.names('jump')} jump   ${key('fire')} fire`, ...powerLines, ...(voice.supported ? [`or hold ${key('talk')}, say the power, let go`] : [])];
     this.helpText = uiText(this, 480, TOUCH ? 352 : 316, help.join('\n'), { size: 16, color: '#c9d1d9', ox: 0.5, lineSpacing: 4 })
       .setCenterAlign()
       .setDepth(3)
@@ -116,21 +153,28 @@ export default class HUD extends Phaser.Scene {
     const { x: sx, y: sy, w: sw, h: sh } = SOUND_BTN;
     this.soundBox = this.add.rectangle(sx, sy, sw, sh, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
     this.soundText = uiText(this, sx + sw / 2, sy + sh / 2, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
-    const { x: rx, y: ry, w: rw, h: rh } = RESTART_BTN;
-    this.restartBox = this.add.rectangle(rx, ry, rw, rh, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
-    this.restartText = uiText(this, rx + rw / 2, ry + rh / 2, 'restart level', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
+    // The pause buttons, each naming its key on a keyboard.
+    this.pauseButtons = PAUSE_BTNS.flatMap((b) => {
+      const box = this.add.rectangle(b.x, b.y, b.w, b.h, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
+      const text = uiText(this, b.x + b.w / 2, b.y + b.h / 2, b.label, { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
+      if (!TOUCH) keyed(text, keymap.name(b.action), b.label, b.w - 24);
+      return [box, text];
+    });
+    // What each button, and its key, does. Each only acts while paused.
+    this.pauseActs = { restart: () => this.restartLevel(), newrun: () => this.newRun(), title: () => this.toTitle() };
 
     // Pause / mute live here because the HUD keeps running while the play scene is paused.
-    const kb = this.input.keyboard;
+    // ESC always pauses, whatever the controls screen has set for pause (keymap.js).
     const togglePause = () => this.setPaused(!this.playScene()?.sys.isPaused());
-    kb.on('keydown-P', freshKey(togglePause));
-    kb.on('keydown-ESC', freshKey(togglePause));
-    kb.on('keydown-N', freshKey(() => toggleMute(this.sound)));
-    kb.on('keydown-R', freshKey(() => this.restartLevel()));
+    this.input.keyboard.on('keydown-ESC', freshKey(togglePause));
+    onAction(this, 'pause', togglePause);
+    onAction(this, 'mute', () => toggleMute(this.sound));
+    for (const b of PAUSE_BTNS) onAction(this, b.action, () => this.pauseActs[b.action]());
 
     // Taps: power slots (any pointer, so a mouse can click them too), and on touch the
     // hold-to-talk slot, the pause button and the pause screen.
     this.talkPointer = null;
+    this.armed = null; // the pause button a press began on
     this.input.on('pointerdown', (p) => this.tap(p));
     const untap = (p) => {
       if (p.id !== this.talkPointer) return;
@@ -138,10 +182,11 @@ export default class HUD extends Phaser.Scene {
       voice.release();
     };
     this.input.on('pointerup', untap);
-    // The restart button acts on release, and only for a press that began on it.
+    // A pause button acts on release, and only for a press that began on it.
     this.input.on('pointerup', (p) => {
-      if (this.restartArmed && hit(p, RESTART_BTN, 12)) this.restartLevel();
-      this.restartArmed = false;
+      const btn = this.armed;
+      this.armed = null;
+      if (btn && hit(p, btn, BTN_PAD)) this.pauseActs[btn.action]();
     });
     this.input.on('pointerupoutside', untap);
 
@@ -181,8 +226,7 @@ export default class HUD extends Phaser.Scene {
     this.dim.setVisible(on);
     this.soundBox.setVisible(on && TOUCH);
     this.soundText.setVisible(on && TOUCH);
-    this.restartBox.setVisible(on);
-    this.restartText.setVisible(on);
+    for (const o of this.pauseButtons) o.setVisible(on);
     this.helpText.setVisible(on);
   }
 
@@ -195,12 +239,30 @@ export default class HUD extends Phaser.Scene {
     retryLevel(this, play.scene.key);
   }
 
+  // From the pause screen: a new run on a fresh clock, from the first level, without the title
+  // screen or the intros already seen (run.js beginRun). Only while paused, as restartLevel.
+  newRun() {
+    const play = this.playScene();
+    if (!play?.sys.isPaused()) return;
+    this.scene.stop(play.scene.key);
+    beginRun(this);
+  }
+
+  // From the pause screen: leave the run for the title screen, which resets the run clock
+  // (Title.create).
+  toTitle() {
+    const play = this.playScene();
+    if (!play?.sys.isPaused()) return;
+    this.scene.stop(play.scene.key);
+    this.scene.start('Title', {}); // {}: Phaser would hand the title its last data (a menu row)
+  }
+
   tap(p) {
     const play = this.playScene();
     if (!play || this.registry.get('cutscene')) return;
     if (play.sys.isPaused()) {
-      this.restartArmed = hit(p, RESTART_BTN, 12);
-      if (this.restartArmed || !TOUCH) return;
+      this.armed = PAUSE_BTNS.find((b) => hit(p, b, BTN_PAD)) ?? null;
+      if (this.armed || !TOUCH) return;
       if (hit(p, SOUND_BTN, 12)) toggleMute(this.sound);
       else this.setPaused(false);
       return;
@@ -286,7 +348,7 @@ export default class HUD extends Phaser.Scene {
     const blink = Math.floor(time / 180) % 2 === 0;
     const pulse = blink ? (showToast && toast.power) || (overflow ? 'refactor' : null) : null;
     const refactorLeft = voice.remaining('refactor');
-    const cta = !overflow ? null : refactorLeft > 0 ? `CONTEXT FULL → refactor ready in ${Math.ceil(refactorLeft / 1000)}s` : TOUCH ? 'CONTEXT FULL → tap "refactor"' : 'CONTEXT FULL → hold M: "refactor" (or 3)';
+    const cta = !overflow ? null : refactorLeft > 0 ? `CONTEXT FULL → refactor ready in ${Math.ceil(refactorLeft / 1000)}s` : TOUCH ? 'CONTEXT FULL → tap "refactor"' : this.lines.full;
 
     for (const pw of this.powers) {
       const left = voice.remaining(pw.name);
@@ -328,7 +390,7 @@ export default class HUD extends Phaser.Scene {
 
     // Left: what the mic heard. Right: what actually happened (ran / cooling down) for ~2s,
     // otherwise the mic state. Speech recognized is not the same as a power firing.
-    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? (voice.supported ? 'powers: 1 2 3, or hold M and say one' : 'powers: press 1 2 3'));
+    const heard = voice.heard ? `heard "${voice.heard.slice(-26)}"` : voice.listening ? 'listening...' : (cta ?? this.lines.powers);
     this.heard.setText(`$ ${heard}`).setTint(!voice.heard && !voice.listening && cta ? 0xe5534b : 0xf5f5f5);
     if (fresh && ev.type === 'fired') {
       this.mic.setText(`✓ ran: ${POWERS[ev.name].label}`);

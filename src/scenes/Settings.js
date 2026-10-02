@@ -6,19 +6,24 @@ import { REDUCED_MOTION, settings } from '../settings.js';
 import { terminalWindow } from '../terminal.js';
 import { TOUCH, canFullscreen, isFullscreen, toggleFullscreen } from '../touch.js';
 import { menu, textRow } from '../menu.js';
+import { keymap } from '../keymap.js';
 
 const X_LABEL = 70;
 const X_VALUE = 380;
 const DOTS = 10;
 
 // The settings screen, from the title. Everything applies at once and is remembered in this
-// browser (settings.js).
+// browser (settings.js); the controls row opens the key map's own screen (Controls.js).
 export default class Settings extends Phaser.Scene {
   constructor() {
     super('Settings');
   }
 
-  create() {
+  create(data) {
+    // Phaser keeps a scene's last data when it's started with none, so a later visit from the
+    // title would open on the controls row again: take it and clear it.
+    const from = data?.from;
+    this.sys.settings.data = {};
     applyScreenFX(this.cameras.main);
     const win = terminalWindow(this, 'vim ~/.config/survive-coders');
     uiText(this, X_LABEL, win.y + 48, '" settings: saved in this browser', { size: 16, color: '#8b8b8b' });
@@ -37,12 +42,14 @@ export default class Settings extends Phaser.Scene {
       ['flashes', () => onOff(settings.get('flash')), toggle('flash')],
       canFullscreen() && ['fullscreen', () => onOff(isFullscreen()), () => toggleFullscreen()],
       ['run timer', () => (settings.get('timer') ? 'shown' : 'hidden'), toggle('timer')],
+      !TOUCH && ['controls', () => (keymap.isDefault() ? 'default keys' : 'custom keys'), () => this.scene.start('Controls'), () => {}],
     ].filter(Boolean);
 
     const items = rows.map((r, i) => (Array.isArray(r) ? this.row(win.y + 92 + i * 36, ...r) : r(win.y + 92 + i * 36)));
     const back = () => this.scene.start('Title', { from: 'settings' });
-    items.push(textRow(this, X_LABEL, win.y + 92 + items.length * 36 + 8, 'BACK', { size: 16, onPick: back }));
-    menu(this, items, { onBack: back });
+    items.push(textRow(this, X_LABEL, win.y + 92 + items.length * 36 + 2, 'BACK', { size: 16, onPick: back }));
+    // Back from the controls screen: on the row that opened it.
+    menu(this, items, { onBack: back, start: from === 'controls' ? rows.findIndex((r) => r[0] === 'controls') : 0 });
 
     // Fullscreen can also end from outside (ESC, the browser's own button).
     const redraw = () => items.forEach((it) => it.redraw());
