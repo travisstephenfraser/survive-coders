@@ -125,7 +125,8 @@ level costs players. It is built so that it costs no run time (decision 9).
    heard, live. Hearing a command passes it, remembers that, and starts the run. Choosing the
    keys is not remembered, so the check is offered again next time; one line says it can be
    turned off in settings. A browser that has passed never sees it again: PLAY NOW starts the
-   run.
+   run. The one exception is a browser whose speech pack has since gone: only the check can
+   fetch it, so it is offered again.
    **It costs no run time** (Travis: "make sure it does not cost time"). The check sits before
    `beginRun`, where the run clock starts (`src/run.js`), so nothing on it is timed. Only the
    title's PLAY NOW can lead to it: a new run from the pause screen, a restart, a retry and

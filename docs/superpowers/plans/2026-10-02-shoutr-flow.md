@@ -829,9 +829,10 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     return settings.get('mic');
   }
 
-  // Voice is set up here: possible, wanted, and proven by the mic check.
+  // Voice is set up here: possible, wanted, proven by the mic check, and the speech pack is on
+  // this computer (a browser can drop it; until it has answered, a passed check is trusted).
   get ready() {
-    return this.onDevice && this.local !== 'unavailable' && this.mode !== 'off' && micCheck.passed();
+    return this.onDevice && this.mode !== 'off' && micCheck.passed() && (this.local === null || this.local === 'available');
   }
 
   // What the hints tell a player to do for a power: say it, hold the key and say it, or press.
@@ -839,10 +840,13 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     return this.ready ? this.mode : 'keys';
   }
 
-  // PLAY NOW should go by the mic check first. Only once the browser has said the speech pack
-  // is here or can be fetched: an answer still on its way does not hold up a run.
+  // PLAY NOW should go by the mic check first: it has not been passed here, or the speech pack
+  // has gone and only the check can fetch it. Only once the browser has said which: an answer
+  // still on its way does not hold up a run.
   get checkDue() {
-    return this.onDevice && ['available', 'downloadable', 'downloading'].includes(this.local) && this.mode !== 'off' && !micCheck.passed();
+    if (!this.onDevice || this.mode === 'off') return false;
+    const packGone = this.local === 'downloadable' || this.local === 'downloading';
+    return packGone || (this.local === 'available' && !micCheck.passed());
   }
 
   get speaking() {
@@ -943,6 +947,10 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     // The check listens for the command itself, whatever the mode.
     this.counter = createCounter(this.mode === 'hold' && !this.checking ? 'hold' : 'open');
     this.session = this.makeLocal();
+    // The track can end by itself (the mic unplugged, its permission withdrawn), and Chrome tells
+    // the recognizer nothing: it would sit there deaf, the light still lit. Our own mic.close()
+    // fires no `ended`.
+    mic.track().onended = () => this.session && this.retry();
     this.begin();
   }
 
@@ -952,8 +960,17 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     try {
       this.session.start(mic.track());
     } catch {
-      // still ending: its end event begins it again
+      this.retry(); // the track is not live: nothing started, and no event will ever say so
     }
+  }
+
+  // The session cannot go on as it is: its track ended, or it would not start. Close it, open
+  // the mic again and start another, three times at most.
+  retry() {
+    const on = this.wanted || this.checking;
+    this.stopSession();
+    if (++this.strikes >= 3) this.error = 'Shoutr Flow stopped';
+    else if (on) this.startSession();
   }
 
   stopSession() {
@@ -1004,7 +1021,15 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       }
     };
     rec.onerror = (e) => {
-      if (rec === this.session) this.lastError = e.error;
+      if (rec !== this.session) return;
+      this.lastError = e.error;
+      // The speech pack is not on this computer after all. Chrome sends no `end` after this
+      // one, so nothing else would notice; the title's next look offers the mic check again.
+      if (e.error === 'language-not-supported') {
+        this.stopSession();
+        this.error = 'speech pack missing';
+        this.probe();
+      }
     };
     rec.onend = () => {
       if (rec !== this.session) return; // stopped on purpose
@@ -1206,7 +1231,11 @@ export function beginFromTitle(scene) {
 // death or win screen, the pause screen or a hidden tab. Checked every frame, and when the tab
 // hides (a hidden tab draws no frames). voice.listenWhile only acts on a change.
 export function installVoiceSession(game) {
-  const playing = () => run.state === 'running' && !document.hidden && !game.scene.isActive('End') && !game.scene.scenes.some((s) => s.sys.isPaused());
+  // Phaser only pauses a scene on the next frame, and a hidden tab draws none, so a pause that
+  // has been asked for counts too (HUD.setPaused's flag): without it the mic opened for a frame
+  // or two behind the pause screen on every return to a tab that had paused itself.
+  const paused = (s) => s.sys.isPaused() || (s.pauseAsked && s.sys.isActive());
+  const playing = () => run.state === 'running' && !document.hidden && !game.scene.isActive('End') && !game.scene.scenes.some(paused);
   const sync = () => voice.listenWhile(playing());
   game.events.on('step', sync);
   document.addEventListener('visibilitychange', sync);
@@ -1315,7 +1344,9 @@ Reload, paste the stand-ins, `await voice.probe()`, PLAY NOW.
 | Press P again | `voice.running` is `true`, `mic.track().readyState` is `'live'`; nothing fired from the pause |
 | Pause, press T (quit to title) | on the title `voice.running` is `false`, `mic.track()` is `null` |
 | A pass kept into a run (after Task 4): pass the mic check with `say('ship it')`, skip the intro, wait 8 s, `say('refactor')` | only refactor runs: the check's "ship it" does not fire in the level |
-| PLAY NOW, run `setTimeout(() => console.log('hidden:', voice.running, mic.track()), 3000)`, switch to another tab for 5 s and come back | the console shows `hidden: false null`; the game is on the pause screen (as on `master`) and stays not listening until resumed |
+| PLAY NOW, run `setTimeout(() => console.log('hidden:', voice.running, mic.track()), 3000); document.addEventListener('visibilitychange', () => !document.hidden && console.log('on return, wanted:', voice.wanted))`, switch to another tab for 5 s and come back | the console shows `hidden: false null` and `on return, wanted: false` (the mic is not opened behind the pause screen); the game is on the pause screen (as on `master`) and stays not listening until resumed |
+| In a run: `mic.track().dispatchEvent(new Event('ended'))` (the mic unplugged) | within a second `voice.running` is `true` again and `mic.track().readyState` is `'live'`: a new track, a new session |
+| In a run: `voice.session.onerror({ error: 'language-not-supported' })` (the speech pack has gone) | `voice.error` is `'speech pack missing'`, `voice.running` is `false`, `mic.track()` is `null` |
 | With `?boss` in the URL and god mode off: lose all health | on the death screen `voice.running` is `false`; ENTER (retry) brings it back to `true` |
 | Settings stored with `mic: 'hold'` (see "Browser checks: how"), PLAY NOW, `say('ship it')` without holding M | nothing fires |
 | At once (inside 1.5 s): hold M, `say('ship it')`, release M | fires once: the one that was dropped is not a fire for this to repeat |
@@ -1391,6 +1422,7 @@ export default class MicCheck extends Phaser.Scene {
     this.sys.settings.data = {}; // Phaser would hand the next visit this one's data
     this.state = 'idle'; // idle | pack | mic | listen | passed
     this.left = false; // Phaser reuses this scene object: a second visit must not start as gone
+    this.visit = (this.visit ?? 0) + 1;
     this.tries = 0;
     this.heardText = '';
     this.listenAt = this.soundAt = this.wordsAt = null;
@@ -1454,19 +1486,26 @@ export default class MicCheck extends Phaser.Scene {
   }
 
   async proceed(pack, fetching) {
+    // A wait here can outlive the visit: the download, or a mic prompt nobody answers. Phaser
+    // reuses this scene object, and only leaves a scene on the next frame, so "still here" is
+    // this visit and not left: an old wait must not carry on into the next visit, or a run.
+    const visit = this.visit;
+    const here = () => this.visit === visit && !this.left && this.sys.isActive();
     if (fetching) {
       this.to('pack');
       this.say('getting the speech pack (about 60 MB, once)...');
     }
-    if (!(await pack)) return this.fail("Couldn't get the speech pack. Try again, or play with the keys.");
-    if (!this.sys.isActive()) return;
+    const got = await pack;
+    if (!here()) return;
+    if (!got) return this.fail("Couldn't get the speech pack. Try again, or play with the keys.");
     this.to('mic');
     this.say("allow the microphone in the browser's prompt");
     const opened = await mic.open();
-    if (!this.sys.isActive()) return mic.close();
+    // Gone: close the mic this visit opened, unless a run has since taken it for itself.
+    if (!here()) return void (voice.session || voice.opening || voice.checking || mic.close());
     if (!opened.ok) return this.fail(WHY[opened.reason]);
     await voice.beginCheck();
-    if (!this.sys.isActive()) return voice.endCheck(false);
+    if (!here()) return; // leaving has already ended the check
     if (voice.error) return this.fail(`${voice.error}. The keys always work.`);
     this.to('listen');
     this.say('');
@@ -1498,7 +1537,8 @@ export default class MicCheck extends Phaser.Scene {
     if (this.left) return;
     this.left = true;
     if (this.then === 'run') {
-      voice.endCheck(passed);
+      // A pass keeps its session, also when the keys row is picked in the moment after it.
+      voice.endCheck(passed || this.state === 'passed');
       beginFromTitle(this);
       return;
     }
@@ -1650,6 +1690,9 @@ Each from a fresh `localStorage.removeItem('sc_mic_ok'); location.reload();`, st
 | `window.micFails = 'NotFoundError'; await voice.probe()` | PLAY NOW, `SET UP` | red: `No microphone found.` |
 | any of the above | `PLAY WITH THE KEYS` | level 1 starts; `voice.running` is `false`; keys 1, 2, 3 fire; `localStorage.sc_mic_ok` is `null`; back on the title, PLAY NOW offers the check again |
 | the check open | ESC | the title |
+| on the title: `window.pack = 'downloadable'; SpeechRecognition.install = () => new Promise((r) => (window.finishInstall = () => { window.pack = 'available'; r(true); })); await voice.probe()` | V, `SET UP` (it waits on the pack), ESC, V again, then `finishInstall()` | the second visit stays on `SET UP SHOUTR FLOW`: the first visit's wait does not carry on; `mic.track()` is `null` |
+| a browser that has not passed | PLAY NOW, `SET UP`, `say('ship it')`, and at once ENTER (on `PLAY WITH THE KEYS`) | the run starts with `voice.running` `true` and voice working: the pass is kept |
+| a browser that has passed, then `window.pack = 'downloadable'; await voice.probe()`, SETTINGS and back | look at the title, then PLAY NOW | the mic line reads `V  set up Shoutr Flow`; PLAY NOW goes by the check again (the pack has gone) |
 | `window.pack = 'unavailable'; await voice.probe()` | PLAY NOW | level 1 at once; on the title the mic line reads `needs Chrome on a computer`; V does nothing |
 | no stand-ins, a browser with no speech API at all: `window.SpeechRecognition = window.webkitSpeechRecognition = undefined; await voice.probe()` | SETTINGS and back, then PLAY NOW | the mic line reads `needs Chrome on a computer`; level 1 at once; no console error |
 
