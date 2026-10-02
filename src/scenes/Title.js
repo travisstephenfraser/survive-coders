@@ -5,7 +5,7 @@ import { applyScreenFX } from '../fx.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
 import { TOUCH, enterFullscreen } from '../touch.js';
 import { menu, textRow } from '../menu.js';
-import { beginRun, run } from '../run.js';
+import { beginFromTitle, run } from '../run.js';
 import { arrivalBanner } from '../arrival.js';
 import { keymap } from '../keymap.js';
 
@@ -98,10 +98,9 @@ export default class Title extends Phaser.Scene {
     const go = () => {
       if (started) return;
       started = true;
-      // A run from the title plays the intros and tips again. Dev shortcuts: ?park,
-      // ?tower=59|60|61, ?chute, ?landing, ?ride, ?boss jump straight to a level (unranked).
-      this.registry.set({ bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, lockTaught: false });
-      beginRun(this);
+      // Dev shortcuts: ?park, ?tower=59|60|61, ?chute, ?landing, ?ride, ?boss jump straight
+      // to a level (unranked).
+      beginFromTitle(this);
     };
     // A row picks on the release of a press that began on it, so a tap that left another screen
     // can't start a run. PLAY NOW's tap also takes a phone fullscreen: Android only grants it
