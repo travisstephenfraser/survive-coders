@@ -7,11 +7,13 @@ edge of its service area in Daly City with one request from `#demo-day`: *make o
 change before the demo.* The run crosses the city to Anthropic HQ, fighting enemies drawn from
 real vibe-coding pain (Bad Prompt Blobs, Keyboard Goblins, overheating H100 GPUs) and ends
 against the Context Rot Hydra, a three-headed boss whose chat-bubble heads grow every turn and
-lie to you. The idea that shaped it is that your voice is a weapon: hold **M**, say *ship it*,
-*rollback*, or *refactor*, and the power fires when you let go. Speech is never required;
-every voice power has a keyboard key and a tap target on phones, and ordinary talking during a
-demo fires nothing, because `src/voice.js` only acts on release and only on a recognized
-command. It plays with a keyboard or, on phones and tablets, with touch controls.
+lie to you. The idea that shaped it is that your voice is a weapon: say *ship it*, *rollback*,
+or *refactor* out loud and the power fires. The game calls it Shoutr Flow. In Chrome on a
+computer the speech is recognised on the machine itself, so nothing said leaves it. Speech is
+never required: every voice power has a keyboard key and a tap target on phones, and talk
+about the game fires nothing, because `src/voiceMatch.js` only takes the whole phrase or a
+word that sounds like it. It plays with a keyboard or, on phones and tablets, with touch
+controls.
 
 Status: hackathon demo: the city, Salesforce Park, three floors of the Salesforce Tower, the fall
 from its top, and one boss, plus an online leaderboard (fastest finish, or most stars) and a
@@ -24,8 +26,8 @@ settings screen. Built with Claude Code (Claude Opus 5.5) as a pair programmer; 
 Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
-Voice      Web Speech API in the browser (Chrome or Edge), keys 1/2/3 or taps as fallback
-Tests      97 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Voice      Speech recognised on the device (Chrome on a computer); hold-to-talk on phones; keys 1/2/3 or taps always
+Tests      114 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -54,7 +56,8 @@ Desktop, 960x540 at 2x. Every frame is the running game, staged by script and fr
 frame shown.
 
 **1. Title screen.** A terminal window with the controls, the vibe coder as key art, `V` to set
-up the microphone, and a menu: PLAY NOW, LEADERBOARD, SETTINGS.
+up Shoutr Flow, and a menu: PLAY NOW, LEADERBOARD, SETTINGS. The first PLAY NOW in a browser
+goes by a mic check: say *ship it*, and the run starts when it is heard.
 
 ![Title screen](docs/screenshots/01-title.png)
 
@@ -258,7 +261,7 @@ A dated design review with before and after screenshots is in
 - Enemies by district: the Bad Prompt Blob (splits in two), the Keyboard Goblin (charges and spits keycaps), and the H100 GPU (six hit points, hops with heat and vents arcing steam) in the city; founders, vested bros, and Zone 2 joggers in the park; CRM agents (contracts that lock your fire) and chatbots (popups you shoot closed) in the tower
 - A rideable Powell St cable car, star arcs over pits, and pits that glow `404`
 - The Context Rot Hydra boss: a heap of H100s whose neck pipes stream tokens into three heads with distinct roles (image flood, gaslighting orb that reverses your controls, shown as a chip over the player, and a spawner whose notification skulls hunt you and respawn until that head dies, worth no stars so stalling can't farm them); the heads wake one at a time; growth every 8 seconds, each turn dropping another GPU on the heap; once the context window is full, matrix rain buries the arena and context rot deals damage until you refactor, while threats and warnings stay drawn above the rain; lying speech bubbles, an enraged last head, and Furbies in the office worth bonus stars
-- Push-to-talk voice powers (`ship it`, `rollback`, `refactor`) with keyboard and tap equivalents; the HUD shows what was heard separately from what actually fired, and when a power is cooling down
+- Shoutr Flow: voice powers (`ship it`, `rollback`, `refactor`) said out loud with no key, recognised on the device in Chrome on a computer, with keyboard and tap equivalents; hold-to-talk and keys-only are settings; a mic check before the first run proves the microphone and names the reason when it fails; the HUD's light shows when it is listening and when it hears a voice, shows what was heard separately from what actually fired, says `close enough` when a sound-alike ran a power, and shows when a power is cooling down
 - A MAX power-up past the second pit: grab the chip and holding fire streams random characters at 25 a second from a 160-token budget, until the usage limit hits; unspent tokens carry into the Hydra fight
 - Platformer feel: coyote time, a 120 ms jump buffer, half gravity at the jump apex, a faster fall, hit stop, squash and stretch, camera lookahead, and a camera that holds its height in the street levels
 - Every piece of text rendered in an 8x8 pixel font; a CRT scanline post-effect
@@ -284,13 +287,13 @@ move, Space to jump, J to fire, and the powers on K (ship it), L (refactor) and 
 | Jump | Up, W, or Z | ↑ bottom right; hold for a higher jump |
 | Fire prompts | Space, X, or J | `>_` next to jump; hold to keep firing |
 | Stream tokens (after grabbing MAX) | Hold Space, X, or J | Hold `>_` |
-| Voice power | Hold M, say the command, release | Hold *talk* in the terminal bar, say it, release |
+| Voice power | Say the command (or, with hold-to-talk set: hold M, say it, release) | Hold *talk* in the terminal bar, say it, release |
 | Powers without voice | 1 ship it, 2 rollback, 3 refactor (the number pad's too) | Tap the power in the terminal bar |
 | Type a line (the fall) | Type it; Tab fills it in, Enter sends, Backspace fixes | Every tap types the next letter; or hold *talk*, say it, release |
 | Steer the canopy | Arrow keys or A / D | ← → bottom left |
 | Pause / mute / restart / quit | P or Esc / N / while paused: R restarts the level, G starts a new run, T quits to the title; the pause screen lists the controls and powers | Pause button at the top; *sound*, *restart level*, *new run* and *quit to title* on the pause screen, with the controls and powers |
-| Title screen | ↑ ↓ or W / S choose, Enter picks; V sets up the microphone | Tap PLAY NOW, LEADERBOARD, or SETTINGS; tap *set up mic* |
-| Settings | ↑ ↓ choose, ← → change, Enter toggles, Esc back; *controls* opens the key map | Tap a setting to change it; tap the volume dots to set a level |
+| Title screen | ↑ ↓ or W / S choose, Enter picks; V sets up Shoutr Flow | Tap PLAY NOW, LEADERBOARD, or SETTINGS; tap *set up mic* |
+| Settings | ↑ ↓ choose, ← → change, Enter toggles, Esc back; *controls* opens the key map; *Shoutr Flow* sets how the mic listens (open, hold, off) and *test microphone* opens the mic check | Tap a setting to change it; tap the volume dots to set a level |
 | Controls | ↑ ↓ choose, Enter then a key rebinds, Backspace puts an action's defaults back, Esc cancels a rebind or goes back | Keyboards only |
 | Leaderboard | ← → switch between TIME and STARS, ↑ ↓ choose, Enter opens the selected profile, Esc back | Tap TIME or STARS; tap a name to see its link, tap again to open it |
 | Intro | Enter, Space, or Esc skips | Tap skips |
@@ -319,7 +322,7 @@ the touch controls on a desktop (they work with a mouse).
 | Art | Sprites and backgrounds drawn in code at boot, plus two sprite sheets from the Ninja Adventure pack | Code-drawn pixel art needs no asset pipeline and every texture is keyed, so pack art can replace a sprite without touching game logic. |
 | Text | An 8x8 bitmap font (Ninja Adventure) parsed with Phaser's RetroFont, with proportional spacing measured from each glyph | Keeps every string pixel-art, including symbols the sheet lacks (drawn into unused cells). |
 | Look | A custom CRT post-pipeline (scanlines, slight RGB split, vignette); no bloom, because Phaser's bloom halves the frame before adding glow | Ties mismatched art sources into one terminal aesthetic. |
-| Voice | The browser's Web Speech API, push-to-talk | No API key, no server, and no cost; the browser handles recognition. Keyboard keys cover browsers without it. |
+| Voice | The browser's Web Speech API, recognising on the device (`processLocally`) on a keyboard; push-to-talk through the browser's own recognizer on phones | No API key, no server, no cost, and on a computer no audio leaves the machine. It heard 24 of 24 test commands where the cloud recognizer heard 19 of 24. Keyboard keys cover every browser without it. |
 | Input | Phaser keyboard input; touch buttons as DOM elements over the canvas (pointer events) | The canvas is letterboxed at 16:9, so buttons anchored to the screen's corners sit partly in the side bars on wide phones instead of over the game. |
 | Audio | Ninja Adventure sound effects, six songs converted to MP3, and two originals synthesized with WebAudio | CC0 licensed; MP3 plays in every major browser. Only the first level's song loads before the title and the other five load behind it, so the new songs didn't lengthen the wait to play. The originals are MIDI note data on small WebAudio synths, so they ship as code, not files. |
 | Hosting | Vercel, Git-linked: the static build plus one function, `api/scores.js` | Every push to `master` builds and deploys. The function sits next to the game, so the page talks to its own origin. |
@@ -353,12 +356,13 @@ the touch controls on a desktop (they work with a mouse).
 │  src/elevatorSong.js, victorySong.js ── note data ──→ songPlayer.js     │
 │       ──→ WebAudio synths (the elevator's bossa nova, the win screen)   │
 │  src/noise.js ── filtered noise ──→ WebAudio (the fall's wind, keys)    │
-│  src/voice.js ── hold M ──→ Web Speech API                              │
+│  src/voice.js ── the mic ──→ speech recognition on the device (Chrome)  │
 └──────────────────────────────┼──────────────────────────────────────────┘
-          trust boundary: in Chrome, microphone audio is sent to the
-          browser vendor's speech service for recognition
+          trust boundary: on a phone, hold-to-talk sends microphone audio
+          to the browser vendor's speech service. On a computer nothing
+          leaves the machine: Chrome recognises speech on the device.
                                ▼
-                    browser speech recognition service
+              browser speech recognition service (phones only)
 
 Vercel: serves the static dist/ build, and two functions:
 
@@ -383,15 +387,34 @@ Vercel: serves the static dist/ build, and two functions:
 
 ### The design decision worth explaining
 
-Voice is the game's hook, and a live demo is the worst environment for it: the presenter is
-talking the whole time, the room is loud, and conference wifi drops. So voice is push-to-talk
-and fires on release. While M is held, `src/voice.js` collects the transcript; on release it
-fires the earliest recognized command in that hold, or nothing if none was said. If the
-command only arrives in the final recognition result, it fires when the session ends. Every
-power also has a key (1, 2, 3), so a failed microphone or an unsupported browser never blocks
-play. This was verified with a simulated recognizer: a command fires on release, a late final
-result still fires, ordinary chatter fires nothing, and when two commands are spoken the first
-one wins.
+Voice is the game's hook, and it shipped as push-to-talk: hold M, say the command, let go. That
+was built for a loud demo room, where the presenter talks the whole time. Played alone from a
+shared link it failed: measured on 2026-10-02, a held command fired 4 times in 9. The
+recognizer only started when the key went down, so it missed the first syllable, and stopped
+when the key came up, so letting go a moment early lost the word.
+
+Shoutr Flow replaces it on a keyboard. The recognizer runs for as long as a level is being
+played and a command fires the moment it is heard, with no key (hold-to-talk and keys-only are
+settings). Three choices came from what was measured:
+
+- **Recognised on the device.** Chrome can recognise speech on the computer itself
+  (`processLocally`). It heard 24 of 24 commands where Chrome's cloud recognizer heard 19 of
+  24, at the same speed, and nothing said leaves the machine. Browsers without it play with the
+  keys; there is no cloud fallback on a keyboard.
+- **No favoured phrases.** Chrome lets a page name phrases to favour. Favouring the three
+  commands made the recognizer write them when nobody had said them (once, 34 times over in a
+  single result), so the game favours none.
+- **A list of sound-alikes, not a distance.** The recognizer writes "chip it" and "throwback".
+  `src/voiceMatch.js` takes those, from a list of real words that never appeared in 677,000
+  words of ordinary writing. A similarity threshold wide enough to catch "throwback" also
+  caught "shipped", "react" and "fallback".
+
+Commands are counted over the whole transcript, so one fires once however the recognizer
+rewrites what it heard, and one heard during an intro or a pause is dropped, never saved for
+later. A mic check before the first run proves the microphone works and names the reason when
+it does not; it sits before the run's clock, so it costs a run no time. Every power also has a
+key (1, 2, 3), so a failed microphone or another browser never blocks play. On phones voice is
+still push-to-talk through the browser's own recognizer.
 
 What the design does not claim: recognition accuracy, offline use, or that audio stays on the
 device. Chrome's recognition runs on the browser vendor's servers.
@@ -552,7 +575,8 @@ against the running game, recorded with screenshots in
 | Star arcs are flyable (2026-09-27) | A simulation of the canopy's drift collects 4 stars with no steering, 8 with a mid-course steer, and all 12 on a chasing route; the game matched the 8-star route exactly |
 | Ohana finale (2026-09-27) | A wave agent left alive at the far wall no longer holds the exit: the last 8 tiles drop 18 closers right behind you (13 within 120 px at 1.5 s), the stray joins them, the third contract into the window breaks it at about 2 s, and the crowd shoves an idle player through; clearing the lounge mid-floor drops them behind you there |
 | Contracts and popups (2026-09-27) | A contract locks fire without damage, `refactor` voids it, and a new lock waits out a 1 s grace; a popup shot closed asks *Was this helpful?* once; `refactor` clears popups and on-screen chatbots |
-| Push-to-talk parsing | The four cases in [Architecture](#the-design-decision-worth-explaining) pass with a simulated recognizer |
+| Shoutr Flow's matching (2026-10-02) | Under `npm test`: a recorded session of the on-device recognizer's own events replays to 24 fires for the 24 commands said; a result in which the recognizer wrote "ship it" many times over fires once; "chip it", "throwback", "reflect it" and "reflector" fire their commands, and "we shipped it late", "the fallback" and "a React callback" fire nothing; a hold-to-talk command counts until 600 ms after the key comes up |
+| Shoutr Flow in the game (2026-10-02) | With a stand-in recognizer and microphone: the session starts with a run and the mic's track ends on the pause screen, a hidden tab, a death, a win and the title; a command said during an intro or a pause never fires, then or later; a session that ends is started again, and three hard errors leave a red line and a game that plays on. The mic check fetches the speech pack, names a refused microphone, a missing one, silence, and sound without words, passes on a command and starts the run with the clock under two seconds; a browser that has passed, or has no on-device recognition, goes straight to the run. The HUD, the title, the tips and the pause screen name the right way to run a power in each of open, hold and off; a sound-alike reads `close enough`. Phones (`?touch`) are as before |
 | Title menu, settings, leaderboard (2026-09-29) | The menu answers to arrows and Enter, a click, and a tap; a click off the menu no longer starts a run. Settings flips the CRT filter live, previews the music at the chosen level, and a saved setting (CRT off, no shake or flash, music at 50%) holds after a reload with the song at 0.14 instead of 0.28. The leaderboard shows its offline state with no API, and a ten-row board with its links laid exactly over their rows; Enter opens the selected profile |
 | Run clock (2026-09-29) | Against a stopwatch (the page's own Date.now): 20.131 s of play read 20.131 s, and 40.4 s with a real 20.4 s pause (P, both edges stamped in the page) read 19.998 s against 20.004 s expected. It resumes on unpause. A run fast-forwarded through every milestone summarizes as ranked; the same run in god mode shows *not ranked* on the win screen. *Play again* after a win starts a fresh run |
 | Posting a win (2026-09-29) | Typed into the name field, `Jaz Wd XZ m123 T` arrives whole, with no power fired and no restart; a pasted LinkedIn URL becomes the platform and handle; with no API the post says it can't reach the board; a stubbed 201 shows the rank and opens the returned board; Esc then Enter plays again. On touch a stray tap leaves the form up and a tap on the prompt restarts |
@@ -648,12 +672,16 @@ login. Also, `.vercelignore` keeps `feed/` (local, gitignored raw asset packs) a
 
 ## Known limitations and what I would do next
 
-- **Voice needs Chrome or Edge and a network connection**, and Chrome sends the audio to its
-  speech service. Next: on-device recognition in the browser, so voice works offline and
-  audio never leaves the machine.
-- **No gameplay tests in CI.** The unit tests cover the rules, the clock, and the API; the
-  gameplay checks above are scripted browser runs. Next: unit tests for the command parsing
-  in `src/voice.js` and a headless smoke test (title, level, boss, win) in CI.
+- **Voice on a keyboard needs Chrome on a computer** and a one-time download of its speech
+  pack (about 60 MB). Everywhere else the keys work and the game says so. Every number behind
+  it is one speaker on one microphone in a quiet room: how often ordinary talk fires a power
+  on the shipped setup was not measured. On phones, hold-to-talk still sends audio to the
+  browser's speech service. Next: other voices and rooms, and voice on phones without that.
+- **No gameplay tests in CI.** The unit tests cover the rules, the clock, the API and the
+  command matching; the gameplay checks above are scripted browser runs. Next: a headless
+  smoke test (title, level, boss, win) in CI.
+- **Four screenshots above show the old voice hints** (`hold M to talk`). They are re-shot
+  once this and the level 1 colour change are both on `master`.
 - **One route through the city.** Next: more neighborhoods and the two unused enemies from the
   original monster sheet (a Pixel Nudger that moves platforms and a Breach Wraith that leaks
   keys).

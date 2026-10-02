@@ -180,7 +180,7 @@ level costs players. It is built so that it costs no run time (decision 9).
 |---|---|
 | `src/voiceMatch.js` (new) | The patterns for each mode, the transcript's clean-up, the whole-transcript counter with its 1.5 s repeat rule, and the hold window's test. No Phaser, no `window`: runs under node, like `src/keymap.js`. |
 | `src/micStream.js` (new) | Opens the mic once and hands out its track (for the recognizer) and its level (`level`, `speaking`, for the light and the check). Names why it could not open. |
-| `src/voice.js` | `VoiceControl` keeps its interface (`press`, `release`, `trigger`, `heard`, `listening`, `status`, `gate`, the `power` event). On a keyboard it gains the modes, the on-device session and its restart and three-strikes logic, and `available()` / `install()` for the pack. On touch it behaves exactly as today. `prime()` goes; the check replaces it. |
+| `src/voice.js` | `VoiceControl` keeps its interface (`press`, `release`, `trigger`, `heard`, `listening`, `status`, `gate`, the `power` event). On a keyboard it gains the modes, the on-device session and its restart and three-strikes logic, and `available()` / `install()` for the pack. On touch it behaves exactly as today. `prime()` stays for phones; on a keyboard the check replaces it. |
 | `src/scenes/MicCheck.js` (new) | The check screen, its steps and its failure states. |
 | `src/settings.js` | `mic: 'open'`, checked against the three values on load. A separate flag, `sc_mic_ok`, records a passed check. |
 | `src/scenes/Settings.js` | A `Shoutr Flow` row (hidden on touch) and a `test microphone` row. |
