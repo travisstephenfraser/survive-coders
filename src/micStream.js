@@ -32,6 +32,7 @@ export const mic = {
         source.connect(analyser);
         return { ok: true };
       } catch (err) {
+        mic.close(); // the stream may have opened before something after it threw
         return { ok: false, reason: REASONS[err?.name] ?? 'failed' };
       } finally {
         opening = null;

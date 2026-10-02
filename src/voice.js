@@ -68,6 +68,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
 
     // A keyboard: one session for as long as a level is being played.
     this.local = null; // what the browser says of its speech pack: available | downloadable | downloading | unavailable
+    this.permission = null; // the mic's permission: granted | prompt | denied, or null where the browser won't say
     this.session = null; // the on-device recognizer, while one is wanted
     this.running = false; // it is really listening (between its start and its end)
     this.started = false;
@@ -132,10 +133,13 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     return settings.get('mic');
   }
 
-  // Voice is set up here: possible, wanted, proven by the mic check, and the speech pack is on
-  // this computer (a browser can drop it; until it has answered, a passed check is trusted).
+  // Voice is set up here: possible, wanted, proven by the mic check, the speech pack on this
+  // computer and the mic still allowed. A browser can drop the pack, and a permission given
+  // "this time" is gone by the next visit; until it has answered, a passed check is trusted.
   get ready() {
-    return this.onDevice && this.mode !== 'off' && micCheck.passed() && (this.local === null || this.local === 'available');
+    const pack = this.local === null || this.local === 'available';
+    const allowed = this.permission === null || this.permission === 'granted';
+    return this.onDevice && this.mode !== 'off' && micCheck.passed() && pack && allowed;
   }
 
   // What the hints tell a player to do for a power: say it, hold the key and say it, or press.
@@ -144,21 +148,31 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   }
 
   // PLAY NOW should go by the mic check first: it has not been passed here, or the speech pack
-  // has gone and only the check can fetch it. Only once the browser has said which: an answer
-  // still on its way does not hold up a run.
+  // has gone and only the check can fetch it, or the browser would ask for the mic again (and
+  // would ask mid-level, which is what the check is there to prevent). A mic that is refused
+  // is not asked about again: the keys it is. Only once the browser has said which of these it
+  // is: an answer still on its way does not hold up a run.
   get checkDue() {
     if (!this.onDevice || this.mode === 'off') return false;
     const packGone = this.local === 'downloadable' || this.local === 'downloading';
-    return packGone || (this.local === 'available' && !micCheck.passed());
+    if (packGone) return true;
+    if (this.local !== 'available') return false;
+    return !micCheck.passed() || this.permission === 'prompt';
   }
 
   get speaking() {
     return this.running && mic.speaking();
   }
 
-  // Ask the browser whether its English speech pack is here.
+  // Ask the browser whether its English speech pack is here, and whether the mic is still
+  // allowed.
   async probe() {
     if (!this.onDevice) return (this.local = 'unavailable');
+    try {
+      this.permission = (await navigator.permissions.query({ name: 'microphone' })).state;
+    } catch {
+      this.permission = null; // no answer: go by the passed check
+    }
     try {
       this.local = await SR().available(LOCAL);
     } catch {
@@ -232,6 +246,8 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     if (!keep) return this.stopSession();
     // The session goes on into the run with the mode's own patterns. The new count starts level
     // with what has been said, or the "ship it" that passed the check would fire in level 1.
+    // It is the run's from this moment: a tab hidden before the first frame still stops it.
+    this.wanted = true;
     this.counter = createCounter(this.mode === 'hold' ? 'hold' : 'open');
     this.counter.feed(this.said, performance.now());
   }
@@ -243,10 +259,12 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.opening = false;
     // Paused, hidden or left while the mic was opening.
     if (!this.wanted && !this.checking) return mic.close();
+    if (opened.reason === 'blocked') this.permission = 'denied';
     if (!opened.ok) {
       this.error = MIC_ERRORS[opened.reason];
       return;
     }
+    this.permission = 'granted';
     // The check listens for the command itself, whatever the mode.
     this.counter = createCounter(this.mode === 'hold' && !this.checking ? 'hold' : 'open');
     this.session = this.makeLocal();
@@ -302,6 +320,8 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     rec.onstart = () => {
       if (rec !== this.session) return;
       this.started = true;
+      this.startedAt = performance.now();
+      this.heardAny = false;
       this.running = true;
       this.said = '';
       this.counter.reset();
@@ -310,6 +330,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       if (rec !== this.session) return;
       const now = performance.now();
       this.strikes = 0;
+      this.heardAny = true;
       const said = [...e.results].map((r) => r[0].transcript);
       this.said = said.join(' ');
       this.heardText = (said.at(-1) ?? '').trim().toLowerCase();
@@ -338,9 +359,12 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       if (rec !== this.session) return; // stopped on purpose
       this.running = false;
       // Fed from the mic's track a session should not end by itself; if it does, start it again
-      // at once. One that never started, or ended in an error that starting again will not fix,
-      // is a strike; three in a row, with nothing heard between, and it stays stopped.
-      if (!this.started || HARD.includes(this.lastError)) this.strikes++;
+      // at once. One that never started, ended in an error that starting again will not fix, or
+      // ended within a second of starting having heard nothing, is a strike; three in a row,
+      // with nothing heard between, and it stays stopped. Without the last, a recognizer that
+      // keeps starting and dying was started again sixty times a second.
+      const atOnce = this.started && !this.heardAny && performance.now() - this.startedAt < 1000;
+      if (!this.started || HARD.includes(this.lastError) || atOnce) this.strikes++;
       if (this.strikes >= 3) {
         this.error = 'Shoutr Flow stopped';
         this.session = null;

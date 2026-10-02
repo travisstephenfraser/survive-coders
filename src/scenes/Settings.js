@@ -12,7 +12,10 @@ import { keymap } from '../keymap.js';
 const X_LABEL = 70;
 const X_VALUE = 380;
 const DOTS = 10;
-const ROW_H = 30; // eleven rows and BACK, above the hint
+// On a keyboard: eleven rows and BACK, above the hint. A phone has fewer rows and keeps the
+// pitch, the tap targets and the gaps between them that it had.
+const ROW_H = TOUCH ? 36 : 30;
+const ROW_HIT = TOUCH ? { up: 8, h: 32 } : { up: 7, h: ROW_H };
 
 // The settings screen, from the title. Everything applies at once and is remembered in this
 // browser (settings.js); the controls row opens the key map's own screen (Controls.js).
@@ -91,7 +94,7 @@ export default class Settings extends Phaser.Scene {
     let focused = false;
     const row = {
       val,
-      bounds: () => new Phaser.Geom.Rectangle(X_LABEL - 10, y - 7, 820, ROW_H),
+      bounds: () => new Phaser.Geom.Rectangle(X_LABEL - 10, y - ROW_HIT.up, 820, ROW_HIT.h),
       focus(on) {
         focused = on;
         row.redraw();

@@ -59,6 +59,9 @@ Node cannot load a Phaser scene, and automation cannot speak, so Tasks 3 to 6 ar
     if (window.micFails) throw new DOMException('stand-in', window.micFails);
     return new AudioContext().createMediaStreamDestination().stream;
   };
+  // The mic's permission, as the game asks the browser for it: 'granted', 'prompt' or 'denied'.
+  window.micPermission = 'granted';
+  navigator.permissions.query = async () => ({ state: window.micPermission });
   // A recognizer that hears what you tell it to: say('ship it').
   let live = null;
   window.pack = 'available'; // or 'downloadable' / 'unavailable', then: await voice.probe()

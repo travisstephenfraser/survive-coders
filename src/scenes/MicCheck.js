@@ -14,6 +14,7 @@ const NO_WORDS_MS = 6000; // sound, but no words
 const TRIES = 3; // things said that were not a command
 const LOUD = 0.02;
 const METER = { x: 70, y: 292, w: 420, h: 12 };
+const HIDDEN = 'The mic was closed while this tab was hidden. Set it up again when you are ready.';
 const WHY = {
   blocked: 'The microphone is blocked: allow it from the address bar.',
   none: 'No microphone found.',
@@ -36,7 +37,7 @@ export default class MicCheck extends Phaser.Scene {
     this.sys.settings.data = {}; // Phaser would hand the next visit this one's data
     this.state = 'idle'; // idle | pack | mic | listen | passed
     this.left = false; // Phaser reuses this scene object: a second visit must not start as gone
-    this.visit = (this.visit ?? 0) + 1;
+    this.attempt = (this.attempt ?? 0) + 1; // a new visit ends whatever an old one left waiting
     this.tries = 0;
     this.heardText = '';
     this.listenAt = this.soundAt = this.wordsAt = null;
@@ -73,9 +74,14 @@ export default class MicCheck extends Phaser.Scene {
     const onCommand = () => this.state === 'listen' && this.pass();
     voice.on('heard', onHeard);
     voice.on('command', onCommand);
+    // A hidden tab closes the mic here as it does in a run (the check owns the session, so the
+    // run's own rule does not reach it), and nothing heard while hidden can pass the check.
+    const onHide = () => document.hidden && (this.state === 'mic' || this.state === 'listen') && this.fail(HIDDEN, false);
+    document.addEventListener('visibilitychange', onHide);
     this.events.once('shutdown', () => {
       voice.off('heard', onHeard);
       voice.off('command', onCommand);
+      document.removeEventListener('visibilitychange', onHide);
     });
     if (voice.local === 'downloadable') this.say('First time here: this fetches a speech pack (about 60 MB, once).');
   }
@@ -84,10 +90,12 @@ export default class MicCheck extends Phaser.Scene {
     this.note.setText(text).setTint(bad ? 0xe5534b : 0xf5f5f5);
   }
 
+  // The focus stays on the first row while it is busy (it greys, and a pick of it does
+  // nothing): were it to jump to the second row, a double tap of ENTER, or an ENTER meant for
+  // the browser's prompt, would leave the check.
   to(state) {
     this.state = state;
     for (const row of this.rows) row.redraw();
-    this.menu.refresh();
     if (state === 'idle') this.menu.select(0);
   }
 
@@ -100,11 +108,12 @@ export default class MicCheck extends Phaser.Scene {
   }
 
   async proceed(pack, fetching) {
-    // A wait here can outlive the visit: the download, or a mic prompt nobody answers. Phaser
-    // reuses this scene object, and only leaves a scene on the next frame, so "still here" is
-    // this visit and not left: an old wait must not carry on into the next visit, or a run.
-    const visit = this.visit;
-    const here = () => this.visit === visit && !this.left && this.sys.isActive();
+    // A wait here can outlive the attempt: the download, or a mic prompt nobody answers, while
+    // the player leaves, comes back, or hides the tab. Phaser reuses this scene object, and
+    // only leaves a scene on the next frame, so "still here" is this attempt and not left: an
+    // old wait must not carry on into the next attempt, the next visit, or a run.
+    const attempt = ++this.attempt;
+    const here = () => this.attempt === attempt && !this.left && this.sys.isActive();
     if (fetching) {
       this.to('pack');
       this.say('getting the speech pack (about 60 MB, once)...');
@@ -112,6 +121,7 @@ export default class MicCheck extends Phaser.Scene {
     const got = await pack;
     if (!here()) return;
     if (!got) return this.fail("Couldn't get the speech pack. Try again, or play with the keys.");
+    if (document.hidden) return this.fail(HIDDEN, false);
     this.to('mic');
     this.say("allow the microphone in the browser's prompt");
     const opened = await mic.open();
@@ -129,12 +139,13 @@ export default class MicCheck extends Phaser.Scene {
     this.tries = 0;
   }
 
-  fail(why) {
+  fail(why, bad = true) {
+    this.attempt++; // whatever this attempt is still waiting on is no longer wanted
     voice.endCheck(false);
     this.prompt.setText('');
     this.heardLine.setText('');
     this.to('idle');
-    this.say(why, true);
+    this.say(why, bad);
   }
 
   pass() {
@@ -182,7 +193,7 @@ export default class MicCheck extends Phaser.Scene {
     if (this.state !== 'listen') return;
     if (voice.error) return this.fail(`${voice.error}. The keys always work.`);
     if (this.tries >= TRIES) this.say(`Heard "${this.heardText.slice(-30)}". Voice may be unreliable on this mic; the keys always work.`, true);
-    else if (this.soundAt == null && now - this.listenAt > QUIET_MS) this.say('No sound is reaching the mic: check the input device in your system sound settings.', true);
+    else if (this.soundAt == null && this.wordsAt == null && now - this.listenAt > QUIET_MS) this.say('No sound is reaching the mic: check the input device in your system sound settings.', true);
     else if (this.soundAt != null && this.wordsAt == null && now - this.listenAt > NO_WORDS_MS) this.say('Heard sound but no words. Move closer, or check which microphone is selected.', true);
     else this.say('');
   }

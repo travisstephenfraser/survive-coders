@@ -27,7 +27,7 @@ Frontend   Phaser 3.90 + Vite 8, plain JavaScript, WebGL + CRT post-FX   Vercel
 Backend    One Vercel function (api/scores.js) on Neon Postgres: the leaderboard
 Input      Keyboard; touch on phones and tablets (DOM buttons over the canvas)
 Voice      Speech recognised on the device (Chrome on a computer); hold-to-talk on phones; keys 1/2/3 or taps always
-Tests      114 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
+Tests      116 unit tests (npm test, the API on PGlite); scripted browser checks in docs/review/
 ```
 
 Live URL checked 2026-09-27: HTTP 200.
@@ -416,8 +416,9 @@ it does not; it sits before the run's clock, so it costs a run no time. Every po
 key (1, 2, 3), so a failed microphone or another browser never blocks play. On phones voice is
 still push-to-talk through the browser's own recognizer.
 
-What the design does not claim: recognition accuracy, offline use, or that audio stays on the
-device. Chrome's recognition runs on the browser vendor's servers.
+What the design does not claim: recognition accuracy beyond one voice on one microphone, how
+often ordinary talk fires a power, or anything about phones, where hold-to-talk still goes
+through the browser vendor's servers.
 
 ### What the leaderboard does and doesn't claim
 
@@ -495,10 +496,13 @@ never production.
 
 ## Tests
 
-`npm test` runs 97 unit tests on Node's built-in runner (no test framework):
+`npm test` runs 116 unit tests on Node's built-in runner (no test framework):
 
 - the reading pace (`src/pacing.js`): how long a cutscene line, a Slack card and a joke pop-up
   stay up, checked against lines from the game
+- the voice matcher (`src/voiceMatch.js`): what counts as a spoken command, replayed against a
+  recorded session of the browser's own recognizer events, with the sound-alike list checked
+  entry by entry and ordinary sentences that must fire nothing
 - `shared/leaderboard.js`: the star ceiling, the time and milestone checks (each time floor
   held between 70% and 85% of the fastest its segment can be played), names, profile
   handles, and pasted-URL parsing
@@ -575,8 +579,8 @@ against the running game, recorded with screenshots in
 | Star arcs are flyable (2026-09-27) | A simulation of the canopy's drift collects 4 stars with no steering, 8 with a mid-course steer, and all 12 on a chasing route; the game matched the 8-star route exactly |
 | Ohana finale (2026-09-27) | A wave agent left alive at the far wall no longer holds the exit: the last 8 tiles drop 18 closers right behind you (13 within 120 px at 1.5 s), the stray joins them, the third contract into the window breaks it at about 2 s, and the crowd shoves an idle player through; clearing the lounge mid-floor drops them behind you there |
 | Contracts and popups (2026-09-27) | A contract locks fire without damage, `refactor` voids it, and a new lock waits out a 1 s grace; a popup shot closed asks *Was this helpful?* once; `refactor` clears popups and on-screen chatbots |
-| Shoutr Flow's matching (2026-10-02) | Under `npm test`: a recorded session of the on-device recognizer's own events replays to 24 fires for the 24 commands said; a result in which the recognizer wrote "ship it" many times over fires once; "chip it", "throwback", "reflect it" and "reflector" fire their commands, and "we shipped it late", "the fallback" and "a React callback" fire nothing; a hold-to-talk command counts until 600 ms after the key comes up |
-| Shoutr Flow in the game (2026-10-02) | With a stand-in recognizer and microphone: the session starts with a run and the mic's track ends on the pause screen, a hidden tab, a death, a win and the title; a command said during an intro or a pause never fires, then or later; a session that ends is started again, and three hard errors leave a red line and a game that plays on. The mic check fetches the speech pack, names a refused microphone, a missing one, silence, and sound without words, passes on a command and starts the run with the clock under two seconds; a browser that has passed, or has no on-device recognition, goes straight to the run. The HUD, the title, the tips and the pause screen name the right way to run a power in each of open, hold and off; a sound-alike reads `close enough`. Phones (`?touch`) are as before |
+| Shoutr Flow's matching (2026-10-02) | Under `npm test`: a recorded session of the on-device recognizer's own events replays to 24 fires for the 24 commands said; a result in which the recognizer wrote "ship it" many times over fires once; "chip it", "throwback", "reflect it" and "reflector" fire their commands, and "we shipped it late", "the fallback" and "a React callback" fire nothing; a hold-to-talk command counts until 600 ms after the key comes up; every sound-alike on the list fires its command; a command heard where it cannot run is never fired later |
+| Shoutr Flow in the game (2026-10-02) | With a stand-in recognizer and microphone: the session starts with a run and the mic's track ends on the pause screen, a hidden tab, a death, a win and the title; a command said during an intro or a pause never fires, then or later; a session that ends is started again, and three hard errors leave a red line and a game that plays on; a microphone that drops out gets a fresh session. The mic check fetches the speech pack, names a refused microphone, a missing one, silence, and sound without words, passes on a command and starts the run with the clock under two seconds; a browser that has passed, or has no on-device recognition, goes straight to the run, and one whose mic permission or speech pack has since gone is sent by the check again; hiding the tab closes the mic on the check too. The HUD, the title, the tips and the pause screen name the right way to run a power in each of open, hold and off; a sound-alike reads `close enough`. Phones (`?touch`) are as before |
 | Title menu, settings, leaderboard (2026-09-29) | The menu answers to arrows and Enter, a click, and a tap; a click off the menu no longer starts a run. Settings flips the CRT filter live, previews the music at the chosen level, and a saved setting (CRT off, no shake or flash, music at 50%) holds after a reload with the song at 0.14 instead of 0.28. The leaderboard shows its offline state with no API, and a ten-row board with its links laid exactly over their rows; Enter opens the selected profile |
 | Run clock (2026-09-29) | Against a stopwatch (the page's own Date.now): 20.131 s of play read 20.131 s, and 40.4 s with a real 20.4 s pause (P, both edges stamped in the page) read 19.998 s against 20.004 s expected. It resumes on unpause. A run fast-forwarded through every milestone summarizes as ranked; the same run in god mode shows *not ranked* on the win screen. *Play again* after a win starts a fresh run |
 | Posting a win (2026-09-29) | Typed into the name field, `Jaz Wd XZ m123 T` arrives whole, with no power fired and no restart; a pasted LinkedIn URL becomes the platform and handle; with no API the post says it can't reach the board; a stubbed 201 shows the rank and opens the returned board; Esc then Enter plays again. On touch a stray tap leaves the form up and a tap on the prompt restarts |
@@ -609,7 +613,8 @@ the clock reads wall time, so a hidden tab needs no path of its own).
 2. To deploy without pushing, run `vercel deploy --prod --yes` from the repo root with the
    Vercel CLI installed and logged in.
 3. Verify with `curl -sI https://survive-coders.vercel.app/ | head -1` (expect `HTTP/2 200`),
-   then open the URL in Chrome, press V on the title screen, hold M, and say *ship it*.
+   then open the URL in Chrome on a computer, press V on the title screen, set up Shoutr Flow,
+   and say *ship it*.
 
 **The leaderboard** needs a database and four settings before the first deploy that has it:
 

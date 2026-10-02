@@ -74,15 +74,37 @@ test('a command the recognizer takes back never blocks the next real one', () =>
 });
 
 test('the same command again inside the repeat window is one command', () => {
+  assert.equal(REPEAT_MS, 1500); // the spec's, decision 5
   assert.equal(replay([[0, 'ship it'], [REPEAT_MS - 1, 'ship it ship it']]).length, 1);
   assert.equal(replay([[0, 'ship it'], [REPEAT_MS, 'ship it ship it']]).length, 2);
 });
 
-test('a command heard where it cannot run is dropped, and the next real one is not its repeat', () => {
+test('a command heard where it cannot run is dropped, never kept for later', () => {
+  const counter = createCounter();
+  assert.deepEqual(counter.feed('ship it', 0, () => false), []);
+  // The same words again, once it could run: they were counted when they were heard.
+  assert.deepEqual(counter.feed('ship it', 5000), []);
+});
+
+test('a dropped command is not a fire for the next real one to be a repeat of', () => {
   const counter = createCounter();
   assert.deepEqual(counter.feed('ship it', 0, () => false), []);
   assert.deepEqual(names(counter.feed('ship it ship it', 500)), ['ship']);
   assert.deepEqual(counter.feed('ship it ship it', 600), []);
+});
+
+// The spec's list (decision 6), entry by entry: dropping one from the matcher must fail here.
+test('every sound-alike on the list fires its command, and says it was only close', () => {
+  const list = {
+    ship: ['chip it', 'sheep it', 'cheap it', 'ship at', 'shop it'],
+    rollback: ['throwback', 'throw back', 'role back', 'roll bag', 'row back', 'rule back', 'troll back'],
+    refactor: ['refector', 'reflector', 'reflect it', 'refractor', 'reactor', 'refract it', 'reflect her'],
+  };
+  for (const [name, heard] of Object.entries(list)) {
+    for (const text of heard) assert.deepEqual(replay([[0, text]]).map((f) => [f.name, f.alike]), [[name, true]], text);
+  }
+  const own = { 'ship it': 'ship', shipit: 'ship', rollback: 'rollback', 'roll back': 'rollback', refactor: 'refactor', 're-factor': 'refactor' };
+  for (const [text, name] of Object.entries(own)) assert.deepEqual(replay([[0, text]]).map((f) => [f.name, f.alike]), [[name, false]], text);
 });
 
 test('a new session starts its count again', () => {
@@ -93,6 +115,9 @@ test('a new session starts its count again', () => {
 });
 
 test('hold to talk: a command counts from key down until the tail after key up', () => {
+  assert.equal(HOLD_TAIL_MS, 600); // the spec's, decision 7
+  assert.equal(inHoldWindow(1600, 100, 1000), true);
+  assert.equal(inHoldWindow(1601, 100, 1000), false);
   assert.equal(inHoldWindow(50, null, null), false);
   assert.equal(inHoldWindow(99, 100, null), false);
   assert.equal(inHoldWindow(100, 100, null), true);
