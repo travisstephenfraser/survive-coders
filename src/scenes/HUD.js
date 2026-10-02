@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, freshKey, onAction, uiText } from '../util.js';
+import { UNBOUND, keymap } from '../keymap.js';
 import { isMuted, toggleMute } from '../audio.js';
 import { settings } from '../settings.js';
-import { retryLevel, run } from '../run.js';
+import { beginRun, retryLevel, run } from '../run.js';
 import { formatTime } from '../../shared/leaderboard.js';
 import { TOUCH, dimPad, showPad, touch } from '../touch.js';
 import PlayScene from './PlayScene.js';
@@ -16,8 +17,16 @@ const STRIP_Y = 474; // top of the bottom terminal strip
 // paused, a sound toggle.
 const PAUSE_BTN = { x: 684, y: 12, w: 36, h: 36 };
 const SOUND_BTN = { x: 390, y: 246, w: 180, h: 42 };
-// Paused, on every device: restart the level (under the sound toggle on touch).
-const RESTART_BTN = { x: 390, y: TOUCH ? 300 : 246, w: 180, h: 42 };
+// Paused, on every device: restart the level, start a new run, or quit to the title, side by
+// side (under the sound toggle on touch). Wide enough for the longest key name in front of the
+// label. `action` is the button's key in the map (keymap.js) and what it does (HUD.pauseActs).
+const BTN_Y = TOUCH ? 300 : 246;
+const PAUSE_BTNS = [
+  { x: 135, y: BTN_Y, w: 222, h: 42, action: 'restart', label: 'restart level' },
+  { x: 369, y: BTN_Y, w: 222, h: 42, action: 'newrun', label: 'new run' },
+  { x: 603, y: BTN_Y, w: 222, h: 42, action: 'title', label: 'quit to title' },
+];
+const BTN_PAD = 6; // half the gap between two, so one's margin never reaches into the next
 const hit = (p, r, pad = 0) => p.x >= r.x - pad && p.x < r.x + r.w + pad && p.y >= r.y - pad && p.y < r.y + r.h + pad;
 
 // Segmented pixel bar with 3-tone shading, drawn in world-pixel units.
@@ -44,12 +53,22 @@ function frame(g, x, y, w, h, border, fill) {
   g.fillStyle(fill).fillRect(x + P, y + P, w - 2 * P, h - 2 * P);
 }
 
+// A control's label with its key in front, or the label alone where the two don't fit or the
+// action has no key.
+function keyed(text, key, label, maxW) {
+  text.setText(`${key} ${label}`);
+  if (key === UNBOUND || text.width > maxW) text.setText(label);
+  return text;
+}
+
 export default class HUD extends Phaser.Scene {
   constructor() {
     super('HUD');
   }
 
   create() {
+    // ESC always pauses, so the pause screen can name a key even with pause unbound.
+    const pauseKey = keymap.codes('pause').length ? keymap.name('pause') : 'ESC';
     this.g = this.add.graphics();
 
     // Health: heart icon + segmented bar (drawn in update).
@@ -99,7 +118,7 @@ export default class HUD extends Phaser.Scene {
     this.toastText = uiText(this, 480, 158, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(3);
     // Paused: the scene dims so the text reads over the busy city.
     this.dim = this.add.rectangle(0, 0, 960, 540, 0x0d0d0d, 0.6).setOrigin(0).setDepth(2).setVisible(false);
-    this.pausedText = uiText(this, 480, 190, TOUCH ? 'PAUSED\n\ntap to resume' : 'PAUSED\n\nP: resume   N: mute   R: restart level', { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
+    this.pausedText = uiText(this, 480, 190, TOUCH ? 'PAUSED\n\ntap to resume' : `PAUSED\n\n${pauseKey}: resume   ${keymap.name('mute')}: mute`, { size: 24, color: '#d97757', ox: 0.5, oy: 0.5 })
       .setCenterAlign()
       .setDepth(3)
       .setVisible(false);
@@ -116,9 +135,15 @@ export default class HUD extends Phaser.Scene {
     const { x: sx, y: sy, w: sw, h: sh } = SOUND_BTN;
     this.soundBox = this.add.rectangle(sx, sy, sw, sh, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
     this.soundText = uiText(this, sx + sw / 2, sy + sh / 2, '', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
-    const { x: rx, y: ry, w: rw, h: rh } = RESTART_BTN;
-    this.restartBox = this.add.rectangle(rx, ry, rw, rh, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
-    this.restartText = uiText(this, rx + rw / 2, ry + rh / 2, 'restart level', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
+    // The pause buttons, each naming its key on a keyboard.
+    this.pauseButtons = PAUSE_BTNS.flatMap((b) => {
+      const box = this.add.rectangle(b.x, b.y, b.w, b.h, 0x0d0d0d).setOrigin(0).setStrokeStyle(3, 0xd97757).setDepth(4).setVisible(false);
+      const text = uiText(this, b.x + b.w / 2, b.y + b.h / 2, b.label, { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
+      if (!TOUCH) keyed(text, keymap.name(b.action), b.label, b.w - 24);
+      return [box, text];
+    });
+    // What each button, and its key, does. Each only acts while paused.
+    this.pauseActs = { restart: () => this.restartLevel(), newrun: () => this.newRun(), title: () => this.toTitle() };
 
     // Pause / mute live here because the HUD keeps running while the play scene is paused.
     // ESC always pauses, whatever the controls screen has set for pause (keymap.js).
@@ -126,11 +151,12 @@ export default class HUD extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', freshKey(togglePause));
     onAction(this, 'pause', togglePause);
     onAction(this, 'mute', () => toggleMute(this.sound));
-    onAction(this, 'restart', () => this.restartLevel());
+    for (const b of PAUSE_BTNS) onAction(this, b.action, () => this.pauseActs[b.action]());
 
     // Taps: power slots (any pointer, so a mouse can click them too), and on touch the
     // hold-to-talk slot, the pause button and the pause screen.
     this.talkPointer = null;
+    this.armed = null; // the pause button a press began on
     this.input.on('pointerdown', (p) => this.tap(p));
     const untap = (p) => {
       if (p.id !== this.talkPointer) return;
@@ -138,10 +164,11 @@ export default class HUD extends Phaser.Scene {
       voice.release();
     };
     this.input.on('pointerup', untap);
-    // The restart button acts on release, and only for a press that began on it.
+    // A pause button acts on release, and only for a press that began on it.
     this.input.on('pointerup', (p) => {
-      if (this.restartArmed && hit(p, RESTART_BTN, 12)) this.restartLevel();
-      this.restartArmed = false;
+      const btn = this.armed;
+      this.armed = null;
+      if (btn && hit(p, btn, BTN_PAD)) this.pauseActs[btn.action]();
     });
     this.input.on('pointerupoutside', untap);
 
@@ -181,8 +208,7 @@ export default class HUD extends Phaser.Scene {
     this.dim.setVisible(on);
     this.soundBox.setVisible(on && TOUCH);
     this.soundText.setVisible(on && TOUCH);
-    this.restartBox.setVisible(on);
-    this.restartText.setVisible(on);
+    for (const o of this.pauseButtons) o.setVisible(on);
     this.helpText.setVisible(on);
   }
 
@@ -195,12 +221,30 @@ export default class HUD extends Phaser.Scene {
     retryLevel(this, play.scene.key);
   }
 
+  // From the pause screen: a new run on a fresh clock, from the first level, without the title
+  // screen or the intros already seen (run.js beginRun). Only while paused, as restartLevel.
+  newRun() {
+    const play = this.playScene();
+    if (!play?.sys.isPaused()) return;
+    this.scene.stop(play.scene.key);
+    beginRun(this);
+  }
+
+  // From the pause screen: leave the run for the title screen, which resets the run clock
+  // (Title.create).
+  toTitle() {
+    const play = this.playScene();
+    if (!play?.sys.isPaused()) return;
+    this.scene.stop(play.scene.key);
+    this.scene.start('Title');
+  }
+
   tap(p) {
     const play = this.playScene();
     if (!play || this.registry.get('cutscene')) return;
     if (play.sys.isPaused()) {
-      this.restartArmed = hit(p, RESTART_BTN, 12);
-      if (this.restartArmed || !TOUCH) return;
+      this.armed = PAUSE_BTNS.find((b) => hit(p, b, BTN_PAD)) ?? null;
+      if (this.armed || !TOUCH) return;
       if (hit(p, SOUND_BTN, 12)) toggleMute(this.sound);
       else this.setPaused(false);
       return;
