@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { voice } from '../voice.js';
-import { ZOOM, floatText, worldText, freshKey } from '../util.js';
+import { ZOOM, actionKeys, floatText, held, onAction, worldText } from '../util.js';
 import { run } from '../run.js';
 import { sfx as playSfx, toggleMute } from '../audio.js';
 import { applyScreenFX, pop } from '../fx.js';
@@ -79,7 +79,7 @@ export default class Landing extends Phaser.Scene {
     this.cords = this.add.graphics().setDepth(4);
     cam.startFollow(this.player, true, 0.12, 0.12);
 
-    this.keys = this.input.keyboard.addKeys({ left: 'LEFT', right: 'RIGHT', a: 'A', d: 'D' });
+    this.keys = { left: actionKeys(this, 'left'), right: actionKeys(this, 'right') };
     showPad(true, { steerOnly: true }); // touch: the D-pad steers
     const hint = worldText(this, 320 + 160, 180 + 14, TOUCH ? 'hold ← → to steer · land on the Waymo' : '← → steer · land on the Waymo', {
       color: '#f5f5f5',
@@ -98,7 +98,7 @@ export default class Landing extends Phaser.Scene {
     const skip = () => this.state !== 'drift' && this.state !== 'street' && this.leave();
     for (const k of ['keydown-ENTER', 'keydown-SPACE', 'keydown-ESC']) this.input.keyboard.on(k, skip);
     this.input.on('pointerdown', skip);
-    this.input.keyboard.on('keydown-N', freshKey(() => toggleMute(this.sound))); // the HUD, which owns N, sits this out
+    onAction(this, 'mute', () => toggleMute(this.sound)); // the HUD, which owns mute, sits this out
     this.events.once('shutdown', () => {
       voice.keysSuspended = false;
       showPad(false);
@@ -133,7 +133,7 @@ export default class Landing extends Phaser.Scene {
   drift(time, dt) {
     const p = this.player;
     const k = this.keys;
-    const dir = (k.right.isDown || k.d.isDown || touch.right ? 1 : 0) - (k.left.isDown || k.a.isDown || touch.left ? 1 : 0);
+    const dir = (held(k.right) || touch.right ? 1 : 0) - (held(k.left) || touch.left ? 1 : 0);
     this.vx = Phaser.Math.Linear(this.vx, WIND + dir * STEER, 0.08);
     p.x = Phaser.Math.Clamp(p.x + this.vx * dt, 24, STOP - 30);
     p.y += DESCENT * dt;

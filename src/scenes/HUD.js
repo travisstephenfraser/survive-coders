@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { POWERS, voice } from '../voice.js';
-import { MAX_HP, MAX_TOKENS, freshKey, uiText } from '../util.js';
+import { MAX_HP, MAX_TOKENS, freshKey, onAction, uiText } from '../util.js';
 import { isMuted, toggleMute } from '../audio.js';
 import { settings } from '../settings.js';
 import { retryLevel, run } from '../run.js';
@@ -121,12 +121,12 @@ export default class HUD extends Phaser.Scene {
     this.restartText = uiText(this, rx + rw / 2, ry + rh / 2, 'restart level', { size: 16, color: '#f5f5f5', ox: 0.5, oy: 0.5 }).setDepth(5).setVisible(false);
 
     // Pause / mute live here because the HUD keeps running while the play scene is paused.
-    const kb = this.input.keyboard;
+    // ESC always pauses, whatever the controls screen has set for pause (keymap.js).
     const togglePause = () => this.setPaused(!this.playScene()?.sys.isPaused());
-    kb.on('keydown-P', freshKey(togglePause));
-    kb.on('keydown-ESC', freshKey(togglePause));
-    kb.on('keydown-N', freshKey(() => toggleMute(this.sound)));
-    kb.on('keydown-R', freshKey(() => this.restartLevel()));
+    this.input.keyboard.on('keydown-ESC', freshKey(togglePause));
+    onAction(this, 'pause', togglePause);
+    onAction(this, 'mute', () => toggleMute(this.sound));
+    onAction(this, 'restart', () => this.restartLevel());
 
     // Taps: power slots (any pointer, so a mouse can click them too), and on touch the
     // hold-to-talk slot, the pause button and the pause screen.

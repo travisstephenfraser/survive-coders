@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TOUCH } from './touch.js';
+import { keymap } from './keymap.js';
 
 // "Wispr Flow": spoken keywords fire powers.
 export const POWERS = {
@@ -22,21 +23,21 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.listening = false; // M is held
     this.running = false; // recognizer session active
     this.pendingFire = false;
-    this.keysSuspended = false; // while typing (the Chute's terminal), m and 1/2/3 are just letters
+    this.keysSuspended = false; // while typing (the Chute's terminal), the talk and power keys are just letters
     this.gate = null; // set by the play scene: true while an intro owns the controls
     this.heldLocked = false; // this push-to-talk hold began under the gate
     this.status = `hold ${TALK} to talk`;
     window.addEventListener('keydown', (e) => {
       if (this.keysSuspended) return;
-      if (e.key === 'm' || e.key === 'M') {
+      if (keymap.has('talk', e.keyCode)) {
         if (!e.repeat) this.press();
         return;
       }
       if (e.repeat) return;
-      for (const [name, p] of Object.entries(POWERS)) if (e.key === p.key) this.trigger(name, 'key');
+      for (const name of Object.keys(POWERS)) if (keymap.has(name, e.keyCode)) this.trigger(name, 'key');
     });
     window.addEventListener('keyup', (e) => {
-      if (e.key === 'm' || e.key === 'M') this.release();
+      if (keymap.has('talk', e.keyCode)) this.release();
     });
     window.addEventListener('blur', () => this.release());
   }

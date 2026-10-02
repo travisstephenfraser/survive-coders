@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import Laptop from './Laptop.js';
-import { MAX_HP, worldText } from '../util.js';
+import { MAX_HP, actionKeys, held, worldText } from '../util.js';
 import { pop, shake } from '../fx.js';
 import { TOUCH, touch } from '../touch.js';
 
@@ -29,6 +29,10 @@ const TRAP_MS = 2600; // a founder's demo runs this long before it crashes on it
 const TRAP_MASHES = 7; // or mash your way out sooner
 const LOCK_GRACE_MS = 1000; // after a contract lock ends, no new lock for this long
 
+// How many of these keys went down since the last ask. Every key is asked: JustDown clears a
+// key's flag, and one left set would count as a press a frame late.
+const pressed = (keys) => keys.filter((k) => Phaser.Input.Keyboard.JustDown(k)).length;
+
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
     super(scene, x, y, 'player_idle');
@@ -54,6 +58,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.launchedUntil = 0;
     this.touchFireWas = false;
     this.fireLatched = false; // fire held since an intro: needs a fresh press (swallowEdges)
+    this.jumpLatched = false; // a jump pressed as an intro ended: dropped (swallowEdges)
     this.coyoteUntil = 0;
     this.jumpBufferedUntil = 0;
     this.wasOnFloor = true;
@@ -62,11 +67,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.lastSnap = 0;
     this.history = [];
     this.safe = { x, y };
-    this.keys = scene.input.keyboard.addKeys({
-      left: 'LEFT', right: 'RIGHT', a: 'A', d: 'D',
-      jump: 'UP', jump2: 'W', jump3: 'Z',
-      fire: 'SPACE', fire2: 'X', fire3: 'J',
-    });
+    // Each action's keys, as the controls screen has them set.
+    this.keys = { left: actionKeys(scene, 'left'), right: actionKeys(scene, 'right'), jump: actionKeys(scene, 'jump'), fire: actionKeys(scene, 'fire') };
     this.laptop = new Laptop(scene, this);
     pop(this);
     pop(this.laptop);
@@ -98,7 +100,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.tickTrapped(time);
       return;
     }
-    let dir = (k.right.isDown || k.d.isDown || touch.right ? 1 : 0) - (k.left.isDown || k.a.isDown || touch.left ? 1 : 0);
+    let dir = (held(k.right) || touch.right ? 1 : 0) - (held(k.left) || touch.left ? 1 : 0);
     const reversed = time < this.reversedUntil;
     if (reversed) dir = -dir;
     const left = this.reversedUntil - time; // the chip blinks through its last 0.6s
@@ -111,10 +113,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.setFlipX(dir < 0);
     }
 
-    const JD = Phaser.Input.Keyboard.JustDown;
-    const jumpHeld = k.jump.isDown || k.jump2.isDown || k.jump3.isDown || touch.jump;
+    const jumpHeld = held(k.jump) || touch.jump;
     const touchJump = touch.takeJump(); // always consumed, so a press can't linger a frame
-    if (JD(k.jump) || JD(k.jump2) || JD(k.jump3) || touchJump) this.jumpBufferedUntil = time + BUFFER_MS;
+    const jumped = pressed(k.jump) || touchJump;
+    if (this.jumpLatched) this.jumpLatched = false;
+    else if (jumped) this.jumpBufferedUntil = time + BUFFER_MS;
     if (onFloor) this.coyoteUntil = time + COYOTE_MS;
     if (time < this.jumpBufferedUntil && time < this.coyoteUntil) {
       this.setVelocityY(-JUMP);
@@ -149,7 +152,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     const locked = time < this.lockedUntil;
     this.lockChip.setVisible(locked).setPosition(this.x, this.y - 22);
     this.lockFine.setVisible(locked).setPosition(this.x, this.y - 14);
-    const fireHeld = k.fire.isDown || k.fire2.isDown || k.fire3.isDown || touch.fire;
+    const fireHeld = held(k.fire) || touch.fire;
     if (!fireHeld) this.fireLatched = false; // let go since an intro: fire works again
     const firing = !locked && !this.fireLatched && fireHeld;
     const tokens = () => this.scene.registry.get('maxTokens') > 0;
@@ -189,14 +192,15 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   // An intro owns the controls: presses made meanwhile are dropped, and fire held through its
   // end needs a fresh press (a SPACE that skipped an intro used to fire a prompt as well).
+  // The same for jump, which can be rebound to a skip key: that press arrives in the frame
+  // control returns, after the last call here, so the first tick drops it (jumpLatched).
   // Velocity is left alone: the intros script the player's hop out of the car and the gondola.
   swallowEdges() {
-    const k = this.keys;
-    const JD = Phaser.Input.Keyboard.JustDown;
-    for (const key of [k.jump, k.jump2, k.jump3]) JD(key);
+    pressed(this.keys.jump);
     touch.takeJump();
     this.jumpBufferedUntil = 0;
     this.fireLatched = true;
+    this.jumpLatched = true;
   }
 
   // Controls held with the player in play (the Hydra's entrance): stand where you are.
@@ -224,10 +228,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   tickTrapped(time) {
     const k = this.keys;
     const t = this.trapped;
-    const JD = Phaser.Input.Keyboard.JustDown;
     const touchFire = touch.fire && !this.touchFireWas;
     this.touchFireWas = touch.fire;
-    const presses = [k.jump, k.jump2, k.jump3, k.fire, k.fire2, k.fire3].filter((key) => JD(key)).length + (touch.takeJump() ? 1 : 0) + (touchFire ? 1 : 0);
+    const presses = pressed(k.jump) + pressed(k.fire) + (touch.takeJump() ? 1 : 0) + (touchFire ? 1 : 0);
     if (presses) {
       t.n += presses;
       this.pose(1.15, 0.9, 80);

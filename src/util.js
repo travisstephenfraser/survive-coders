@@ -1,5 +1,6 @@
 import { hex } from './palette.js';
 import { FLOAT_MS, JOKE_HOLD_MS } from './pacing.js';
+import { keymap } from './keymap.js';
 
 // World scenes render at 320x180 and zoom 3x. All text is the 8x8 pixel font ('pixel',
 // built in Boot from the Ninja Adventure sheet); sizes snap to whole font pixels so glyphs
@@ -78,3 +79,13 @@ export const params = new URLSearchParams(window.location.search);
 export const freshKey = (fn) => (e) => {
   if (e?.eventPhase !== 0) fn(e);
 };
+
+// The Phaser keys for an action, as the controls screen has them set (keymap.js): made when a
+// level starts, since the map only changes between runs. An unbound action has none.
+export const actionKeys = (scene, action) => keymap.codes(action).map((code) => scene.input.keyboard.addKey(code));
+
+// Whether any of an action's keys is down.
+export const held = (keys) => keys.some((k) => k.isDown);
+
+// An action's keydown in this scene, for the actions that are a press (pause, mute), not a hold.
+export const onAction = (scene, action, fn) => scene.input.keyboard.on('keydown', freshKey((e) => keymap.has(action, e.keyCode) && fn(e)));
