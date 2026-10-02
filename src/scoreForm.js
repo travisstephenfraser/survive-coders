@@ -7,6 +7,9 @@ import { PLATFORMS, checkLink, checkName, parseProfile } from '../shared/leaderb
 // scene all listen on window: a keystroke that got there would fire a power, start a run
 // (ENTER, T), or be swallowed by the keys Phaser captures for play (W A D Z X J, space).
 //
+// Once the run is posted the form hands two keys on itself: R (`again`) and T (`title`). The
+// inputs are disabled by then, so nothing is being typed.
+//
 // `submit(profile)` posts and resolves to the API result; `view(board)` opens the leaderboard;
 // `share(r)`, after a post, shares the posted run (called inside the click, a user gesture).
 
@@ -62,7 +65,7 @@ export function isolate(node) {
 // What sharing reports back (src/share.js shareRun).
 export const SHARED = { shared: 'shared ✓', copied: 'copied ✓: paste it anywhere', manual: "couldn't share: copy the line below by hand", cancelled: null };
 
-export function scoreForm({ profile, touch, submit, view, close, share }) {
+export function scoreForm({ profile, touch, submit, view, close, share, again, title }) {
   ensureFormCss();
 
   const name = el('input', { name: 'name', value: profile.name, maxLength: 16, autocomplete: 'off', autocapitalize: 'off', spellcheck: false, enterKeyHint: 'send', placeholder: 'your name' });
@@ -107,8 +110,12 @@ export function scoreForm({ profile, touch, submit, view, close, share }) {
   handle.addEventListener('change', tidyHandle);
   // The phone keyboard can leave the page scrolled when it closes.
   form.addEventListener('focusout', () => setTimeout(() => form.contains(document.activeElement) || window.scrollTo(0, 0)));
+  let posted = false;
   form.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') return close();
+    if (!posted || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'r' || e.key === 'R') again();
+    else if (e.key === 't' || e.key === 'T') title();
   });
   skip.addEventListener('click', close);
 
@@ -168,7 +175,8 @@ export function scoreForm({ profile, touch, submit, view, close, share }) {
     });
     buttons.replaceChildren(shareBtn, board, shut);
     for (const input of [name, platform, handle]) input.disabled = true;
-    hint.textContent = touch ? '' : 'ESC close';
+    posted = true;
+    hint.textContent = touch ? '' : 'R new run · T title';
     board.focus();
   }
 

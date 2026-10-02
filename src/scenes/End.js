@@ -94,7 +94,12 @@ export default class End extends Phaser.Scene {
     // going), or a new run if the death was in the first level.
     const playAgain = once(() => (win ? beginRun(this) : retryLevel(this, checkpoint ?? 'Level1')));
     const toTitle = once(() => this.scene.start('Title'));
+    // The posted form hands R and T back here (scoreForm.js), so R plays again wherever
+    // ENTER does.
+    this.playAgain = playAgain;
+    this.toTitle = toTitle;
     this.input.keyboard.once('keydown-ENTER', playAgain);
+    this.input.keyboard.once('keydown-R', playAgain);
     this.input.keyboard.once('keydown-T', toTitle);
     // S shares. A native listener, not Phaser's (which runs on the next frame), so the share
     // sheet or clipboard sees the keypress as the user gesture it is. The panels stop keys
@@ -137,6 +142,8 @@ export default class End extends Phaser.Scene {
       },
       view: (board) => this.scene.start('Leaderboard', { board }),
       share: () => this.shareNow(),
+      again: () => this.playAgain(),
+      title: () => this.toTitle(),
       close: () => {
         this.form?.destroy();
         this.form = null;
