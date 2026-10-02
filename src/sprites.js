@@ -448,6 +448,8 @@ function codeLines(ctx, ox, seed, colors) {
   }
 }
 
+const STREET_NEON = ['#c4f6f8', '#39c5cf', '#1f6a70']; // hot edge, mid, glow
+
 // Neon street surface: hot top edge, glow falloff, circuit traces below.
 function neonTop(ctx, ox, hot, mid, glow, seed) {
   ctx.fillStyle = '#121114';
@@ -457,7 +459,7 @@ function neonTop(ctx, ox, hot, mid, glow, seed) {
     ctx.fillStyle = c;
     ctx.fillRect(ox, y, 16, 1);
   }
-  ctx.fillStyle = '#1f6a70';
+  ctx.fillStyle = PIX.h;
   ctx.fillRect(ox + 3, 7, 1, 1);
   ctx.fillRect(ox + 12, 11, 1, 1);
 }
@@ -757,11 +759,14 @@ const DRAWN = {
     h: 16,
     draw(ctx) {
       const at = (i) => i * 16;
-      neonTop(ctx, at(T.TOP), '#f3a07a', PIX.H, '#6b3b2b', 7);
+      // The street's neon is cyan, the sunset's complement: an orange edge was lost against the
+      // sky, the trolleys and the lit houses, and to a red-green colourblind eye all four were
+      // one khaki. PlayScene.markBlocks washes the blocks in the same cyan.
+      neonTop(ctx, at(T.TOP), ...STREET_NEON, 7);
       fillTile(ctx, at(T.FILL), 3);
-      slab(ctx, at(T.PLAT_L), '#f3a07a', PIX.H, '#6b3b2b', 'L');
-      slab(ctx, at(T.PLAT_M), '#f3a07a', PIX.H, '#6b3b2b', '');
-      slab(ctx, at(T.PLAT_R), '#f3a07a', PIX.H, '#6b3b2b', 'R');
+      slab(ctx, at(T.PLAT_L), ...STREET_NEON, 'L');
+      slab(ctx, at(T.PLAT_M), ...STREET_NEON, '');
+      slab(ctx, at(T.PLAT_R), ...STREET_NEON, 'R');
       // Anthropic HQ interior: oak floor, wood-slat walls, wooden shelf platforms.
       woodFloor(ctx, at(T.HQ_TOP));
       woodFill(ctx, at(T.HQ_FILL));
