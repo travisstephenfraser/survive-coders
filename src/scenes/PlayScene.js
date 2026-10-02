@@ -4,7 +4,7 @@ import { SPAWNERS } from '../entities/enemies.js';
 import { T } from '../sprites.js';
 import { FACADE } from '../hqArt.js';
 import { addParallax, panParallax } from '../backdrops.js';
-import { voice } from '../voice.js';
+import { howTo, voice } from '../voice.js';
 import { MAX_HP, MAX_TOKENS, TILE, ZOOM, floatText, jokeText, worldText } from '../util.js';
 import { applyScreenFX, flash, shake } from '../fx.js';
 import { sfx as playSfx } from '../audio.js';
@@ -218,7 +218,7 @@ export default class PlayScene extends Phaser.Scene {
     const tip = r.get('toast');
     if (r.get('rollbackTaught') || this.player.dead || this.player.hp >= MAX_HP || (tip && this.time.now < tip.until) || r.get('boss')?.overflow) return;
     r.set('rollbackTaught', true);
-    this.toast(TOUCH ? 'Took a hit? Tap "rollback" below' : `Took a hit? HOLD ${keymap.name('talk')}, say "rollback" (or ${keymap.name('rollback')})`, 'rollback');
+    this.toast(TOUCH ? 'Took a hit? Tap "rollback" below' : `Took a hit? ${howTo('rollback', { first: true })}`, 'rollback');
   }
 
   sfx(key, volume = 0.5) {

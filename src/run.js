@@ -41,3 +41,24 @@ export function beginRun(scene) {
   if (params.has('tower')) scene.scene.start('Tower', { floor: [59, 60, 61].includes(floor) ? floor : 59 });
   else scene.scene.start({ park: 'Park', chute: 'Chute', landing: 'Landing', ride: 'Ride', boss: 'BossHQ' }[JUMPS.find((k) => params.has(k))] ?? 'Level1', {});
 }
+
+// A run from the title screen (PLAY NOW, or the mic check it leads to): the intros and the
+// tips play again.
+export function beginFromTitle(scene) {
+  scene.registry.set({ bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, lockTaught: false });
+  beginRun(scene);
+}
+
+// Shoutr Flow listens while a level is being played and at no other time: not on the title, a
+// death or win screen, the pause screen or a hidden tab. Checked every frame, and when the tab
+// hides (a hidden tab draws no frames). voice.listenWhile only acts on a change.
+export function installVoiceSession(game) {
+  // Phaser only pauses a scene on the next frame, and a hidden tab draws none, so a pause that
+  // has been asked for counts too (HUD.setPaused's flag): without it the mic opened for a frame
+  // or two behind the pause screen on every return to a tab that had paused itself.
+  const paused = (s) => s.sys.isPaused() || (s.pauseAsked && s.sys.isActive());
+  const playing = () => run.state === 'running' && !document.hidden && !game.scene.isActive('End') && !game.scene.scenes.some(paused);
+  const sync = () => voice.listenWhile(playing());
+  game.events.on('step', sync);
+  document.addEventListener('visibilitychange', sync);
+}

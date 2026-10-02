@@ -17,12 +17,14 @@ import HUD from './scenes/HUD.js';
 import End from './scenes/End.js';
 import Settings from './scenes/Settings.js';
 import Controls from './scenes/Controls.js';
+import MicCheck from './scenes/MicCheck.js';
 import Leaderboard from './scenes/Leaderboard.js';
 import Cine from './scenes/Cine.js';
 import { params } from './util.js';
 import { CRTPipeline } from './fx.js';
 import { voice } from './voice.js';
-import { installRunClock } from './run.js';
+import { installRunClock, installVoiceSession } from './run.js';
+import { mic } from './micStream.js';
 
 // Arrivals from a shared run (?vs=, see src/arrival.js) count as page views of /from-share/s or
 // /from-share/r, so the dashboard shows whether shares bring anyone back.
@@ -48,10 +50,11 @@ window.game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   pipeline: { CRTPipeline },
   dom: { createContainer: true }, // real links and inputs over the canvas (leaderboard, score form)
-  scene: [Boot, Songs, Title, Settings, Controls, Leaderboard, Level1, Park, Tower, Elevator, Chute, Landing, Ride, Arrival, BossHQ, HUD, Cine, Terminal, End],
+  scene: [Boot, Songs, Title, Settings, Controls, MicCheck, Leaderboard, Level1, Park, Tower, Elevator, Chute, Landing, Ride, Arrival, BossHQ, HUD, Cine, Terminal, End],
 });
 
 installRunClock(window.game);
+installVoiceSession(window.game);
 
 // Keep the canvas fitted after a phone turns. Phaser's orientation listener refits using the
 // parent size from before the turn, then records the new size inside that same refresh
@@ -67,4 +70,4 @@ setInterval(() => {
   if (Math.abs(s.displaySize.width - s.gameSize.width * fit) >= 1) s.refresh();
 }, 250);
 
-if (import.meta.env.DEV) window.voice = voice; // debugging hook for dev builds only
+if (import.meta.env.DEV) Object.assign(window, { voice, mic }); // debugging hooks for dev builds only

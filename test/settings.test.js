@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 // settings.js reads storage once, on load, so each case loads a fresh copy of the module
 // against its own fake localStorage.
 let copy = 0;
-async function load(stored) {
-  const data = new Map(stored === undefined ? [] : [['sc_settings', stored]]);
+async function load(stored, more = {}) {
+  const data = new Map([...(stored === undefined ? [] : [['sc_settings', stored]]), ...Object.entries(more)]);
   globalThis.localStorage = {
     getItem: (k) => (data.has(k) ? data.get(k) : null),
     setItem: (k, v) => data.set(k, String(v)),
@@ -53,4 +53,44 @@ test('a storage that throws never breaks the game', async () => {
   assert.equal(settings.get('sfx'), DEFAULTS.sfx);
   settings.set('sfx', 0.5);
   assert.equal(settings.get('sfx'), 0.5);
+});
+
+test('the mic mode is open unless one of the three is stored', async () => {
+  const fresh = await load();
+  assert.deepEqual(fresh.MIC_MODES, ['open', 'hold', 'off']);
+  assert.equal(fresh.settings.get('mic'), 'open');
+  for (const mode of ['hold', 'off']) {
+    const { settings } = await load(JSON.stringify({ v: 1, mic: mode }));
+    assert.equal(settings.get('mic'), mode);
+  }
+  for (const bad of ['loud', '', 3, null]) {
+    const { settings } = await load(JSON.stringify({ v: 1, mic: bad }));
+    assert.equal(settings.get('mic'), 'open', JSON.stringify(bad));
+  }
+});
+
+test('a passed mic check is remembered on its own, apart from the settings', async () => {
+  const first = await load();
+  assert.equal(first.micCheck.passed(), false);
+  first.micCheck.pass();
+  assert.equal(first.micCheck.passed(), true);
+  assert.equal(first.data.get('sc_mic_ok'), '1');
+  assert.equal(first.data.has('sc_settings'), false);
+  const later = await load(undefined, { sc_mic_ok: '1' });
+  assert.equal(later.micCheck.passed(), true);
+});
+
+test('with storage blocked, a passed check still holds until the page is closed', async () => {
+  globalThis.localStorage = {
+    getItem() {
+      throw new Error('blocked');
+    },
+    setItem() {
+      throw new Error('blocked');
+    },
+  };
+  const { micCheck } = await import(`../src/settings.js?copy=${copy++}`);
+  assert.equal(micCheck.passed(), false);
+  micCheck.pass();
+  assert.equal(micCheck.passed(), true);
 });

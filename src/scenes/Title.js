@@ -5,7 +5,7 @@ import { applyScreenFX } from '../fx.js';
 import { CREDITS, terminalWindow } from '../terminal.js';
 import { TOUCH, enterFullscreen } from '../touch.js';
 import { menu, textRow } from '../menu.js';
-import { beginRun, run } from '../run.js';
+import { beginFromTitle, run } from '../run.js';
 import { arrivalBanner } from '../arrival.js';
 import { keymap } from '../keymap.js';
 
@@ -39,7 +39,9 @@ export default class Title extends Phaser.Scene {
     const lines = [
       TOUCH ? '← → move    ↑ jump    >_ fire (hold it)' : `${keymap.pair('left', 'right')} move    ${keymap.names('jump', ' / ')} jump    ${key('fire')} fire prompts`,
       '',
-      TOUCH ? `powers: tap the terminal bar${voice.supported ? ', or hold talk' : ''}` : `voice: HOLD ${key('talk')}, say a command, let go`,
+      TOUCH
+        ? `powers: tap the terminal bar${voice.supported ? ', or hold talk' : ''}`
+        : { open: 'voice: say a command out loud', hold: `voice: HOLD ${key('talk')}, say a command, let go`, keys: 'powers: the keys below' }[voice.hint],
       '',
       '',
       '',
@@ -61,20 +63,32 @@ export default class Title extends Phaser.Scene {
       /* storage blocked: default off */
     }
     this.registry.set('god', god);
-    // Explicit mic setup (V, or a tap) so a permission prompt never interrupts a run; keys
-    // 1/2/3 and the power taps always work.
+    // Mic setup, so a permission prompt never interrupts a run: on a keyboard V opens the mic
+    // check (PLAY NOW leads to it once by itself); on a phone a tap asks for the mic. The keys
+    // and the power taps always work.
     const micText = uiText(this, left + 520, 428, '', { size: 16 });
     const showMic = () => {
-      if (TOUCH) micText.setText(voice.primed ? 'mic ready ✓' : voice.supported ? 'tap: set up mic' : 'no speech: tap powers');
-      else micText.setText(voice.primed ? 'V  mic ready ✓' : voice.supported ? 'V  set up mic (optional)' : `no speech here: ${keymap.short(Object.keys(POWERS), '/') ? `keys ${powerKeys.join('/')}` : 'use the keys'}`);
-      micText.setTint(voice.primed ? 0x3fb950 : 0x8b8b8b);
+      if (TOUCH) {
+        micText.setText(voice.primed ? 'mic ready ✓' : voice.supported ? 'tap: set up mic' : 'no speech: tap powers');
+        micText.setTint(voice.primed ? 0x3fb950 : 0x8b8b8b);
+        return;
+      }
+      const possible = voice.onDevice && voice.local !== 'unavailable';
+      const how = { open: 'open', hold: `hold ${key('talk')}`, off: 'off' }[voice.mode];
+      const set = possible && voice.ready;
+      micText.setText(!possible ? 'needs Chrome on a computer' : voice.mode === 'off' ? 'V  Shoutr Flow: off' : set ? `V  Shoutr Flow: ${how} ✓` : 'V  set up Shoutr Flow');
+      micText.setTint(set ? 0x3fb950 : 0x8b8b8b);
     };
     showMic();
     const primeMic = async () => {
       await voice.prime();
       showMic();
     };
-    this.input.keyboard.on('keydown-V', primeMic);
+    // The browser's answer about its speech pack decides the line, and whether PLAY NOW goes
+    // by the check.
+    if (!TOUCH) voice.probe().then(() => micText.active && showMic());
+    const openCheck = () => voice.onDevice && voice.local && voice.local !== 'unavailable' && this.scene.start('MicCheck', { then: 'title' });
+    this.input.keyboard.on('keydown-V', () => (TOUCH ? primeMic() : openCheck()));
     const godNote = uiText(this, left + 520, 452, '', { size: 16, color: '#3fb950' }).setAlpha(0);
     this.input.keyboard.createCombo('GOD', { resetOnMatch: true });
     this.input.keyboard.on('keycombomatch', () => {
@@ -98,10 +112,9 @@ export default class Title extends Phaser.Scene {
     const go = () => {
       if (started) return;
       started = true;
-      // A run from the title plays the intros and tips again. Dev shortcuts: ?park,
-      // ?tower=59|60|61, ?chute, ?landing, ?ride, ?boss jump straight to a level (unranked).
-      this.registry.set({ bossIntroSeen: false, introSeen: false, parkIntroSeen: false, rollbackTaught: false, lockTaught: false });
-      beginRun(this);
+      // Dev shortcuts: ?park, ?tower=59|60|61, ?chute, ?landing, ?ride, ?boss jump straight
+      // to a level (unranked).
+      beginFromTitle(this);
     };
     // A row picks on the release of a press that began on it, so a tap that left another screen
     // can't start a run. PLAY NOW's tap also takes a phone fullscreen: Android only grants it
@@ -112,7 +125,9 @@ export default class Title extends Phaser.Scene {
         textRow(this, left, 414, 'PLAY NOW', {
           onPick: (via) => {
             if (via === 'pointer') enterFullscreen();
-            go();
+            // Once per browser, the mic check comes first. It is before the run's clock.
+            if (voice.checkDue) this.scene.start('MicCheck', { then: 'run' });
+            else go();
           },
         }),
         textRow(this, left, 446, 'LEADERBOARD', { onPick: () => this.scene.start('Leaderboard') }),
