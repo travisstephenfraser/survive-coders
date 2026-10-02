@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { uiText } from '../util.js';
 import { applyScreenFX, setScreenFX, shake } from '../fx.js';
 import { isMuted, musicVolume, setMuted, sfx as playSfx } from '../audio.js';
-import { REDUCED_MOTION, settings } from '../settings.js';
+import { MIC_MODES, REDUCED_MOTION, micCheck, settings } from '../settings.js';
+import { voice } from '../voice.js';
 import { terminalWindow } from '../terminal.js';
 import { TOUCH, canFullscreen, isFullscreen, toggleFullscreen } from '../touch.js';
 import { menu, textRow } from '../menu.js';
@@ -11,6 +12,7 @@ import { keymap } from '../keymap.js';
 const X_LABEL = 70;
 const X_VALUE = 380;
 const DOTS = 10;
+const ROW_H = 30; // eleven rows and BACK, above the hint
 
 // The settings screen, from the title. Everything applies at once and is remembered in this
 // browser (settings.js); the controls row opens the key map's own screen (Controls.js).
@@ -33,6 +35,16 @@ export default class Settings extends Phaser.Scene {
       settings.set(key, !settings.get(key));
       after?.(settings.get(key));
     };
+    // Shoutr Flow: how the mic listens on a keyboard. Where the browser can't recognise speech
+    // on the device there is nothing to choose.
+    const micPossible = voice.onDevice && voice.local !== 'unavailable';
+    const micValue = () =>
+      micPossible ? { open: 'open: say it, no key', hold: `hold ${keymap.name('talk')} to talk`, off: 'off: keys only' }[settings.get('mic')] : 'needs Chrome on a computer';
+    const micStep = (dir = 1) => {
+      if (!micPossible) return;
+      const at = MIC_MODES.indexOf(settings.get('mic'));
+      settings.set('mic', MIC_MODES[(at + dir + MIC_MODES.length) % MIC_MODES.length]);
+    };
     const rows = [
       this.volumeRow('music volume', 'music', () => this.previewMusic()),
       this.volumeRow('sfx volume', 'sfx', () => playSfx(this, 'star', 0.5)),
@@ -42,14 +54,17 @@ export default class Settings extends Phaser.Scene {
       ['flashes', () => onOff(settings.get('flash')), toggle('flash')],
       canFullscreen() && ['fullscreen', () => onOff(isFullscreen()), () => toggleFullscreen()],
       ['run timer', () => (settings.get('timer') ? 'shown' : 'hidden'), toggle('timer')],
+      !TOUCH && ['Shoutr Flow', micValue, () => micStep(1), micStep],
+      !TOUCH && micPossible && ['test microphone', () => (micCheck.passed() ? 'passed ✓' : 'not set up'), () => this.scene.start('MicCheck', { then: 'settings' }), () => {}],
       !TOUCH && ['controls', () => (keymap.isDefault() ? 'default keys' : 'custom keys'), () => this.scene.start('Controls'), () => {}],
     ].filter(Boolean);
 
-    const items = rows.map((r, i) => (Array.isArray(r) ? this.row(win.y + 92 + i * 36, ...r) : r(win.y + 92 + i * 36)));
+    const items = rows.map((r, i) => (Array.isArray(r) ? this.row(win.y + 92 + i * ROW_H, ...r) : r(win.y + 92 + i * ROW_H)));
     const back = () => this.scene.start('Title', { from: 'settings' });
-    items.push(textRow(this, X_LABEL, win.y + 92 + items.length * 36 + 2, 'BACK', { size: 16, onPick: back }));
-    // Back from the controls screen: on the row that opened it.
-    menu(this, items, { onBack: back, start: from === 'controls' ? rows.findIndex((r) => r[0] === 'controls') : 0 });
+    items.push(textRow(this, X_LABEL, win.y + 92 + items.length * ROW_H + 2, 'BACK', { size: 16, onPick: back }));
+    // Back from the controls screen or the mic check: on the row that opened it.
+    const opened = { controls: 'controls', mic: 'test microphone' }[from];
+    menu(this, items, { onBack: back, start: opened ? rows.findIndex((r) => r[0] === opened) : 0 });
 
     // Fullscreen can also end from outside (ESC, the browser's own button).
     const redraw = () => items.forEach((it) => it.redraw());
@@ -76,7 +91,7 @@ export default class Settings extends Phaser.Scene {
     let focused = false;
     const row = {
       val,
-      bounds: () => new Phaser.Geom.Rectangle(X_LABEL - 10, y - 8, 820, 32),
+      bounds: () => new Phaser.Geom.Rectangle(X_LABEL - 10, y - 7, 820, ROW_H),
       focus(on) {
         focused = on;
         row.redraw();
