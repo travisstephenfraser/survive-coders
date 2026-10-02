@@ -354,11 +354,12 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
-  // Blocks read as foreground against the equally dark city: a warm orange wash over all
-  // terrain, then a dim neon edge on the exposed side faces of ground blocks.
+  // Blocks read as foreground against the equally dark city: a cyan wash over all terrain (the
+  // street's neon, see STREET_NEON in sprites.js; orange matched the sunset and the trolleys),
+  // then a dim neon edge on the exposed side faces of ground blocks.
   markBlocks(at, W, H) {
     const g = this.add.graphics().setDepth(1);
-    g.fillStyle(0xd97757, 0.3);
+    g.fillStyle(0x39c5cf, 0.22);
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; ) {
         const ch = at(x, y);
@@ -369,7 +370,7 @@ export default class PlayScene extends Phaser.Scene {
         x = end;
       }
     }
-    g.fillStyle(0xb8603f);
+    g.fillStyle(0x2a8f98);
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         if (at(x, y) !== '#') continue;
