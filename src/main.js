@@ -17,6 +17,7 @@ import HUD from './scenes/HUD.js';
 import End from './scenes/End.js';
 import Settings from './scenes/Settings.js';
 import Controls from './scenes/Controls.js';
+import MicCheck from './scenes/MicCheck.js';
 import Leaderboard from './scenes/Leaderboard.js';
 import Cine from './scenes/Cine.js';
 import { params } from './util.js';
@@ -49,7 +50,7 @@ window.game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   pipeline: { CRTPipeline },
   dom: { createContainer: true }, // real links and inputs over the canvas (leaderboard, score form)
-  scene: [Boot, Songs, Title, Settings, Controls, Leaderboard, Level1, Park, Tower, Elevator, Chute, Landing, Ride, Arrival, BossHQ, HUD, Cine, Terminal, End],
+  scene: [Boot, Songs, Title, Settings, Controls, MicCheck, Leaderboard, Level1, Park, Tower, Elevator, Chute, Landing, Ride, Arrival, BossHQ, HUD, Cine, Terminal, End],
 });
 
 installRunClock(window.game);
