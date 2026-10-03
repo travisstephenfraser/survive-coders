@@ -31,9 +31,11 @@ const NO_SPEECH = () => `no speech API here: use ${powerKeys()}`;
 const SR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
 const LOCAL = { langs: ['en-US'], processLocally: true };
 const HEARD_MS = 2500; // how long the HUD shows what Shoutr Flow last heard
+const START_MS = 5000; // a recognizer that never sends `start` must not keep the mic open forever
 // Errors a session does not get over by being started again.
-const HARD = ['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'];
+const HARD = ['not-allowed', 'service-not-allowed', 'language-not-supported'];
 const MIC_ERRORS = { blocked: 'mic blocked', none: 'no microphone', failed: 'mic failed' };
+const SPEECH_ERRORS = { 'not-allowed': 'mic blocked', 'service-not-allowed': 'speech service blocked' };
 
 // How a tip tells the player to run a power, by how voice is set up here. `short` for the tips
 // that are already long; `first` when it starts a sentence.
@@ -78,6 +80,8 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     this.error = null; // why voice stopped, for the HUD
     this.lastError = null;
     this.strikes = 0;
+    this.retryTimer = null;
+    this.startTimer = null;
     this.down = null; // the talk key's last hold, for hold-to-talk's window
     this.up = null;
     this.counter = createCounter('open');
@@ -253,7 +257,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   }
 
   async startSession() {
-    if (this.session || this.opening) return;
+    if (this.session || this.opening || this.retryTimer !== null) return;
     this.opening = true;
     const opened = await mic.open();
     this.opening = false;
@@ -278,6 +282,7 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   begin() {
     this.started = false;
     this.lastError = null;
+    this.startTimer = setTimeout(() => this.retry(), START_MS);
     try {
       this.session.start(mic.track());
     } catch {
@@ -286,15 +291,22 @@ class VoiceControl extends Phaser.Events.EventEmitter {
   }
 
   // The session cannot go on as it is: its track ended, or it would not start. Close it, open
-  // the mic again and start another, three times at most.
+  // the mic again and start another after a short backoff, three times at most. Replacing the
+  // recognizer too avoids reusing an object whose audio service has failed.
   retry() {
     const on = this.wanted || this.checking;
     this.stopSession();
     if (++this.strikes >= 3) this.error = 'Shoutr Flow stopped';
-    else if (on) this.startSession();
+    else if (on) this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (this.wanted || this.checking) this.startSession();
+    }, 500 * this.strikes);
   }
 
   stopSession() {
+    clearTimeout(this.retryTimer);
+    clearTimeout(this.startTimer);
+    this.retryTimer = this.startTimer = null;
     const session = this.session;
     this.session = null;
     this.running = false;
@@ -319,9 +331,9 @@ class VoiceControl extends Phaser.Events.EventEmitter {
     // recognizer write them when nobody had said them.
     rec.onstart = () => {
       if (rec !== this.session) return;
+      clearTimeout(this.startTimer);
+      this.startTimer = null;
       this.started = true;
-      this.startedAt = performance.now();
-      this.heardAny = false;
       this.running = true;
       this.said = '';
       this.counter.reset();
@@ -330,7 +342,6 @@ class VoiceControl extends Phaser.Events.EventEmitter {
       if (rec !== this.session) return;
       const now = performance.now();
       this.strikes = 0;
-      this.heardAny = true;
       const said = [...e.results].map((r) => r[0].transcript);
       this.said = said.join(' ');
       this.heardText = (said.at(-1) ?? '').trim().toLowerCase();
@@ -353,25 +364,23 @@ class VoiceControl extends Phaser.Events.EventEmitter {
         this.stopSession();
         this.error = 'speech pack missing';
         this.probe();
+      } else if (HARD.includes(e.error)) {
+        // Some capture failures send no `end`. Close immediately so a failed recognizer
+        // never leaves a green listening light, or retries a refused microphone forever.
+        this.stopSession();
+        if (e.error === 'not-allowed') this.permission = 'denied';
+        this.error = SPEECH_ERRORS[e.error];
+      } else {
+        // Recoverable errors (including audio-capture) need a fresh track, not another
+        // start on the same broken audio path. Do not depend on a later `end` event.
+        this.retry();
       }
     };
     rec.onend = () => {
       if (rec !== this.session) return; // stopped on purpose
-      this.running = false;
-      // Fed from the mic's track a session should not end by itself; if it does, start it again
-      // at once. One that never started, ended in an error that starting again will not fix, or
-      // ended within a second of starting having heard nothing, is a strike; three in a row,
-      // with nothing heard between, and it stays stopped. Without the last, a recognizer that
-      // keeps starting and dying was started again sixty times a second.
-      const atOnce = this.started && !this.heardAny && performance.now() - this.startedAt < 1000;
-      if (!this.started || HARD.includes(this.lastError) || atOnce) this.strikes++;
-      if (this.strikes >= 3) {
-        this.error = 'Shoutr Flow stopped';
-        this.session = null;
-        mic.close();
-        return;
-      }
-      this.begin();
+      // Every unexpected end counts, even one after a second. A real result resets the
+      // strikes; merely starting again does not prove the recognizer has recovered.
+      this.retry();
     };
     return rec;
   }
